@@ -549,6 +549,27 @@ html[data-theme="dark"] .calSpecial.holiday b { color: #FDBA74; }
   .mediaUpload .btn3d { width: 100%; }
 }
 
+/* ---------- publicação automática ---------- */
+.statusPill.agendado { background: #EDE7FF; color: #5B2FD6; }
+.statusPill.publicando { background: #EDE7FF; color: #5B2FD6; }
+.statusPill.erro { background: var(--error-bg); color: var(--error-ink); }
+html[data-theme="dark"] .statusPill.agendado, html[data-theme="dark"] .statusPill.publicando { background: #2A2150; color: #C9B8FF; }
+.autoBox { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.autoBox > div:first-child { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.autoBox > div:first-child b { font-size: 15px; }
+.autoBox.done { border-color: var(--done-ink); background: var(--done-bg); }
+.autoBox.err { border-color: var(--error-ink); }
+.autoForm { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.autoField { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); }
+.autoField input { min-height: 44px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; letter-spacing: 0; text-transform: none; }
+.liCard { padding: 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: none; }
+.liHead { display: flex; align-items: center; gap: 14px; }
+.liPic { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex: none; }
+@media (max-width: 640px) {
+  .autoForm > * { flex: 1 1 140px; }
+  .autoForm .btn3d { flex-basis: 100%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lw, .tint, .grad, .rise, .spinner, .micBtn.on .micDot, .postLoading { animation: none; }
   body { transition: none; }

@@ -42,14 +42,31 @@ export type PostRow = {
   objetivo: string;
   com_rosto: boolean;
   tema: string;
-  status: 'rascunho' | 'aprovado' | 'publicado';
+  status: PostStatus;
+  scheduled_at: string | null;
+  published_at: string | null;
+  external_url: string | null;
+  publish_error: string | null;
   content: PostContent;
   versions: number;
   source: 'ai' | 'demo';
   updated_at: string;
 };
 
-export const POST_COLUMNS = 'id, strategy_id, item_index, date, rede, formato, pilar, objetivo, com_rosto, tema, status, content, versions, source, updated_at';
+export const POST_COLUMNS =
+  'id, strategy_id, item_index, date, rede, formato, pilar, objetivo, com_rosto, tema, status, content, versions, source, updated_at, scheduled_at, published_at, external_url, publish_error';
+
+export type PostStatus = 'rascunho' | 'aprovado' | 'agendado' | 'publicando' | 'publicado' | 'erro';
+/** Imagem pronta no storage para a publicação automática. */
+export type PostAsset = { path: string; w: number; h: number };
+
+/** Redes com publicação automática já disponível. */
+export const AUTO_NETWORKS = ['LinkedIn'];
+/** Formatos que dá para publicar sozinho (vídeo e stories precisam do app da rede). */
+export function canAutoPublish(rede: string, formato: string) {
+  const k = kindOf(formato);
+  return AUTO_NETWORKS.includes(rede) && k !== 'video' && k !== 'stories';
+}
 export const MAX_VERSIONS = 6; // 1 geração + 5 refações por post
 
 export type FormatKind = 'carrossel' | 'imagem' | 'video' | 'stories' | 'thread' | 'texto' | 'prova';

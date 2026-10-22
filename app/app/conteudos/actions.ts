@@ -45,7 +45,14 @@ export async function setPostStatus(id: number, status: 'rascunho' | 'aprovado' 
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
   if (!Number.isInteger(id) || !['rascunho', 'aprovado', 'publicado'].includes(status)) return { ok: false, error: 'Pedido inválido.' };
   const admin = createAdminClient();
-  const { error } = await admin.from('posts').update({ status, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id);
+  // Voltar para revisão/aprovado cancela um agendamento; "Publiquei" registra a publicação manual.
+  const extra = status === 'publicado' ? { published_at: new Date().toISOString(), scheduled_at: null } : { scheduled_at: null, publish_error: null };
+  const { error } = await admin
+    .from('posts')
+    .update({ status, ...extra, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+    .neq('status', 'publicando');
   if (error) return { ok: false, error: 'Não deu para salvar. Tente de novo.' };
   revalidatePath('/app/conteudos');
   return { ok: true };

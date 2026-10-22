@@ -21,7 +21,14 @@ export type BoardItem = {
 };
 
 const WD = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-export const STATUS_LABEL: Record<PostRow['status'], string> = { rascunho: 'Para revisar', aprovado: 'Aprovado', publicado: 'Publicado' };
+export const STATUS_LABEL: Record<PostRow['status'], string> = {
+  rascunho: 'Para revisar',
+  aprovado: 'Aprovado',
+  agendado: 'Agendado',
+  publicando: 'Publicando',
+  publicado: 'Publicado',
+  erro: 'Erro ao publicar',
+};
 
 export function StatusPill({ status }: { status: PostRow['status'] }) {
   return <span className={`statusPill ${status}`}>{STATUS_LABEL[status]}</span>;
@@ -41,10 +48,10 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
   const counts = week.reduce(
     (acc, i) => {
       const p = posts[i.index];
-      if (p) acc[p.status] += 1;
+      if (p) acc[p.status === 'erro' ? 'rascunho' : p.status === 'publicando' ? 'agendado' : p.status] += 1;
       return acc;
     },
-    { rascunho: 0, aprovado: 0, publicado: 0 },
+    { rascunho: 0, aprovado: 0, agendado: 0, publicado: 0 },
   );
 
   async function generate(index: number) {
@@ -91,6 +98,7 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
           <span><b>{week.length}</b> {week.length === 1 ? 'post' : 'posts'}</span>
           <span><b>{counts.rascunho}</b> para revisar</span>
           <span><b>{counts.aprovado}</b> {counts.aprovado === 1 ? 'aprovado' : 'aprovados'}</span>
+          {counts.agendado > 0 && <span><b>{counts.agendado}</b> {counts.agendado === 1 ? 'agendado' : 'agendados'}</span>}
           <span><b>{counts.publicado}</b> {counts.publicado === 1 ? 'publicado' : 'publicados'}</span>
         </div>
         {missing.length > 0 ? (
@@ -138,7 +146,15 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
                     {p && <StatusPill status={p.status} />}
                   </div>
                   <b className="postTitle">{p ? p.content.gancho : i.tema}</b>
-                  <span className="muted postSub">{p ? i.tema : `${i.pilar} · objetivo: ${i.objetivo}`}</span>
+                  <span className="muted postSub">
+                    {p?.status === 'agendado' && p.scheduled_at
+                      ? `Sai às ${new Date(p.scheduled_at).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })} · ${i.tema}`
+                      : p?.status === 'erro' && p.publish_error
+                        ? p.publish_error
+                        : p
+                          ? i.tema
+                          : `${i.pilar} · objetivo: ${i.objetivo}`}
+                  </span>
                   {errors[i.index] && <span role="alert" className="postErr">{errors[i.index]}</span>}
                 </div>
                 <div className="postAct">

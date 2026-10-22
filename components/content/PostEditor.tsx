@@ -7,12 +7,14 @@ import { NetworkIcon } from '@/components/NetworkIcon';
 import { StatusPill } from '@/components/content/WeekBoard';
 import { networkByName } from '@/lib/networks';
 import { formatLong } from '@/lib/dates';
-import { captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostContent, type PostRow } from '@/lib/contentTypes';
+import { canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
 import { downloadImage, imagesFor, renderImage, type Brand } from '@/lib/postImage';
 import { mediaUrl, type Scene } from '@/lib/scene';
 import { MediaLibrary } from '@/components/content/MediaLibrary';
 import { CanvasEditor } from '@/components/content/CanvasEditor';
 import { savePost, setPostStatus } from '@/app/app/conteudos/actions';
+import { schedulePost, uploadPostAsset } from '@/app/app/conteudos/publish';
+import { AutoPublish, type AutoInfo } from '@/components/content/AutoPublish';
 
 const OPEN_URL: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/feed/?shareActive=true',
@@ -49,6 +51,8 @@ export function PostEditor({
   versionsLeft,
   media,
   canCanvas,
+  auto,
+  defaultTime,
 }: {
   post: PostRow;
   brand: Brand;
@@ -56,11 +60,14 @@ export function PostEditor({
   versionsLeft: number;
   media: MediaItem[];
   canCanvas: boolean;
+  auto: AutoInfo;
+  defaultTime: string;
 }) {
   const router = useRouter();
   const [c, setC] = useState<PostContent>(post.content);
   const [saved, setSaved] = useState(() => JSON.stringify(post.content));
   const [status, setStatus] = useState(post.status);
+  const [pub, setPub] = useState({ scheduledAt: post.scheduled_at, externalUrl: post.external_url, publishError: post.publish_error });
   const [left, setLeft] = useState(versionsLeft);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [copied, setCopied] = useState('');
@@ -102,17 +109,49 @@ export function PostEditor({
     if (kind === 'ok') setTimeout(() => setMsg(null), 2500);
   }
 
+  /** Desenha as imagens do post em JPEG e guarda para a publicação automática. */
+  async function prepareAssets(): Promise<PostAsset[]> {
+    if (dirty) {
+      const r = await savePost(post.id, toPayload(c));
+      if (!r.ok) throw new Error(r.error);
+      setSaved(JSON.stringify(c));
+    }
+    const out: PostAsset[] = [];
+    for (let i = 0; i < specs.length; i++) {
+      const canvas = await renderImage(specs[i], c);
+      const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.9));
+      if (!blob) throw new Error('Não deu para preparar as imagens.');
+      const fd = new FormData();
+      fd.append('img', new File([blob], `${i + 1}.jpg`, { type: 'image/jpeg' }));
+      fd.append('w', String(canvas.width));
+      fd.append('h', String(canvas.height));
+      fd.append('n', String(i + 1));
+      const r = await uploadPostAsset(post.id, fd);
+      if (!r.ok || !r.asset) throw new Error(r.ok ? 'Não deu para preparar as imagens.' : r.error);
+      out.push(r.asset);
+    }
+    return out;
+  }
+
   function save() {
     startTransition(async () => {
       const res = await savePost(post.id, toPayload(c));
-      if (res.ok) {
-        setSaved(JSON.stringify(c));
-        flash('ok', 'Alterações salvas.');
-      } else flash('error', res.error);
+      if (!res.ok) return flash('error', res.error);
+      setSaved(JSON.stringify(c));
+      // Post agendado: atualiza as imagens e o texto que vão ser publicados.
+      if (status === 'agendado' && pub.scheduledAt && new Date(pub.scheduledAt).getTime() > Date.now()) {
+        try {
+          const r = await schedulePost(post.id, pub.scheduledAt, await prepareAssets());
+          if (!r.ok) throw new Error(r.error);
+          flash('ok', 'Alterações salvas e agendamento atualizado.');
+        } catch (err) {
+          flash('error', err instanceof Error ? err.message : 'Salvo, mas não deu para atualizar o agendamento.');
+        }
+      } else flash('ok', 'Alterações salvas.');
     });
   }
 
-  function changeStatus(next: PostRow['status']) {
+  function changeStatus(next: 'rascunho' | 'aprovado' | 'publicado') {
     startTransition(async () => {
       if (dirty) {
         const r = await savePost(post.id, toPayload(c));
@@ -122,6 +161,7 @@ export function PostEditor({
       const res = await setPostStatus(post.id, next);
       if (res.ok) {
         setStatus(next);
+        setPub((p) => ({ ...p, scheduledAt: null, publishError: null }));
         flash('ok', next === 'aprovado' ? 'Post aprovado.' : next === 'publicado' ? 'Marcado como publicado.' : 'Voltou para revisão.');
         router.refresh();
       } else flash('error', res.error);
@@ -174,6 +214,7 @@ export function PostEditor({
   }
 
   const caption = captionWithTags(c);
+  const autoOk = auto.available && canAutoPublish(post.rede, post.formato);
   const edited = specs.some((s) => c.canvas?.[s.key]);
 
   function applyCanvas(canvas: Record<string, Scene>) {
@@ -406,14 +447,31 @@ export function PostEditor({
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <h2 id="h-pub" style={{ fontSize: 17 }}>Publicar</h2>
-            <span className="muted" style={{ fontSize: 13 }}>Enquanto a publicação automática não chega, são 4 toques.</span>
+            <span className="muted" style={{ fontSize: 13 }}>
+              {autoOk ? 'Agende para sair sozinho ou, se preferir, publique você mesmo em 4 toques.' : 'Enquanto a publicação automática não chega para este formato, são 4 toques.'}
+            </span>
           </div>
           <div className="pageActions" style={{ width: 'auto' }}>
             {status === 'rascunho' && <button type="button" className="btn3d btnSm" onClick={() => changeStatus('aprovado')} disabled={pending}>Aprovar post</button>}
             {status === 'aprovado' && <button type="button" className="btn3d btnSm" onClick={() => changeStatus('publicado')} disabled={pending}>Marcar como publicado</button>}
-            {status !== 'rascunho' && <button type="button" className="btnGhost btnSm" onClick={() => changeStatus('rascunho')} disabled={pending}>Voltar para revisão</button>}
+            {status !== 'rascunho' && status !== 'publicando' && <button type="button" className="btnGhost btnSm" onClick={() => changeStatus('rascunho')} disabled={pending}>Voltar para revisão</button>}
           </div>
         </div>
+        {autoOk && (
+          <AutoPublish
+            postId={post.id}
+            rede={post.rede}
+            date={post.date}
+            defaultTime={defaultTime}
+            auto={auto}
+            state={{ status, ...pub }}
+            prepareAssets={prepareAssets}
+            onChange={(next) => {
+              setStatus(next.status);
+              setPub({ scheduledAt: next.scheduledAt, externalUrl: next.externalUrl, publishError: next.publishError });
+            }}
+          />
+        )}
         <ol className="pubSteps">
           <li>
             <span className="slideNum">1</span>
