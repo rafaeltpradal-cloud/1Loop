@@ -20,7 +20,9 @@ export default async function LandingPage() {
     if (user) {
       html = html
         .replace('href="/entrar" data-auth-link>Entrar</a>', 'href="/app" data-auth-link>Minha conta</a>')
-        .replace('href="/entrar" style="color: #5E646C; text-decoration: none" data-auth-link>Entrar</a>', 'href="/app" style="color: #5E646C; text-decoration: none" data-auth-link>Minha conta</a>');
+        .replace('href="/entrar" style="color: #5E646C; text-decoration: none" data-auth-link>Entrar</a>', 'href="/app" style="color: #5E646C; text-decoration: none" data-auth-link>Minha conta</a>')
+        // No celular, quem já é cliente vê só "Minha conta" no topo.
+        .replace('class="btn3d btnSm" href="#planos"', 'class="btn3d btnSm lpHideWhenIn" href="#planos"');
     }
   } catch {
     // Sem sessão: mantém "Entrar".
