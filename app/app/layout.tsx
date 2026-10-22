@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Brand } from '@/components/Logo';
 import { AppNav } from '@/components/AppNav';
 import { getAppContext } from '@/lib/session';
@@ -6,6 +7,7 @@ import { PLANS } from '@/lib/plans';
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAppContext();
   const plan = PLANS[ctx.plan];
+  const initials = ctx.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '1';
 
   return (
     <div className="shell">
@@ -23,7 +25,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ctx.name}</span>
+            <Link href="/app/perfil" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, textDecoration: 'none' }}>
+              <span className="avatar" aria-hidden="true">{initials}</span>
+              <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ctx.name}</span>
+                <span className="muted" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ctx.email}</span>
+              </span>
+            </Link>
             <form action="/auth/sair" method="post">
               <button className="linkBtn" type="submit" style={{ fontSize: 13 }}>Sair</button>
             </form>

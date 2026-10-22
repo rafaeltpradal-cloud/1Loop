@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { QUESTIONS, type Answers } from '@/lib/interview';
+import { QUESTIONS, resolveAnswers, type Answers } from '@/lib/interview';
 import { PLANS, type PlanId } from '@/lib/plans';
 
 export type Pillar = { nome: string; percentual: number; descricao: string };
@@ -84,7 +84,9 @@ function extractJson(text: string): unknown {
   return JSON.parse(text.slice(start, end + 1));
 }
 
-export async function generateStrategy(answers: Answers, plan: PlanId): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
+export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
+  // "Outro" vira o texto que a pessoa escreveu.
+  const answers = resolveAnswers(rawAnswers);
   if (!process.env.ANTHROPIC_API_KEY) {
     return { strategy: demoStrategy(answers, plan), source: 'demo' };
   }

@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { QUESTIONS, isAnswered, type Answers } from '@/lib/interview';
+import { OTHER, QUESTIONS, displayValue, isAnswered, optionsOf, otherKey, type Answers } from '@/lib/interview';
+import { VoiceButton } from '@/components/VoiceButton';
 import { saveAnswers } from '@/app/app/entrevista/actions';
 import { LoopMark } from '@/components/Logo';
 
@@ -16,7 +17,7 @@ const GENERATING_MSGS = [
 
 export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrategy: boolean }) {
   const router = useRouter();
-  const firstOpen = Math.max(0, QUESTIONS.findIndex((q) => !isAnswered(q, initial[q.id])));
+  const firstOpen = Math.max(0, QUESTIONS.findIndex((q) => !isAnswered(q, initial[q.id], initial)));
   const [answers, setAnswers] = useState<Answers>(initial);
   const [idx, setIdx] = useState(firstOpen === -1 ? 0 : firstOpen);
   const [phase, setPhase] = useState<'asking' | 'generating' | 'error'>('asking');
@@ -25,7 +26,9 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
 
   const q = QUESTIONS[idx];
   const value = answers[q.id];
-  const ok = isAnswered(q, value);
+  const ok = isAnswered(q, value, answers);
+  const otherOn = !!q.allowOther && Array.isArray(value) && value.includes(OTHER);
+  const otherText = typeof answers[otherKey(q.id)] === 'string' ? (answers[otherKey(q.id)] as string) : '';
   const isLast = idx === QUESTIONS.length - 1;
   const pct = Math.round(((idx + (ok ? 1 : 0)) / QUESTIONS.length) * 100);
 
@@ -33,6 +36,10 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
 
   function setValue(v: string | string[]) {
     setAnswers((a) => ({ ...a, [q.id]: v }));
+  }
+
+  function setOther(v: string) {
+    setAnswers((a) => ({ ...a, [otherKey(q.id)]: v }));
   }
 
   function toggle(option: string) {
@@ -105,12 +112,19 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
 
         {(q.kind === 'single' || q.kind === 'multi') && (
           <div role="group" aria-labelledby={`q-${q.id}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {q.options!.map((o) => {
+            {optionsOf(q).map((o) => {
               const pressed = q.kind === 'single' ? value === o : Array.isArray(value) && value.includes(o);
               return (
                 <button key={o} type="button" className="chip" aria-pressed={pressed} onClick={() => toggle(o)}>{o}</button>
               );
             })}
+          </div>
+        )}
+        {otherOn && (
+          <div className="field rise">
+            <label htmlFor={`other-${q.id}`}>Qual outro tema?</label>
+            <input id={`other-${q.id}`} type="text" maxLength={120} value={otherText} placeholder="Ex.: Nutrição esportiva, pets, arquitetura" onChange={(e) => setOther(e.target.value)} autoFocus />
+            <VoiceButton key={`o-${q.id}`} value={otherText} onChange={setOther} />
           </div>
         )}
         {q.kind === 'multi' && (
@@ -120,12 +134,14 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
           <div className="field">
             <label htmlFor={`in-${q.id}`} className="sr-only" style={{ position: 'absolute', left: -9999 }}>{q.title}</label>
             <input id={`in-${q.id}`} type="text" value={typeof value === 'string' ? value : ''} placeholder={q.placeholder} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && ok) next(); }} autoFocus />
+            <VoiceButton key={q.id} value={typeof value === 'string' ? value : ''} onChange={setValue} />
           </div>
         )}
         {q.kind === 'longtext' && (
           <div className="field">
             <label htmlFor={`in-${q.id}`} style={{ position: 'absolute', left: -9999 }}>{q.title}</label>
             <textarea id={`in-${q.id}`} rows={4} value={typeof value === 'string' ? value : ''} placeholder={q.placeholder} onChange={(e) => setValue(e.target.value)} autoFocus />
+            <VoiceButton key={q.id} value={typeof value === 'string' ? value : ''} onChange={setValue} />
           </div>
         )}
 
@@ -149,10 +165,9 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{b}</div>
             {QUESTIONS.filter((x) => x.block === b).map((x) => {
               const i = QUESTIONS.indexOf(x);
-              const v = answers[x.id];
-              const txt = Array.isArray(v) ? v.join(', ') : v;
+              const txt = displayValue(x, answers);
               return (
-                <button key={x.id} type="button" onClick={() => setIdx(i)} style={{ textAlign: 'left', background: i === idx ? '#F4F5F7' : 'transparent', border: 0, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit' }}>
+                <button key={x.id} type="button" onClick={() => setIdx(i)} style={{ textAlign: 'left', background: i === idx ? 'var(--hover)' : 'transparent', border: 0, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-2)' }}>{x.title}</div>
                   <div style={{ fontSize: 13, color: txt ? 'var(--ink)' : 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt || (x.optional ? 'Opcional' : 'Ainda não respondido')}</div>
                 </button>

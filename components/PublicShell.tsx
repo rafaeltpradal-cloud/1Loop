@@ -3,7 +3,7 @@ import { Brand } from '@/components/Logo';
 export function PublicShell({ children, right }: { children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <header style={{ borderBottom: '1px solid var(--line)', background: 'rgba(244,245,247,.82)', backdropFilter: 'blur(12px)' }}>
+      <header style={{ borderBottom: '1px solid var(--line)', background: 'var(--header-bg)', backdropFilter: 'blur(12px)' }}>
         <div style={{ maxWidth: 1180, margin: '0 auto', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <Brand />
           {right}
@@ -24,9 +24,9 @@ export function Steps({ current }: { current: 1 | 2 | 3 }) {
         const done = n < current;
         return (
           <li key={l} aria-current={on ? 'step' : undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 700, color: on ? 'var(--ink)' : 'var(--muted)' }}>
-            <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: on ? 'var(--grey)' : done ? '#DDE3FB' : '#E9EBEE', color: on ? '#fff' : done ? '#2448C8' : 'var(--muted)' }}>{done ? '✓' : n}</span>
+            <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, background: on ? 'var(--grey)' : done ? 'var(--step-done-bg)' : 'var(--track)', color: on ? '#fff' : done ? 'var(--step-done-ink)' : 'var(--muted)' }}>{done ? '✓' : n}</span>
             {l}
-            {n < 3 && <span aria-hidden="true" style={{ color: '#C3C8CF', margin: '0 4px' }}>—</span>}
+            {n < 3 && <span aria-hidden="true" style={{ color: 'var(--faint)', margin: '0 4px' }}>—</span>}
           </li>
         );
       })}

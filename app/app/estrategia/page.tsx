@@ -47,12 +47,21 @@ export default async function EstrategiaPage() {
             {data.source === 'demo' && ' · modo demonstração (configure a chave da IA para a versão completa)'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
           <Link className="btnGhost btnSm" href="/app/entrevista">Ajustar respostas</Link>
           <RegenerateButton />
+          <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
         </div>
       </div>
       <StrategyView s={data.data as Strategy} startDate={start} />
+      <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '999 1 360px', minWidth: 0 }}>
+          <div className="eyebrow">Próximo passo</div>
+          <div style={{ fontSize: 22, fontWeight: 700 }}>Conecte suas redes</div>
+          <div className="muted" style={{ fontSize: 15, lineHeight: 1.5 }}>Cadastre os perfis onde essa estratégia vai rodar. Depois, os conteúdos da semana saem prontos para aprovar.</div>
+        </div>
+        <Link className="btn3d" href="/app/redes">Avançar para redes</Link>
+      </div>
     </div>
   );
 }

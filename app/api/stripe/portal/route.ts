@@ -15,7 +15,7 @@ export async function POST() {
 
   const portal = await stripe().billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${siteUrl()}/app/conta`,
+    return_url: `${siteUrl()}/app/configuracoes`,
     locale: 'pt-BR',
   });
   return NextResponse.redirect(portal.url, { status: 303 });

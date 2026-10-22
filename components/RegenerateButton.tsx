@@ -19,7 +19,7 @@ export function RegenerateButton() {
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      {error && <span role="alert" style={{ fontSize: 13, color: '#9B1C2C', fontWeight: 600 }}>Não deu certo. Tente de novo.</span>}
+      {error && <span role="alert" style={{ fontSize: 13, color: 'var(--error-ink)', fontWeight: 600 }}>Não deu certo. Tente de novo.</span>}
       <button className="btnGhost btnSm" type="button" onClick={run} disabled={busy}>{busy ? 'Gerando…' : 'Gerar outra versão'}</button>
     </div>
   );

@@ -10,7 +10,12 @@ export type Question = {
   max?: number;
   placeholder?: string;
   optional?: boolean;
+  // Mostra a opção "Outro" com um campo para escrever (guardado em `${id}_outro`).
+  allowOther?: boolean;
 };
+
+export const OTHER = 'Outro';
+export const otherKey = (id: string) => `${id}_outro`;
 
 export type Answers = Record<string, string | string[]>;
 
@@ -54,7 +59,8 @@ export const QUESTIONS: Question[] = [
   {
     id: 'temas', block: 'Conteúdo', kind: 'multi', max: 4,
     title: 'Sobre quais temas você domina e gosta de falar?',
-    hint: 'Escolha até 4. Eles viram seus pilares de conteúdo.',
+    hint: 'Escolha até 4. Eles viram seus pilares de conteúdo. Não achou o seu? Use "Outro" e escreva.',
+    allowOther: true,
     options: ['Vendas', 'Marketing', 'Liderança', 'IA e tecnologia', 'Empreendedorismo', 'Carreira', 'Finanças', 'Saúde e bem-estar', 'Educação', 'Moda e beleza'],
   },
   {
@@ -95,10 +101,47 @@ export const QUESTIONS: Question[] = [
   },
 ];
 
-export function isAnswered(q: Question, value: string | string[] | undefined) {
+export function optionsOf(q: Question) {
+  return q.allowOther ? [...(q.options ?? []), OTHER] : q.options ?? [];
+}
+
+export function isAnswered(q: Question, value: string | string[] | undefined, answers?: Answers) {
   if (q.optional) return true;
-  if (Array.isArray(value)) return value.length > 0;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return false;
+    // Se marcou "Outro", precisa escrever qual.
+    if (q.allowOther && value.includes(OTHER)) {
+      const txt = answers?.[otherKey(q.id)];
+      return typeof txt === 'string' && txt.trim().length > 1;
+    }
+    return true;
+  }
   return typeof value === 'string' && value.trim().length > 1;
+}
+
+// Troca "Outro" pelo texto escrito, para mostrar na tela e mandar para a IA.
+export function displayValue(q: Question, answers: Answers) {
+  const v = answers[q.id];
+  if (Array.isArray(v)) {
+    const txt = answers[otherKey(q.id)];
+    return v.map((x) => (x === OTHER && typeof txt === 'string' && txt.trim() ? txt.trim() : x)).join(', ');
+  }
+  return v ?? '';
+}
+
+export function resolveAnswers(answers: Answers): Answers {
+  const out: Answers = {};
+  for (const q of QUESTIONS) {
+    const v = answers[q.id];
+    if (v === undefined) continue;
+    if (Array.isArray(v) && q.allowOther) {
+      const txt = answers[otherKey(q.id)];
+      out[q.id] = v.flatMap((x) => (x === OTHER ? (typeof txt === 'string' && txt.trim() ? [txt.trim()] : []) : [x]));
+    } else {
+      out[q.id] = v;
+    }
+  }
+  return out;
 }
 
 // Mantém só respostas de perguntas conhecidas, com tamanho limitado.
@@ -109,7 +152,9 @@ export function sanitizeAnswers(raw: unknown): Answers {
   for (const q of QUESTIONS) {
     const v = obj[q.id];
     if (q.kind === 'multi' && Array.isArray(v)) {
-      out[q.id] = v.filter((x): x is string => typeof x === 'string' && (q.options ?? []).includes(x)).slice(0, q.max ?? 10);
+      out[q.id] = v.filter((x): x is string => typeof x === 'string' && optionsOf(q).includes(x)).slice(0, q.max ?? 10);
+      const other = obj[otherKey(q.id)];
+      if (q.allowOther && typeof other === 'string') out[otherKey(q.id)] = other.slice(0, 120);
     } else if (q.kind === 'single' && typeof v === 'string' && (q.options ?? []).includes(v)) {
       out[q.id] = v;
     } else if ((q.kind === 'text' || q.kind === 'longtext') && typeof v === 'string') {

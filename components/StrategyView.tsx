@@ -97,7 +97,7 @@ export function StrategyView({ s, startDate }: { s: Strategy; startDate: Date })
                     <div key={c.dia} className="heatCell" style={{ background: color(item.pilar) }} title={`${dateOf(c.dia)} · ${item.rede} · ${item.formato}: ${item.tema}`}>
                       {new Date(startDate.getTime() + (c.dia - 1) * 86400000).getDate()}
                       {item.comRosto && (
-                        <span aria-label="com rosto" style={{ position: 'absolute', top: 5, right: 5, minWidth: 16, height: 16, borderRadius: 8, background: 'rgba(255,255,255,.92)', color: 'var(--ink)', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>F</span>
+                        <span aria-label="com rosto" style={{ position: 'absolute', top: 5, right: 5, minWidth: 16, height: 16, borderRadius: 8, background: 'rgba(255,255,255,.92)', color: '#0E0F12', fontSize: 9, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>F</span>
                       )}
                     </div>
                   );
