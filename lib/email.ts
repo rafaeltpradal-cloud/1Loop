@@ -2,7 +2,7 @@
 // Sem RESEND_API_KEY configurada, nada é enviado e o app segue normalmente.
 
 export async function sendEmail({ to, subject, html, text }: { to: string; subject: string; html: string; text: string }) {
-  const key = process.env.RESEND_API_KEY;
+  const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM || '1loop creators <contato@1loopcreators.com.br>';
   if (!key) {
     console.info('[email] RESEND_API_KEY não configurada; e-mail não enviado:', subject);

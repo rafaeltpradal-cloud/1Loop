@@ -87,11 +87,11 @@ function extractJson(text: string): unknown {
 export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
   // "Outro" vira o texto que a pessoa escreveu.
   const answers = resolveAnswers(rawAnswers);
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) {
     return { strategy: demoStrategy(answers, plan), source: 'demo' };
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
   const message = await client.messages.create({
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 8000,
