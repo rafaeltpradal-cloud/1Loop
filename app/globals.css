@@ -451,7 +451,7 @@ html[data-theme="dark"] .calSpecial.holiday b { color: #FDBA74; }
 .editorBar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; position: sticky; bottom: 0; padding-top: 12px; background: linear-gradient(180deg, transparent, var(--surface) 30%); }
 .redoConfirm { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .publishPanel { padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: none; }
-.pubSteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.pubSteps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .pubSteps li { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line-soft); }
 .pubSteps li .slideNum { margin-top: 0; }
 .pubSteps li > div { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }

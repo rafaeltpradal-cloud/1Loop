@@ -58,7 +58,7 @@ export default async function ConteudosPage() {
           <span className="graphite">Conteúdos da</span> <span className="grad">semana.</span>
         </h1>
         <span className="muted" style={{ fontSize: 14 }}>
-          Gere o lote, revise, aprove e publique. {done} de {total} posts do plano já têm conteúdo.
+          Gere o lote, revise, aprove e publique. {done} de {total} posts do plano {done === 1 ? 'já tem' : 'já têm'} conteúdo.
         </span>
       </div>
       <WeekBoard items={items} today={isoInBrazil()} planStart={start} />
