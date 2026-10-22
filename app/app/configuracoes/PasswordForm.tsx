@@ -1,14 +1,25 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useEffect, useRef } from 'react';
 import { updatePassword, type PasswordState } from './actions';
 
 export function PasswordForm() {
   const [state, action, pending] = useActionState<PasswordState, FormData>(updatePassword, undefined);
+  const form = useRef<HTMLFormElement>(null);
+
+  // Limpa os campos depois de trocar.
+  useEffect(() => {
+    if (state?.ok) form.current?.reset();
+  }, [state]);
+
   return (
-    <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} noValidate>
+    <form ref={form} action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }} noValidate>
       {state?.error && <div className="formError" role="alert">{state.error}</div>}
       {state?.ok && <div className="formOk" role="status">Senha alterada.</div>}
+      <div className="field" style={{ maxWidth: 360 }}>
+        <label htmlFor="atual">Senha atual</label>
+        <input id="atual" name="atual" type="password" autoComplete="current-password" />
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
         <div className="field">
           <label htmlFor="senha">Nova senha</label>

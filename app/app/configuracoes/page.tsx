@@ -62,8 +62,17 @@ export default async function ConfiguracoesPage() {
         <p className="muted" style={{ fontSize: 13 }}>Você vai para o portal seguro do Stripe para trocar de plano, atualizar o cartão, ver faturas ou cancelar.</p>
       </Section>
 
-      <Section id="h-seguranca" title="Senha" desc={`Você entra com ${ctx.email}.`}>
+      <Section id="h-privacidade" title="Privacidade" desc="Sua senha e seus dados na 1loop creators.">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <h3 style={{ fontSize: 15 }}>Trocar senha</h3>
+          <p className="muted" style={{ fontSize: 13 }}>Você entra com {ctx.email}. Para trocar, confirme a senha atual.</p>
+        </div>
         <PasswordForm />
+        <hr className="divider" />
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontSize: 13, fontWeight: 600 }}>
+          <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a>
+          <a href="/termos" target="_blank" rel="noopener">Termos de uso</a>
+        </div>
       </Section>
 
       <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: 'none' }}>
