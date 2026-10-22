@@ -17,7 +17,7 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
           <h1 style={{ fontSize: 'clamp(30px, 4vw, 46px)', lineHeight: 1.08, letterSpacing: '-1.2px' }}>
             <span className="graphite">Teste 7 dias.</span> <span className="grad">Cancele quando quiser.</span>
           </h1>
-          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Tudo incluso em todos os planos. A diferença é o ritmo. O cartão é pedido agora, mas a primeira cobrança só acontece depois do teste.</p>
+          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. O cartão é pedido agora, mas a primeira cobrança só acontece depois do teste.</p>
         </div>
         {assinatura === 'pendente' && (
           <div className="formNote" role="status">Sua conta está criada, mas a assinatura ainda não foi ativada. Escolha um plano para começar o teste.</div>

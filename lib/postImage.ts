@@ -1,209 +1,97 @@
-// Desenha as imagens dos posts no navegador (canvas), prontas para baixar em PNG.
-// Só roda no cliente.
+// Monta as imagens dos posts como cenas editáveis (lib/scene) e gera os PNGs no navegador.
 
 import { kindOf, type ImageStyle, type PostContent, type Story } from '@/lib/contentTypes';
+import { drawScene, fitSize, layoutText, loadSceneImages, newId, type Layer, type Scene, type TextLayer } from '@/lib/scene';
 
 export type Brand = { name: string; handle?: string; serie: string };
-export type ImageSpec = { key: string; label: string; w: number; h: number; draw: (ctx: CanvasRenderingContext2D, font: string) => void };
+export type ImageSpec = { key: string; label: string; w: number; h: number; build: (ctx: CanvasRenderingContext2D, font: string) => Scene };
 
-type Palette = { bg: string; ink: string; muted: string; line: string; tagBg: string; tagInk: string; mark: string; markInk: string; accent: string; gradient: boolean };
+type Palette = { bg: string; ink: string; muted: string; line: string; tagBg: string; tagInk: string; hiStyle: 'box' | 'gradient'; accent: string; glow?: boolean; topBar?: boolean };
 
 const PALETTES: Record<ImageStyle, Palette> = {
-  notas: { bg: '#121211', ink: '#F5F5F2', muted: '#8D8D88', line: '#2A2A27', tagBg: '#FFD640', tagInk: '#121211', mark: '#FFD640', markInk: '#121211', accent: '#F5B800', gradient: false },
-  claro: { bg: '#F7F7F5', ink: '#0E0F12', muted: '#5E646C', line: '#E3E6EA', tagBg: '#0E0F12', tagInk: '#FFFFFF', mark: '', markInk: '', accent: '#7C4DFF', gradient: true },
-  escuro: { bg: '#0E0F12', ink: '#FFFFFF', muted: '#9AA1AA', line: '#26282E', tagBg: '#FFFFFF', tagInk: '#0E0F12', mark: '', markInk: '', accent: '#A98BFF', gradient: true },
+  notas: { bg: '#121211', ink: '#F5F5F2', muted: '#8D8D88', line: '#2A2A27', tagBg: '#FFD640', tagInk: '#121211', hiStyle: 'box', accent: '#F5B800' },
+  claro: { bg: '#F7F7F5', ink: '#0E0F12', muted: '#5E646C', line: '#E3E6EA', tagBg: '#0E0F12', tagInk: '#FFFFFF', hiStyle: 'gradient', accent: '#7C4DFF', topBar: true },
+  escuro: { bg: '#0E0F12', ink: '#FFFFFF', muted: '#9AA1AA', line: '#26282E', tagBg: '#FFFFFF', tagInk: '#0E0F12', hiStyle: 'gradient', accent: '#A98BFF', glow: true },
 };
 
-const GRAD = ['#3B6CF6', '#7C4DFF', '#E0458F', '#F08A24'];
+// Com foto de fundo, o texto fica claro sobre a sombra.
+const onPhoto = (p: Palette): Palette => ({ ...p, ink: '#FFFFFF', muted: 'rgba(255,255,255,0.82)', line: 'rgba(255,255,255,0.22)', glow: false, topBar: false });
 
-// ---------------------------------------------------------------------------
-// Texto: quebra de linha e ajuste de tamanho
-// ---------------------------------------------------------------------------
-
-type Word = { t: string; hi: boolean };
-type Line = { words: Word[]; width: number };
-
-function tokenize(text: string, destaque?: string): Word[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  if (!destaque) return words.map((t) => ({ t, hi: false }));
-  const hiWords = destaque.split(/\s+/).filter(Boolean);
-  const out: Word[] = words.map((t) => ({ t, hi: false }));
-  // marca a primeira sequência de palavras que bate com o destaque
-  for (let i = 0; i + hiWords.length <= words.length; i++) {
-    if (hiWords.every((h, k) => words[i + k] === h)) {
-      for (let k = 0; k < hiWords.length; k++) out[i + k].hi = true;
-      break;
-    }
+const lastWords = (t: string, n = 2) => {
+  const words = t.split(/\s+/).filter(Boolean);
+  const out: string[] = [];
+  for (let i = words.length - 1; i >= 0 && out.length < n; i--) {
+    if (!/[\p{L}\p{N}]/u.test(words[i])) break;
+    out.unshift(words[i]);
   }
-  return out;
+  return out.join(' ');
+};
+
+function text(p: Partial<TextLayer> & Pick<TextLayer, 'x' | 'y' | 'w' | 'text'>): TextLayer {
+  return { id: newId(), type: 'text', size: 40, weight: 700, color: '#000000', align: 'left', lh: 1.2, ...p };
 }
 
-/** Destaca as últimas palavras (só palavras com letras, sem pegar pontuação solta). */
-function tailHighlight(words: Word[], n = 2): Word[] {
-  const out = words.map((w) => ({ ...w }));
-  let marked = 0;
-  for (let i = out.length - 1; i >= 0 && marked < n; i--) {
-    if (!/[\p{L}\p{N}]/u.test(out[i].t)) break;
-    out[i].hi = true;
-    marked++;
+type Ctx = { ctx: CanvasRenderingContext2D; font: string; W: number; H: number; pad: number; p: Palette; style: ImageStyle };
+
+function base(c: Ctx, photo?: number): Layer[] {
+  const layers: Layer[] = [];
+  if (photo) {
+    layers.push({ id: newId(), type: 'image', x: 0, y: 0, w: c.W, h: c.H, media: photo, fit: 'cover' });
+    layers.push({ id: newId(), type: 'rect', x: 0, y: c.H * 0.28, w: c.W, h: c.H * 0.72, fill: 'shade' });
   }
-  return out;
+  if (c.p.topBar) layers.push({ id: newId(), type: 'rect', x: 0, y: 0, w: c.W, h: 14, fill: 'brand' });
+  return layers;
 }
 
-function wrap(ctx: CanvasRenderingContext2D, words: Word[], maxW: number): Line[] {
-  const space = ctx.measureText(' ').width;
-  const lines: Line[] = [];
-  let cur: Word[] = [];
-  let width = 0;
-  for (const w of words) {
-    const ww = ctx.measureText(w.t).width;
-    const next = cur.length ? width + space + ww : ww;
-    if (cur.length && next > maxW) {
-      lines.push({ words: cur, width });
-      cur = [w];
-      width = ww;
-    } else {
-      cur.push(w);
-      width = next;
-    }
-  }
-  if (cur.length) lines.push({ words: cur, width });
-  return lines;
-}
-
-function fit(ctx: CanvasRenderingContext2D, words: Word[], font: string, weight: number, maxW: number, maxH: number, max: number, min: number, lh = 1.16) {
-  for (let size = max; size >= min; size -= 2) {
-    ctx.font = `${weight} ${size}px ${font}`;
-    const lines = wrap(ctx, words, maxW);
-    const tooWide = lines.some((l) => l.width > maxW);
-    if (!tooWide && lines.length * size * lh <= maxH) return { size, lines, lh };
-  }
-  ctx.font = `${weight} ${min}px ${font}`;
-  return { size: min, lines: wrap(ctx, words, maxW), lh };
-}
-
-function gradientFill(ctx: CanvasRenderingContext2D, x: number, w: number) {
-  const g = ctx.createLinearGradient(x, 0, x + Math.max(w, 1), 0);
-  GRAD.forEach((c, i) => g.addColorStop(i / (GRAD.length - 1), c));
-  return g;
-}
-
-/** Desenha linhas de texto; palavras em destaque ganham marca-texto (notas) ou degradê (claro/escuro). */
-function drawLines(
-  ctx: CanvasRenderingContext2D,
-  p: Palette,
-  block: { size: number; lines: Line[]; lh: number },
-  x: number,
-  y: number,
-  opts: { color?: string; align?: 'left' | 'center'; boxW?: number; ruled?: boolean } = {},
-) {
-  const { size, lines, lh } = block;
-  const space = ctx.measureText(' ').width;
-  const lineH = size * lh;
-  ctx.textBaseline = 'alphabetic';
-  lines.forEach((line, i) => {
-    const baseY = y + i * lineH + size * 0.92;
-    let cx = opts.align === 'center' && opts.boxW ? x + (opts.boxW - line.width) / 2 : x;
-    if (opts.ruled) {
-      ctx.fillStyle = p.line;
-      ctx.fillRect(x, y + (i + 1) * lineH - 2, opts.boxW ?? 0, 2);
-    }
-    line.words.forEach((w, k) => {
-      const ww = ctx.measureText(w.t).width;
-      if (w.hi && p.mark) {
-        const next = line.words[k + 1];
-        const extend = next?.hi ? space : 0;
-        ctx.fillStyle = p.mark;
-        roundRect(ctx, cx - size * 0.12, baseY - size * 0.86, ww + extend + size * 0.24, size * 1.08, size * 0.14);
-        ctx.fill();
-        ctx.fillStyle = p.markInk;
-      } else if (w.hi && p.gradient) {
-        ctx.fillStyle = gradientFill(ctx, cx, ww);
-      } else {
-        ctx.fillStyle = opts.color ?? p.ink;
-      }
-      ctx.fillText(w.t, cx, baseY);
-      cx += ww + space;
-    });
-  });
-  return y + lines.length * lineH;
-}
-
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-// ---------------------------------------------------------------------------
-// Peças comuns: fundo, topo, rodapé
-// ---------------------------------------------------------------------------
-
-function background(ctx: CanvasRenderingContext2D, p: Palette, style: ImageStyle, w: number, h: number) {
-  ctx.fillStyle = p.bg;
-  ctx.fillRect(0, 0, w, h);
-  if (style === 'escuro') {
-    const g = ctx.createRadialGradient(w * 0.85, h * 0.05, 0, w * 0.85, h * 0.05, w * 0.9);
-    g.addColorStop(0, 'rgba(124,77,255,0.28)');
-    g.addColorStop(1, 'rgba(124,77,255,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-  }
-  if (style === 'claro') {
-    ctx.fillStyle = gradientFill(ctx, 0, w);
-    ctx.fillRect(0, 0, w, 14);
-  }
-}
-
-function header(ctx: CanvasRenderingContext2D, p: Palette, style: ImageStyle, font: string, w: number, pad: number, tag: string, right: string) {
-  let y = pad;
-  if (style === 'notas') {
-    ctx.font = `700 34px ${font}`;
-    ctx.fillStyle = p.ink;
-    ctx.textBaseline = 'top';
-    ctx.fillText('7:30', pad, y);
-    ctx.fillStyle = p.accent;
-    const t = '‹ Notas';
-    ctx.fillText(t, w - pad - ctx.measureText(t).width, y);
+/** Barra do bloco de notas (só no estilo notas) + etiqueta da série. Devolve o y logo abaixo. */
+function header(c: Ctx, layers: Layer[], tag: string, right: string, top = c.pad, notes = true) {
+  let y = top;
+  if (c.style === 'notas' && notes) {
+    layers.push(text({ x: c.pad, y, w: c.W - c.pad * 2, text: '7:30', size: 34, weight: 700, color: c.p.ink }));
+    layers.push(text({ x: c.pad, y, w: c.W - c.pad * 2, text: '‹ Notas', size: 34, weight: 700, color: c.p.accent, align: 'right' }));
     y += 74;
   }
-  // etiqueta da série
-  ctx.font = `800 26px ${font}`;
-  ctx.textBaseline = 'top';
-  const tw = ctx.measureText(tag).width;
-  ctx.fillStyle = p.tagBg;
-  roundRect(ctx, pad, y, tw + 32, 46, 10);
-  ctx.fill();
-  ctx.fillStyle = p.tagInk;
-  ctx.fillText(tag, pad + 16, y + 10);
-  if (right) {
-    ctx.font = `700 24px ${font}`;
-    ctx.fillStyle = p.muted;
-    const rw = ctx.measureText(right.toUpperCase()).width;
-    ctx.fillText(right.toUpperCase(), Math.min(pad + tw + 52, w - pad - rw), y + 12);
+  if (tag) {
+    const t = text({ x: c.pad, y, w: c.W - c.pad * 2, text: tag, size: 26, weight: 800, color: c.p.tagInk, bg: c.p.tagBg, bgMode: 'fit', pad: 12, radius: 10, lh: 1.15 });
+    layers.push(t);
+    const box = layoutText(c.ctx, t, c.font);
+    if (right) layers.push(text({ x: c.pad + box.boxW + 20, y: y + 13, w: c.W - c.pad * 2 - box.boxW - 20, text: right.toUpperCase(), size: 24, weight: 700, color: c.p.muted }));
+    y += box.h;
   }
-  return y + 46;
+  return y;
 }
 
-function footer(ctx: CanvasRenderingContext2D, p: Palette, font: string, w: number, h: number, pad: number, brand: Brand, right?: string) {
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = `800 28px ${font}`;
-  ctx.fillStyle = p.ink;
-  ctx.fillText(brand.name, pad, h - pad - 30);
-  if (brand.handle) {
-    ctx.font = `600 24px ${font}`;
-    ctx.fillStyle = p.muted;
-    ctx.fillText(brand.handle, pad, h - pad + 4);
-  }
-  if (right) {
-    ctx.font = `700 26px ${font}`;
-    ctx.fillStyle = p.muted;
-    ctx.fillText(right, w - pad - ctx.measureText(right).width, h - pad + 4);
-  }
+function footer(c: Ctx, layers: Layer[], brand: Brand, right?: string) {
+  const y = c.H - c.pad - 58;
+  layers.push(text({ x: c.pad, y, w: c.W * 0.6, text: brand.name, size: 28, weight: 800, color: c.p.ink, lh: 1.1 }));
+  if (brand.handle) layers.push(text({ x: c.pad, y: y + 34, w: c.W * 0.62, text: brand.handle, size: 24, weight: 600, color: c.p.muted, lh: 1.1 }));
+  if (right) layers.push(text({ x: c.W * 0.55, y: y + 34, w: c.W * 0.45 - c.pad, text: right, size: 26, weight: 700, color: c.p.muted, align: 'right', lh: 1.1 }));
+}
+
+/** Texto principal ajustado à caixa; com foto, encosta no rodapé. */
+function mainText(c: Ctx, layers: Layer[], str: string, hi: string | undefined, top: number, bottom: number, max: number, min: number, opts: { align?: TextLayer['align']; ruled?: boolean; anchor?: 'top' | 'center' | 'bottom'; weight?: number; color?: string; lh?: number } = {}) {
+  const partial = {
+    id: newId(),
+    type: 'text' as const,
+    x: c.pad,
+    y: top,
+    w: c.W - c.pad * 2,
+    text: str,
+    weight: opts.weight ?? 800,
+    color: opts.color ?? c.p.ink,
+    align: opts.align ?? 'left',
+    lh: opts.lh ?? 1.16,
+    hi: hi || undefined,
+    hiStyle: c.p.hiStyle,
+    ruled: opts.ruled ? c.p.line : undefined,
+  };
+  const size = fitSize(c.ctx, partial, c.font, bottom - top, max, min);
+  const layer: TextLayer = { ...partial, size };
+  const { h } = layoutText(c.ctx, layer, c.font);
+  if (opts.anchor === 'bottom') layer.y = bottom - h;
+  if (opts.anchor === 'center') layer.y = top + (bottom - top - h) / 2;
+  layers.push(layer);
+  return layer.y + h;
 }
 
 const serieTag = (n?: number) => (n ? `#${String(n).padStart(3, '0')}` : '#');
@@ -212,7 +100,7 @@ const serieTag = (n?: number) => (n ? `#${String(n).padStart(3, '0')}` : '#');
 // Imagens por formato
 // ---------------------------------------------------------------------------
 
-function quoteImage(c: PostContent, style: ImageStyle, brand: Brand, serieNumero: number | undefined, prova: boolean): ImageSpec {
+function quoteImage(c0: PostContent, style: ImageStyle, brand: Brand, serieNumero: number | undefined, prova: boolean): ImageSpec {
   const W = 1080;
   const H = 1350;
   return {
@@ -220,29 +108,27 @@ function quoteImage(c: PostContent, style: ImageStyle, brand: Brand, serieNumero
     label: prova ? 'Imagem de prova social' : 'Imagem de série',
     w: W,
     h: H,
-    draw: (ctx, font) => {
-      const p = PALETTES[style];
-      const pad = 96;
-      background(ctx, p, style, W, H);
-      const top = header(ctx, p, style, font, W, pad, prova ? 'CLIENTE' : serieTag(serieNumero), brand.serie);
-      const frase = c.imagem?.frase || c.gancho;
-      const boxTop = top + 70;
-      const boxH = H - boxTop - pad - 140;
-      if (prova) {
-        ctx.font = `800 200px ${font}`;
-        ctx.fillStyle = p.gradient ? gradientFill(ctx, pad, 120) : p.mark;
-        ctx.textBaseline = 'top';
-        ctx.fillText('“', pad - 8, boxTop - 40);
+    build: (ctx, font) => {
+      const photo = c0.foto;
+      const p = photo ? onPhoto(PALETTES[style]) : PALETTES[style];
+      const c: Ctx = { ctx, font, W, H, pad: 96, p, style };
+      const layers = base(c, photo);
+      const top = header(c, layers, prova ? 'CLIENTE' : serieTag(serieNumero), brand.serie, c.pad, !photo);
+      const frase = c0.imagem?.frase || c0.gancho;
+      let start = top + 70;
+      if (prova && !photo) {
+        layers.push(text({ x: c.pad - 8, y: start - 40, w: 200, text: '“', size: 200, weight: 800, color: p.hiStyle === 'box' ? '#FFD640' : 'brand', lh: 1 }));
+        start += 120;
       }
-      const block = fit(ctx, tokenize(frase, c.imagem?.destaque), font, 800, W - pad * 2, boxH - (prova ? 120 : 0), 92, 44, 1.18);
-      drawLines(ctx, p, block, pad, boxTop + (prova ? 120 : 0), { ruled: style === 'notas', boxW: W - pad * 2 });
-      footer(ctx, p, font, W, H, pad, brand);
+      mainText(c, layers, frase, prova ? undefined : c0.imagem?.destaque, photo ? H * 0.42 : start, H - c.pad - 140, 92, 44, { ruled: style === 'notas' && !photo, anchor: photo ? 'bottom' : 'top', lh: 1.18 });
+      footer(c, layers, brand);
+      return { w: W, h: H, bg: p.bg, glow: p.glow, layers };
     },
   };
 }
 
-function carouselImages(c: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
-  const slides = c.slides ?? [];
+function carouselImages(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
+  const slides = c0.slides ?? [];
   const W = 1080;
   const H = 1350;
   return slides.map((s, i) => ({
@@ -250,29 +136,31 @@ function carouselImages(c: PostContent, style: ImageStyle, brand: Brand): ImageS
     label: `Slide ${i + 1}`,
     w: W,
     h: H,
-    draw: (ctx, font) => {
-      const p = PALETTES[style];
-      const pad = 96;
-      background(ctx, p, style, W, H);
+    build: (ctx, font) => {
       const first = i === 0;
       const last = i === slides.length - 1 && slides.length > 1;
-      const top = header(ctx, p, style, font, W, pad, first ? brand.serie.toUpperCase() : `${i + 1}/${slides.length}`, '');
-      let y = top + (first ? 110 : 80);
-      const maxW = W - pad * 2;
-      const titleBlock = fit(ctx, first ? tailHighlight(tokenize(s.titulo)) : tokenize(s.titulo), font, 800, maxW, first ? 520 : 360, first ? 104 : 80, 48, 1.12);
-      y = drawLines(ctx, p, titleBlock, pad, y);
-      if (s.texto) {
-        y += 40;
-        const textBlock = fit(ctx, tokenize(s.texto), font, 600, maxW, H - y - pad - 160, first ? 44 : 50, 30, 1.38);
-        drawLines(ctx, p, textBlock, pad, y, { color: first ? p.muted : p.ink });
+      const photo = first ? c0.foto : undefined;
+      const p = photo ? onPhoto(PALETTES[style]) : PALETTES[style];
+      const c: Ctx = { ctx, font, W, H, pad: 96, p, style };
+      const layers = base(c, photo);
+      const top = header(c, layers, first ? brand.serie.toUpperCase() : `${i + 1}/${slides.length}`, '', c.pad, !photo);
+      const bottom = H - c.pad - 150;
+      if (photo) {
+        // capa com foto: título e apoio encostados no rodapé
+        const subH = s.texto ? 150 : 0;
+        mainText(c, layers, s.titulo, lastWords(s.titulo), H * 0.4, bottom - subH, 104, 48, { anchor: 'bottom', lh: 1.12 });
+        if (s.texto) layers.push(text({ x: c.pad, y: bottom - subH + 30, w: W - c.pad * 2, text: s.texto, size: 38, weight: 600, color: p.muted, lh: 1.35 }));
+      } else {
+        const titleEnd = mainText(c, layers, s.titulo, first ? lastWords(s.titulo) : undefined, top + (first ? 110 : 80), top + (first ? 630 : 440), first ? 104 : 80, 48, { lh: 1.12 });
+        if (s.texto) mainText(c, layers, s.texto, undefined, titleEnd + 40, bottom, first ? 44 : 50, 30, { weight: 600, color: first ? p.muted : p.ink, lh: 1.38 });
       }
-      const right = first ? 'Arraste →' : last ? 'Salve este post' : `${i + 1}/${slides.length}`;
-      footer(ctx, p, font, W, H, pad, brand, right);
+      footer(c, layers, brand, first ? 'Arraste →' : last ? 'Salve este post' : `${i + 1}/${slides.length}`);
+      return { w: W, h: H, bg: p.bg, glow: p.glow, layers };
     },
   }));
 }
 
-function coverImage(c: PostContent, style: ImageStyle, brand: Brand): ImageSpec {
+function coverImage(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec {
   const W = 1080;
   const H = 1920;
   return {
@@ -280,23 +168,23 @@ function coverImage(c: PostContent, style: ImageStyle, brand: Brand): ImageSpec 
     label: 'Capa do vídeo',
     w: W,
     h: H,
-    draw: (ctx, font) => {
-      const p = PALETTES[style];
-      const pad = 110;
-      background(ctx, p, style, W, H);
-      header(ctx, p, style, font, W, pad + 140, brand.serie.toUpperCase(), '');
-      const capa = c.roteiro?.capa || c.gancho;
-      const words = tailHighlight(tokenize(capa));
-      const block = fit(ctx, words, font, 800, W - pad * 2, 900, 132, 64, 1.12);
-      const blockH = block.lines.length * block.size * block.lh;
-      drawLines(ctx, p, block, pad, (H - blockH) / 2, { align: 'center', boxW: W - pad * 2 });
-      footer(ctx, p, font, W, H, pad, brand);
+    build: (ctx, font) => {
+      const photo = c0.foto;
+      const p = photo ? onPhoto(PALETTES[style]) : PALETTES[style];
+      const c: Ctx = { ctx, font, W, H, pad: 110, p, style };
+      const layers = base(c, photo);
+      header(c, layers, brand.serie.toUpperCase(), '', c.pad + 140, false);
+      const capa = c0.roteiro?.capa || c0.gancho;
+      if (photo) mainText(c, layers, capa, lastWords(capa), H * 0.45, H - c.pad - 200, 132, 64, { align: 'center', anchor: 'bottom', lh: 1.12 });
+      else mainText(c, layers, capa, lastWords(capa), H * 0.25, H * 0.75, 132, 64, { align: 'center', anchor: 'center', lh: 1.12 });
+      footer(c, layers, brand);
+      return { w: W, h: H, bg: p.bg, glow: p.glow, layers };
     },
   };
 }
 
-function storyImages(c: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
-  const stories = c.stories ?? [];
+function storyImages(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
+  const stories = c0.stories ?? [];
   const W = 1080;
   const H = 1920;
   return stories.map((s: Story, i) => ({
@@ -304,66 +192,51 @@ function storyImages(c: PostContent, style: ImageStyle, brand: Brand): ImageSpec
     label: `Story ${i + 1}`,
     w: W,
     h: H,
-    draw: (ctx, font) => {
-      const p = PALETTES[style];
-      const pad = 110;
-      background(ctx, p, style, W, H);
-      // barrinhas de progresso dos stories
-      const bw = (W - pad * 2 - (stories.length - 1) * 10) / stories.length;
-      stories.forEach((_, k) => {
-        ctx.fillStyle = k <= i ? p.ink : p.line;
-        roundRect(ctx, pad + k * (bw + 10), 70, bw, 8, 4);
-        ctx.fill();
-      });
-      const maxW = W - pad * 2;
-      const block = fit(ctx, tokenize(s.texto), font, 800, maxW, 700, 96, 48, 1.16);
-      const blockH = block.lines.length * block.size * block.lh;
-      let y = s.tipo === 'texto' ? (H - blockH) / 2 : H * 0.28;
-      y = drawLines(ctx, p, block, pad, y, { align: 'center', boxW: maxW });
+    build: (ctx, font) => {
+      const photo = i === 0 ? c0.foto : undefined;
+      const p = photo ? onPhoto(PALETTES[style]) : PALETTES[style];
+      const c: Ctx = { ctx, font, W, H, pad: 110, p, style };
+      const layers = base(c, photo);
+      const maxW = W - c.pad * 2;
+      const bw = (maxW - (stories.length - 1) * 10) / stories.length;
+      stories.forEach((_, k) => layers.push({ id: newId(), type: 'rect', x: c.pad + k * (bw + 10), y: 70, w: bw, h: 8, radius: 4, fill: k <= i ? p.ink : p.line }));
+
+      let y: number;
+      if (s.tipo === 'texto') y = mainText(c, layers, s.texto, undefined, H * 0.22, H * 0.78, 96, 48, { align: 'center', anchor: photo ? 'bottom' : 'center' });
+      else y = mainText(c, layers, s.texto, undefined, H * 0.24, H * 0.5, 96, 48, { align: 'center', anchor: 'bottom' });
       y += 70;
-      ctx.textBaseline = 'middle';
+
+      const card = style === 'claro' ? '#FFFFFF' : 'rgba(255,255,255,0.10)';
       if (s.tipo === 'enquete') {
-        const opts = s.opcoes ?? ['Sim', 'Não'];
-        opts.forEach((o, k) => {
-          ctx.fillStyle = style === 'claro' ? '#FFFFFF' : 'rgba(255,255,255,0.08)';
-          roundRect(ctx, pad, y + k * 150, maxW, 120, 60);
-          ctx.fill();
-          ctx.strokeStyle = p.line;
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          ctx.font = `800 46px ${font}`;
-          ctx.fillStyle = p.ink;
-          ctx.fillText(o, pad + (maxW - ctx.measureText(o).width) / 2, y + k * 150 + 62);
+        (s.opcoes ?? ['Sim', 'Não']).forEach((o, k) => {
+          layers.push({ id: newId(), type: 'rect', x: c.pad, y: y + k * 150, w: maxW, h: 120, radius: 60, fill: card, stroke: p.line });
+          layers.push(text({ x: c.pad, y: y + k * 150 + 32, w: maxW, text: o, size: 46, weight: 800, color: p.ink, align: 'center', lh: 1.2 }));
         });
       } else if (s.tipo === 'caixinha') {
-        ctx.fillStyle = '#FFFFFF';
-        roundRect(ctx, pad, y, maxW, 260, 40);
-        ctx.fill();
-        ctx.fillStyle = gradientFill(ctx, pad, maxW);
-        roundRect(ctx, pad, y, maxW, 90, 40);
-        ctx.fill();
-        ctx.fillRect(pad, y + 50, maxW, 40);
-        ctx.font = `700 34px ${font}`;
-        ctx.fillStyle = '#FFFFFF';
-        const t = 'Faça uma pergunta';
-        ctx.fillText(t, pad + (maxW - ctx.measureText(t).width) / 2, y + 46);
-        ctx.font = `600 38px ${font}`;
-        ctx.fillStyle = '#9AA1AA';
-        const t2 = 'Escreva aqui…';
-        ctx.fillText(t2, pad + (maxW - ctx.measureText(t2).width) / 2, y + 175);
+        layers.push({ id: newId(), type: 'rect', x: c.pad, y, w: maxW, h: 260, radius: 40, fill: '#FFFFFF' });
+        layers.push({ id: newId(), type: 'rect', x: c.pad, y, w: maxW, h: 90, radius: 40, fill: 'brand' });
+        layers.push({ id: newId(), type: 'rect', x: c.pad, y: y + 50, w: maxW, h: 40, fill: 'brand' });
+        layers.push(text({ x: c.pad, y: y + 24, w: maxW, text: 'Faça uma pergunta', size: 34, weight: 700, color: '#FFFFFF', align: 'center', lh: 1.2 }));
+        layers.push(text({ x: c.pad, y: y + 150, w: maxW, text: 'Escreva aqui…', size: 38, weight: 600, color: '#9AA1AA', align: 'center', lh: 1.2 }));
       } else if (s.tipo === 'link') {
-        const t = '🔗  Toque no link';
-        ctx.font = `800 44px ${font}`;
-        const tw = ctx.measureText(t).width + 100;
-        ctx.fillStyle = '#FFFFFF';
-        roundRect(ctx, (W - tw) / 2, y, tw, 110, 55);
-        ctx.fill();
-        ctx.fillStyle = '#2448C8';
-        ctx.fillText(t, (W - tw) / 2 + 50, y + 57);
+        layers.push(text({ x: c.pad, y, w: maxW, text: '🔗  Toque no link', size: 44, weight: 800, color: '#2448C8', align: 'center', bg: '#FFFFFF', bgMode: 'fit', pad: 32, radius: 56, lh: 1.2 }));
       }
-      footer(ctx, p, font, W, H, pad, brand);
+      footer(c, layers, brand);
+      return { w: W, h: H, bg: p.bg, glow: p.glow, layers };
     },
   }));
+}
+
+function photoImage(c0: PostContent, style: ImageStyle): ImageSpec {
+  const W = 1080;
+  const H = 1350;
+  return {
+    key: 'foto',
+    label: 'Foto do post',
+    w: W,
+    h: H,
+    build: () => ({ w: W, h: H, bg: PALETTES[style].bg, layers: c0.foto ? [{ id: newId(), type: 'image', x: 0, y: 0, w: W, h: H, media: c0.foto, fit: 'cover' }] : [] }),
+  };
 }
 
 /** Todas as imagens de um post, na ordem de publicação. */
@@ -375,6 +248,7 @@ export function imagesFor(formato: string, c: PostContent, brand: Brand, serieNu
   if (kind === 'prova') return [quoteImage(c, style, brand, serieNumero, true)];
   if (kind === 'video') return [coverImage(c, style, brand)];
   if (kind === 'stories') return storyImages(c, style, brand);
+  if (c.foto) return [photoImage(c, style)]; // texto ou thread com foto
   return [];
 }
 
@@ -395,18 +269,34 @@ export function brandFont(): Promise<string> {
   return fontReady;
 }
 
-export async function renderImage(spec: ImageSpec): Promise<HTMLCanvasElement> {
+let measurer: CanvasRenderingContext2D | null = null;
+export function measureCtx() {
+  if (!measurer) measurer = document.createElement('canvas').getContext('2d')!;
+  return measurer;
+}
+
+/** Cena final de uma imagem: a editada no canvas (se houver) ou o modelo. */
+export async function sceneFor(spec: ImageSpec, c: PostContent): Promise<Scene> {
   const font = await brandFont();
+  return c.canvas?.[spec.key] ?? spec.build(measureCtx(), font);
+}
+
+export async function renderScene(scene: Scene): Promise<HTMLCanvasElement> {
+  const font = await brandFont();
+  const images = await loadSceneImages(scene);
   const canvas = document.createElement('canvas');
-  canvas.width = spec.w;
-  canvas.height = spec.h;
-  const ctx = canvas.getContext('2d')!;
-  spec.draw(ctx, font);
+  canvas.width = scene.w;
+  canvas.height = scene.h;
+  drawScene(canvas.getContext('2d')!, scene, font, images);
   return canvas;
 }
 
-export async function downloadImage(spec: ImageSpec, fileName: string) {
-  const canvas = await renderImage(spec);
+export async function renderImage(spec: ImageSpec, c: PostContent): Promise<HTMLCanvasElement> {
+  return renderScene(await sceneFor(spec, c));
+}
+
+export async function downloadImage(spec: ImageSpec, c: PostContent, fileName: string) {
+  const canvas = await renderImage(spec, c);
   const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/png'));
   if (!blob) return;
   const url = URL.createObjectURL(blob);

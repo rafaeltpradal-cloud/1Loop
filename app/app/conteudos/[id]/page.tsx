@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
-import { kindOf, MAX_VERSIONS, POST_COLUMNS, type PostRow } from '@/lib/contentTypes';
+import { kindOf, MAX_VERSIONS, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
+import { PLANS } from '@/lib/plans';
 import { NETWORKS } from '@/lib/networks';
 import { PostEditor } from '@/components/content/PostEditor';
 
@@ -19,9 +20,10 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   if (!data) notFound();
   const post = data as unknown as PostRow;
 
-  const [{ data: strategyRow }, { data: accounts }] = await Promise.all([
+  const [{ data: strategyRow }, { data: accounts }, { data: media }] = await Promise.all([
     supabase.from('strategies').select('data').eq('id', post.strategy_id).eq('user_id', ctx.userId).maybeSingle(),
     supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId),
+    supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).order('created_at', { ascending: false }),
   ]);
   const strategy = strategyRow?.data as Strategy | undefined;
 
@@ -41,6 +43,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       brand={{ name: ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
       serieNumero={serieNumero}
       versionsLeft={Math.max(0, MAX_VERSIONS - post.versions)}
+      media={(media ?? []) as unknown as MediaItem[]}
+      canCanvas={PLANS[ctx.plan].canvas}
     />
   );
 }

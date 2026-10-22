@@ -7,8 +7,11 @@ import { NetworkIcon } from '@/components/NetworkIcon';
 import { StatusPill } from '@/components/content/WeekBoard';
 import { networkByName } from '@/lib/networks';
 import { formatLong } from '@/lib/dates';
-import { captionWithTags, IMAGE_STYLES, kindOf, type PostContent, type PostRow } from '@/lib/contentTypes';
+import { captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostContent, type PostRow } from '@/lib/contentTypes';
 import { downloadImage, imagesFor, renderImage, type Brand } from '@/lib/postImage';
+import { mediaUrl, type Scene } from '@/lib/scene';
+import { MediaLibrary } from '@/components/content/MediaLibrary';
+import { CanvasEditor } from '@/components/content/CanvasEditor';
 import { savePost, setPostStatus } from '@/app/app/conteudos/actions';
 
 const OPEN_URL: Record<string, string> = {
@@ -30,13 +33,30 @@ const slug = (t: string) =>
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'post';
 
+// undefined some na ida ao servidor; null avisa que foi removido.
+const toPayload = (c: PostContent) => ({ ...c, foto: c.foto ?? null, canvas: c.canvas ?? null });
+
 function scriptText(c: PostContent) {
   if (!c.roteiro) return '';
   const cenas = c.roteiro.cenas.map((s, i) => `Cena ${i + 1}\nFala: ${s.fala}\nNa tela: ${s.visual}`).join('\n\n');
   return `Capa: ${c.roteiro.capa}\nDuração: ${c.roteiro.duracao}\n\n${cenas}`;
 }
 
-export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: PostRow; brand: Brand; serieNumero?: number; versionsLeft: number }) {
+export function PostEditor({
+  post,
+  brand,
+  serieNumero,
+  versionsLeft,
+  media,
+  canCanvas,
+}: {
+  post: PostRow;
+  brand: Brand;
+  serieNumero?: number;
+  versionsLeft: number;
+  media: MediaItem[];
+  canCanvas: boolean;
+}) {
   const router = useRouter();
   const [c, setC] = useState<PostContent>(post.content);
   const [saved, setSaved] = useState(() => JSON.stringify(post.content));
@@ -47,6 +67,8 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
   const [confirmRedo, setConfirmRedo] = useState(false);
   const [redoing, setRedoing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [photoPicker, setPhotoPicker] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const kind = kindOf(post.formato);
   const net = networkByName(post.rede);
@@ -62,13 +84,13 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       const out: string[] = [];
-      for (const s of specs) out.push((await renderImage(s)).toDataURL('image/png'));
+      for (const s of specs) out.push((await renderImage(s, c)).toDataURL('image/png'));
       setUrls(out);
     }, 300);
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [specs]);
+  }, [specs, c]);
   useEffect(() => {
     if (slide > specs.length - 1) setSlide(Math.max(0, specs.length - 1));
   }, [specs.length, slide]);
@@ -82,7 +104,7 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
 
   function save() {
     startTransition(async () => {
-      const res = await savePost(post.id, c);
+      const res = await savePost(post.id, toPayload(c));
       if (res.ok) {
         setSaved(JSON.stringify(c));
         flash('ok', 'Alterações salvas.');
@@ -93,7 +115,7 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
   function changeStatus(next: PostRow['status']) {
     startTransition(async () => {
       if (dirty) {
-        const r = await savePost(post.id, c);
+        const r = await savePost(post.id, toPayload(c));
         if (!r.ok) return flash('error', r.error);
         setSaved(JSON.stringify(c));
       }
@@ -111,6 +133,11 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
     setRedoing(true);
     setMsg(null);
     try {
+      // A IA lê a foto escolhida do que está salvo.
+      if (dirty) {
+        const r = await savePost(post.id, toPayload(c));
+        if (!r.ok) throw new Error(r.error);
+      }
       const res = await fetch('/api/conteudos/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: post.item_index }) });
       const json = (await res.json().catch(() => ({}))) as { post?: PostRow; error?: string };
       if (!res.ok || !json.post) throw new Error(json.error || 'Não deu para refazer agora.');
@@ -141,12 +168,32 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
   async function downloadAll() {
     const base = `${post.date}-${slug(post.tema)}`;
     for (let i = 0; i < specs.length; i++) {
-      await downloadImage(specs[i], specs.length > 1 ? `${base}-${i + 1}.png` : `${base}.png`);
+      await downloadImage(specs[i], c, specs.length > 1 ? `${base}-${i + 1}.png` : `${base}.png`);
       await new Promise((r) => setTimeout(r, 350));
     }
   }
 
   const caption = captionWithTags(c);
+  const edited = specs.some((s) => c.canvas?.[s.key]);
+
+  function applyCanvas(canvas: Record<string, Scene>) {
+    const next = { ...c, canvas };
+    setC(next);
+    setEditing(false);
+    startTransition(async () => {
+      const res = await savePost(post.id, toPayload(next));
+      if (res.ok) {
+        setSaved(JSON.stringify(next));
+        flash('ok', 'Imagens editadas salvas.');
+      } else flash('error', res.error);
+    });
+  }
+
+  function pickPhoto(m: MediaItem | null) {
+    setPhotoPicker(false);
+    set({ foto: m ? m.id : undefined });
+    if (m) flash('ok', 'Foto escolhida. Salve e, se quiser, use "Refazer com IA" para o texto combinar com ela.');
+  }
 
   return (
     <div className="postPage">
@@ -190,9 +237,22 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
                   </button>
                 ))}
               </div>
-              <button type="button" className="btn3d btnSm" onClick={downloadAll}>
-                Baixar {specs.length > 1 ? `${specs.length} imagens` : 'imagem'}
-              </button>
+              <div className="previewActions">
+                {canCanvas ? (
+                  <button type="button" className="btnGhost btnSm" onClick={() => setEditing(true)}>Editar no canvas</button>
+                ) : (
+                  <Link className="btnGhost btnSm lockedBtn" href="/app/plano" title="Disponível no plano Pro">Editar no canvas · Pro</Link>
+                )}
+                <button type="button" className="btn3d btnSm" onClick={downloadAll}>
+                  Baixar {specs.length > 1 ? `${specs.length} imagens` : 'imagem'}
+                </button>
+              </div>
+              {edited && (
+                <div className="formNote" style={{ fontWeight: 500, fontSize: 13 }}>
+                  Imagem editada no canvas: mudanças no texto ao lado não aparecem nela.{' '}
+                  <button type="button" className="linkBtn" style={{ fontSize: 13, minHeight: 0 }} onClick={() => set({ canvas: undefined })}>Voltar ao modelo</button>
+                </div>
+              )}
             </>
           ) : (
             <div className="textPreview">
@@ -206,6 +266,21 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
               <div className="textPreviewBody">{kind === 'thread' && c.partes ? c.partes.join('\n\n— — —\n\n') : caption}</div>
             </div>
           )}
+          <div className="photoRow">
+            {c.foto ? (
+              <img className="photoThumb" src={mediaUrl(c.foto, true)} alt="Foto do post" />
+            ) : (
+              <span className="photoThumb empty" aria-hidden="true">+</span>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+              <b style={{ fontSize: 14 }}>{c.foto ? 'Foto do post' : 'Usar uma foto sua'}</b>
+              <span className="muted" style={{ fontSize: 12 }}>{c.foto ? 'Vira o fundo da imagem e a IA escreve olhando para ela.' : 'Da sua biblioteca ou envie uma nova.'}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" className="btnGhost btnSm" onClick={() => setPhotoPicker(true)}>{c.foto ? 'Trocar' : 'Escolher'}</button>
+              {c.foto && <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => pickPhoto(null)}>Tirar</button>}
+            </div>
+          </div>
         </section>
 
         {/* Edição */}
@@ -388,6 +463,20 @@ export function PostEditor({ post, brand, serieNumero, versionsLeft }: { post: P
           </div>
         )}
       </section>
+
+      {photoPicker && (
+        <div className="canvasPicker" role="dialog" aria-modal="true" aria-label="Escolher foto do post">
+          <div className="canvasPickerIn">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <b>Escolha a foto do post</b>
+              <button type="button" className="calIconBtn" onClick={() => setPhotoPicker(false)} aria-label="Fechar">×</button>
+            </div>
+            <MediaLibrary items={media} mode="picker" onPick={pickPhoto} selectedId={c.foto} />
+          </div>
+        </div>
+      )}
+
+      {editing && specs.length > 0 && <CanvasEditor specs={specs} content={c} media={media} startIndex={slide} onCancel={() => setEditing(false)} onApply={applyCanvas} />}
     </div>
   );
 }

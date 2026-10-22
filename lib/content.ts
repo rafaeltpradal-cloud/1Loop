@@ -3,6 +3,7 @@ import { QUESTIONS, type Answers } from '@/lib/interview';
 import type { CalendarItem, Strategy } from '@/lib/strategy';
 import { formatLong, specialDatesByDay, fromISO } from '@/lib/dates';
 import { kindOf, type FormatKind, type PostContent, type Story } from '@/lib/contentTypes';
+import { sanitizeScene, type Scene } from '@/lib/scene';
 
 export * from '@/lib/contentTypes';
 
@@ -52,15 +53,20 @@ function interviewText(answers: Answers) {
     .join('\n');
 }
 
+export type InputImage = { data: string; mediaType: 'image/jpeg' | 'image/png' | 'image/webp' };
+
 export type GenerateInput = {
   strategy: Strategy;
   item: CalendarItem;
   date: string; // AAAA-MM-DD
   answers: Answers;
   serieNumero?: number;
+  foto?: InputImage; // foto escolhida para o post
+  referencias?: InputImage[]; // imagens de referência de estilo
 };
 
-function promptFor({ strategy, item, date, answers, serieNumero }: GenerateInput) {
+function promptFor(input: GenerateInput) {
+  const { strategy, item, date, answers, serieNumero } = input;
   const kind = kindOf(item.formato);
   const pilar = strategy.pilares[item.pilar] ?? strategy.pilares[0];
   const etapa = strategy.funil.find((f) => f.etapa.toLowerCase().startsWith(item.objetivo.slice(0, 4).toLowerCase()));
@@ -84,6 +90,7 @@ Conteúdo a escrever:
 - ${item.comRosto ? 'Com rosto: a pessoa aparece e fala para a câmera.' : 'Sem rosto: nada de a pessoa aparecer; use texto na tela, imagens ou narração.'}
 - Tema: ${item.tema}
 
+${input.foto ? 'Foto do post: a PRIMEIRA imagem anexada vai publicada junto com este conteúdo. Escreva em cima dela: aproveite o que aparece (cenário, momento, expressão), sem inventar fatos que a foto não mostra.\n' : ''}${input.referencias?.length ? `Referências: ${input.foto ? 'as outras imagens anexadas' : 'as imagens anexadas'} são posts que o cliente admira. Use como inspiração de estrutura, ritmo e tom; não copie frases nem marcas.\n` : ''}
 Regras da rede: ${NETWORK_RULES[rede]}
 Regras do formato: ${FORMAT_RULES[kind]}
 
@@ -116,7 +123,17 @@ export async function generatePost(input: GenerateInput): Promise<{ content: Pos
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 3000,
     system: SYSTEM,
-    messages: [{ role: 'user', content: promptFor(input) }],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          ...[input.foto, ...(input.referencias ?? [])]
+            .filter((x): x is InputImage => !!x)
+            .map((img) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: img.mediaType, data: img.data } })),
+          { type: 'text' as const, text: promptFor(input) },
+        ],
+      },
+    ],
   });
   const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
   return { content: normalizeContent(extractJson(text), input), source: 'ai' };
@@ -194,10 +211,30 @@ export function normalizeContent(raw: unknown, input: GenerateInput): PostConten
   return out;
 }
 
-/** Limpa o que a pessoa editou na tela antes de salvar. */
-export function sanitizeEdit(raw: unknown, current: PostContent): PostContent {
+/** Limpa o que a pessoa editou na tela antes de salvar. O editor visual só vale para Pro e Multi. */
+export function sanitizeEdit(raw: unknown, current: PostContent, opts: { allowCanvas: boolean; mediaIds: Set<number> }): PostContent {
   const r = isObj(raw) ? raw : {};
   const next: PostContent = { ...current };
+  if ('foto' in r) {
+    if (r.foto === null || r.foto === undefined) delete next.foto;
+    else if (Number.isInteger(r.foto) && opts.mediaIds.has(r.foto as number)) next.foto = r.foto as number;
+  }
+  if (opts.allowCanvas && 'canvas' in r) {
+    if (!isObj(r.canvas)) delete next.canvas;
+    else {
+      const out: Record<string, Scene> = {};
+      for (const [k, v] of Object.entries(r.canvas).slice(0, 12)) {
+        const scene = sanitizeScene(v);
+        if (scene && /^[a-z0-9-]{1,20}$/.test(k)) {
+          // só fotos da própria pessoa
+          scene.layers = scene.layers.filter((l) => l.type !== 'image' || opts.mediaIds.has(l.media));
+          out[k] = scene;
+        }
+      }
+      if (Object.keys(out).length) next.canvas = out;
+      else delete next.canvas;
+    }
+  }
   if (typeof r.gancho === 'string') next.gancho = r.gancho.slice(0, 300);
   if (typeof r.legenda === 'string') next.legenda = r.legenda.slice(0, 5000);
   if (typeof r.cta === 'string') next.cta = r.cta.slice(0, 300);

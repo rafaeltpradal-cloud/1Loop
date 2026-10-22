@@ -1,4 +1,5 @@
 // Tipos e utilitários dos conteúdos, sem dependências de servidor (usados também no navegador).
+import type { Scene } from '@/lib/scene';
 
 export type ImageStyle = 'notas' | 'claro' | 'escuro';
 export const IMAGE_STYLES: { id: ImageStyle; nome: string }[] = [
@@ -23,7 +24,12 @@ export type PostContent = {
   partes?: string[]; // thread
   dica?: string; // dica de publicação
   estilo?: ImageStyle;
+  foto?: number; // id da foto (biblioteca) usada no post
+  canvas?: Record<string, Scene>; // imagens editadas no editor visual (Pro e Multi), por imagem
 };
+
+export type MediaItem = { id: number; kind: 'foto' | 'referencia'; width: number | null; height: number | null };
+export const MEDIA_COLUMNS = 'id, kind, width, height';
 
 export type PostRow = {
   id: number;

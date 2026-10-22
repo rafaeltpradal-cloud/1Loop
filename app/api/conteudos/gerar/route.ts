@@ -5,7 +5,17 @@ import { ACTIVE_STATUSES } from '@/lib/billing';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
-import { generatePost, kindOf, MAX_VERSIONS, POST_COLUMNS, type PostContent } from '@/lib/content';
+import { generatePost, kindOf, MAX_VERSIONS, POST_COLUMNS, type InputImage, type PostContent } from '@/lib/content';
+
+type Admin = ReturnType<typeof createAdminClient>;
+
+// Baixa uma imagem da biblioteca para mandar à IA.
+async function mediaImage(admin: Admin, path: string): Promise<InputImage | undefined> {
+  const { data } = await admin.storage.from('media').download(path);
+  if (!data) return undefined;
+  const type = data.type === 'image/png' || data.type === 'image/webp' ? data.type : 'image/jpeg';
+  return { data: Buffer.from(await data.arrayBuffer()).toString('base64'), mediaType: type };
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -51,10 +61,16 @@ export async function POST(req: Request) {
 
   try {
     const answers = resolveAnswers(sanitizeAnswers(interview?.answers ?? {}));
-    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero });
-    // Mantém o estilo de imagem que a pessoa já tinha escolhido.
-    const prevStyle = (existing?.content as PostContent | undefined)?.estilo;
-    if (prevStyle) content.estilo = prevStyle;
+    const prev = existing?.content as PostContent | undefined;
+    // A IA enxerga a foto do post e até 3 referências de estilo.
+    const { data: media } = await admin.from('media').select('id, path, kind').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200);
+    const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
+    const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
+    const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
+    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x) });
+    // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
+    if (prev?.estilo) content.estilo = prev.estilo;
+    if (prev?.foto) content.foto = prev.foto;
 
     const fields = {
       date,

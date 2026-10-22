@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeEdit, type PostContent } from '@/lib/content';
+import { PLANS, type PlanId } from '@/lib/plans';
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -21,9 +22,17 @@ export async function savePost(id: number, edit: unknown): Promise<ActionResult>
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
   if (!Number.isInteger(id)) return { ok: false, error: 'Post inválido.' };
   const admin = createAdminClient();
-  const { data: row } = await admin.from('posts').select('content').eq('id', id).eq('user_id', user.id).maybeSingle();
+  const [{ data: row }, { data: subs }, { data: media }] = await Promise.all([
+    admin.from('posts').select('content').eq('id', id).eq('user_id', user.id).maybeSingle(),
+    admin.from('subscriptions').select('plan').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    admin.from('media').select('id').eq('user_id', user.id),
+  ]);
   if (!row) return { ok: false, error: 'Post não encontrado.' };
-  const content = sanitizeEdit(edit, row.content as PostContent);
+  const plan = subs?.[0]?.plan as PlanId | undefined;
+  const content = sanitizeEdit(edit, row.content as PostContent, {
+    allowCanvas: !!plan && PLANS[plan]?.canvas === true,
+    mediaIds: new Set((media ?? []).map((m) => m.id as number)),
+  });
   const { error } = await admin.from('posts').update({ content, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', user.id);
   if (error) return { ok: false, error: 'Não deu para salvar. Tente de novo.' };
   revalidatePath('/app/conteudos');

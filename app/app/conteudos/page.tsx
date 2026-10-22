@@ -5,6 +5,7 @@ import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
 import { POST_COLUMNS, type PostRow } from '@/lib/contentTypes';
 import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
+import { ContentTabs } from '@/components/content/ContentTabs';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -61,6 +62,7 @@ export default async function ConteudosPage() {
           Gere o lote, revise, aprove e publique. {done} de {total} posts do plano {done === 1 ? 'já tem' : 'já têm'} conteúdo.
         </span>
       </div>
+      <ContentTabs active="semana" />
       <WeekBoard items={items} today={isoInBrazil()} planStart={start} />
     </div>
   );
