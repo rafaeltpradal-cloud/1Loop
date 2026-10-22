@@ -2,12 +2,13 @@ import { notFound } from 'next/navigation';
 import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
-import { kindOf, MAX_VERSIONS, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
+import { autoNetworkId, kindOf, MAX_VERSIONS, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
 import { PLANS } from '@/lib/plans';
 import { NETWORKS } from '@/lib/networks';
 import { PostEditor } from '@/components/content/PostEditor';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { linkedinConfigured } from '@/lib/linkedin';
+import { instagramConfigured } from '@/lib/instagram';
 
 export const metadata = { title: 'Conteúdo · 1loop creators' };
 
@@ -39,14 +40,16 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   const account = (accounts ?? []).find((a) => a.network === net?.id);
   const handle = account && net ? (net.prefix === '@' ? `@${account.handle}` : `${net.prefix}${account.handle}`) : undefined;
 
-  // Publicação automática (por enquanto só LinkedIn).
+  // Publicação automática (LinkedIn e Instagram).
   let auto: { available: boolean; connected: boolean; expiresAt?: string } = { available: false, connected: false };
-  if (post.rede === 'LinkedIn' && linkedinConfigured()) {
+  const network = autoNetworkId(post.rede);
+  const configured = network === 'linkedin' ? linkedinConfigured() : network === 'instagram' ? instagramConfigured() : false;
+  if (network && configured) {
     const { data: conn } = await createAdminClient()
       .from('social_connections')
       .select('expires_at')
       .eq('user_id', ctx.userId)
-      .eq('network', 'linkedin')
+      .eq('network', network)
       .maybeSingle();
     auto = { available: true, connected: !!conn && new Date(conn.expires_at as string).getTime() > Date.now(), expiresAt: (conn?.expires_at as string) ?? undefined };
   }

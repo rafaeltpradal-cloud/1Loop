@@ -494,6 +494,8 @@ html[data-theme="dark"] .calSpecial.holiday b { color: #FDBA74; }
 .mediaThumb { display: block; width: 100%; aspect-ratio: 1 / 1; padding: 0; border: 2px solid transparent; border-radius: 14px; overflow: hidden; background: var(--hover); cursor: pointer; }
 .mediaThumb:disabled { cursor: default; }
 .mediaThumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mediaThumb { position: relative; }
+.mediaPlay { position: absolute; inset: 0; margin: auto; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font-size: 14px; padding-left: 3px; pointer-events: none; }
 .mediaCell.on .mediaThumb { border-color: var(--violet); }
 .mediaThumb:not(:disabled):hover { border-color: var(--line-2); }
 .mediaBadge { position: absolute; top: 8px; left: 8px; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .4px; background: rgba(255,255,255,.92); color: #0E0F12; }

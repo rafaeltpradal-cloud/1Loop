@@ -7,7 +7,7 @@ import { NetworkIcon } from '@/components/NetworkIcon';
 import { StatusPill } from '@/components/content/WeekBoard';
 import { networkByName } from '@/lib/networks';
 import { formatLong } from '@/lib/dates';
-import { canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
+import { autoBlocker, canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
 import { downloadImage, imagesFor, renderImage, type Brand } from '@/lib/postImage';
 import { mediaUrl, type Scene } from '@/lib/scene';
 import { MediaLibrary } from '@/components/content/MediaLibrary';
@@ -36,7 +36,7 @@ const slug = (t: string) =>
     .slice(0, 40) || 'post';
 
 // undefined some na ida ao servidor; null avisa que foi removido.
-const toPayload = (c: PostContent) => ({ ...c, foto: c.foto ?? null, canvas: c.canvas ?? null });
+const toPayload = (c: PostContent) => ({ ...c, foto: c.foto ?? null, video: c.video ?? null, canvas: c.canvas ?? null });
 
 function scriptText(c: PostContent) {
   if (!c.roteiro) return '';
@@ -74,7 +74,7 @@ export function PostEditor({
   const [confirmRedo, setConfirmRedo] = useState(false);
   const [redoing, setRedoing] = useState(false);
   const [pending, startTransition] = useTransition();
-  const [photoPicker, setPhotoPicker] = useState(false);
+  const [picker, setPicker] = useState<'' | 'foto' | 'video'>('');
   const [editing, setEditing] = useState(false);
 
   const kind = kindOf(post.formato);
@@ -230,8 +230,14 @@ export function PostEditor({
     });
   }
 
+  function pickVideo(m: MediaItem | null) {
+    setPicker('');
+    set({ video: m ? m.id : undefined });
+    if (m) flash('ok', 'Vídeo escolhido. Salve para usar no reels.');
+  }
+
   function pickPhoto(m: MediaItem | null) {
-    setPhotoPicker(false);
+    setPicker('');
     set({ foto: m ? m.id : undefined });
     if (m) flash('ok', 'Foto escolhida. Salve e, se quiser, use "Refazer com IA" para o texto combinar com ela.');
   }
@@ -318,10 +324,30 @@ export function PostEditor({
               <span className="muted" style={{ fontSize: 12 }}>{c.foto ? 'Vira o fundo da imagem e a IA escreve olhando para ela.' : 'Da sua biblioteca ou envie uma nova.'}</span>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
-              <button type="button" className="btnGhost btnSm" onClick={() => setPhotoPicker(true)}>{c.foto ? 'Trocar' : 'Escolher'}</button>
+              <button type="button" className="btnGhost btnSm" onClick={() => setPicker('foto')}>{c.foto ? 'Trocar' : 'Escolher'}</button>
               {c.foto && <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => pickPhoto(null)}>Tirar</button>}
             </div>
           </div>
+          {kind === 'video' && (
+            <div className="photoRow">
+              {c.video ? (
+                <span className="photoThumb" style={{ position: 'relative', overflow: 'hidden' }}>
+                  <img src={mediaUrl(c.video, true)} alt="Vídeo do post" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <span className="mediaPlay" aria-hidden="true" style={{ width: 24, height: 24, fontSize: 10 }}>▶</span>
+                </span>
+              ) : (
+                <span className="photoThumb empty" aria-hidden="true">▶</span>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                <b style={{ fontSize: 14 }}>{c.video ? 'Vídeo do reels' : 'Vídeo gravado'}</b>
+                <span className="muted" style={{ fontSize: 12 }}>{c.video ? 'É ele que vai para o ar, com a legenda e a capa.' : 'Grave com o roteiro e envie aqui para agendar.'}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button type="button" className="btnGhost btnSm" onClick={() => setPicker('video')}>{c.video ? 'Trocar' : 'Escolher'}</button>
+                {c.video && <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => pickVideo(null)}>Tirar</button>}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Edição */}
@@ -466,6 +492,7 @@ export function PostEditor({
             auto={auto}
             state={{ status, ...pub }}
             prepareAssets={prepareAssets}
+            blocker={autoBlocker(post.rede, post.formato, c)}
             onChange={(next) => {
               setStatus(next.status);
               setPub({ scheduledAt: next.scheduledAt, externalUrl: next.externalUrl, publishError: next.publishError });
@@ -502,7 +529,7 @@ export function PostEditor({
             <span className="slideNum">{specs.length > 0 || c.roteiro ? 3 : 2}</span>
             <div>
               <b>Abra o {post.rede}</b>
-              <span className="muted">Cole o texto e anexe {specs.length ? 'as imagens' : c.roteiro ? 'o vídeo' : 'o que precisar'}.</span>
+              <span className="muted">Cole o texto e anexe {c.roteiro ? 'o vídeo' : specs.length ? 'as imagens' : 'o que precisar'}.</span>
             </div>
             <a className="btnGhost btnSm" href={OPEN_URL[post.rede] ?? '#'} target="_blank" rel="noopener noreferrer">Abrir {post.rede}</a>
           </li>
@@ -522,19 +549,23 @@ export function PostEditor({
         )}
       </section>
 
-      {photoPicker && (
-        <div className="canvasPicker" role="dialog" aria-modal="true" aria-label="Escolher foto do post">
+      {picker && (
+        <div className="canvasPicker" role="dialog" aria-modal="true" aria-label={picker === 'video' ? 'Escolher vídeo do post' : 'Escolher foto do post'}>
           <div className="canvasPickerIn">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-              <b>Escolha a foto do post</b>
-              <button type="button" className="calIconBtn" onClick={() => setPhotoPicker(false)} aria-label="Fechar">×</button>
+              <b>{picker === 'video' ? 'Escolha o vídeo do reels' : 'Escolha a foto do post'}</b>
+              <button type="button" className="calIconBtn" onClick={() => setPicker('')} aria-label="Fechar">×</button>
             </div>
-            <MediaLibrary items={media} mode="picker" onPick={pickPhoto} selectedId={c.foto} />
+            {picker === 'video' ? (
+              <MediaLibrary items={media} mode="picker" only="video" onPick={pickVideo} selectedId={c.video} />
+            ) : (
+              <MediaLibrary items={media.filter((m) => m.kind !== 'video')} mode="picker" only="imagem" onPick={pickPhoto} selectedId={c.foto} />
+            )}
           </div>
         </div>
       )}
 
-      {editing && specs.length > 0 && <CanvasEditor specs={specs} content={c} media={media} startIndex={slide} onCancel={() => setEditing(false)} onApply={applyCanvas} />}
+      {editing && specs.length > 0 && <CanvasEditor specs={specs} content={c} media={media.filter((m) => m.kind !== 'video')} startIndex={slide} onCancel={() => setEditing(false)} onApply={applyCanvas} />}
     </div>
   );
 }

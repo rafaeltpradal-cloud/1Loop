@@ -69,9 +69,39 @@ export async function deleteMedia(id: number): Promise<MediaResult> {
   const { data: row } = await supabase.from('media').select('path').eq('id', id).eq('user_id', user.id).maybeSingle();
   if (!row) return { ok: false, error: 'Imagem não encontrada.' };
   const path = row.path as string;
-  await supabase.storage.from(BUCKET).remove([path, path.replace(/\.jpg$/, '.thumb.jpg')]);
+  await supabase.storage.from(BUCKET).remove([path, path.replace(/\.[a-z0-9]+$/i, '.thumb.jpg')]);
   const { error } = await supabase.from('media').delete().eq('id', id).eq('user_id', user.id);
   if (error) return { ok: false, error: 'Não deu para apagar.' };
   revalidatePath('/app/conteudos/fotos');
   return { ok: true };
+}
+
+const MAX_VIDEOS = 30;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
+/** Registra um vídeo que o navegador já enviou direto para a pasta da pessoa. */
+export async function registerVideo(input: { path: string; mime: string; size: number; width: number; height: number; duration: number }): Promise<MediaResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
+  const { path, mime, size, width, height, duration } = input ?? ({} as typeof input);
+  if (typeof path !== 'string' || !new RegExp(`^${user.id}/v-[a-z0-9-]+\\.(mp4|mov)$`).test(path)) return { ok: false, error: 'Vídeo inválido.' };
+  if (mime !== 'video/mp4' && mime !== 'video/quicktime') return { ok: false, error: 'Use vídeo MP4 ou MOV.' };
+  if (!(size > 0 && size <= MAX_VIDEO_BYTES)) return { ok: false, error: 'O vídeo pode ter até 50 MB.' };
+  const { count } = await supabase.from('media').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('kind', 'video');
+  if ((count ?? 0) >= MAX_VIDEOS) return { ok: false, error: `Você chegou ao limite de ${MAX_VIDEOS} vídeos. Apague alguns para enviar novos.` };
+
+  const { data, error } = await supabase
+    .from('media')
+    .insert({ user_id: user.id, path, kind: 'video', mime, size_bytes: Math.round(size), width: Math.round(width) || null, height: Math.round(height) || null, duration_s: Number(duration) || null })
+    .select('id, kind, width, height, duration_s')
+    .single();
+  if (error || !data) {
+    await supabase.storage.from(BUCKET).remove([path, path.replace(/\.[a-z0-9]+$/i, '.thumb.jpg')]);
+    return { ok: false, error: 'Não deu para salvar o vídeo.' };
+  }
+  revalidatePath('/app/conteudos/fotos');
+  return { ok: true, item: data as MediaItem };
 }

@@ -7,5 +7,5 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   // Ignora arquivos estáticos e o webhook do Stripe (que não tem sessão).
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/publicar|api/midia|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|api/publicar|api/midia|api/instagram/meta|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

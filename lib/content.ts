@@ -212,12 +212,16 @@ export function normalizeContent(raw: unknown, input: GenerateInput): PostConten
 }
 
 /** Limpa o que a pessoa editou na tela antes de salvar. O editor visual só vale para Pro e Multi. */
-export function sanitizeEdit(raw: unknown, current: PostContent, opts: { allowCanvas: boolean; mediaIds: Set<number> }): PostContent {
+export function sanitizeEdit(raw: unknown, current: PostContent, opts: { allowCanvas: boolean; mediaIds: Set<number>; videoIds?: Set<number> }): PostContent {
   const r = isObj(raw) ? raw : {};
   const next: PostContent = { ...current };
   if ('foto' in r) {
     if (r.foto === null || r.foto === undefined) delete next.foto;
     else if (Number.isInteger(r.foto) && opts.mediaIds.has(r.foto as number)) next.foto = r.foto as number;
+  }
+  if ('video' in r) {
+    if (r.video === null || r.video === undefined) delete next.video;
+    else if (Number.isInteger(r.video) && (opts.videoIds ?? opts.mediaIds).has(r.video as number)) next.video = r.video as number;
   }
   if (opts.allowCanvas && 'canvas' in r) {
     if (!isObj(r.canvas)) delete next.canvas;

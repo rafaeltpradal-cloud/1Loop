@@ -18,12 +18,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!row) return new Response('Não encontrado', { status: 404 });
 
   const thumb = new URL(req.url).searchParams.get('thumb') === '1';
-  const path = thumb ? (row.path as string).replace(/\.jpg$/, '.thumb.jpg') : (row.path as string);
+  const path = thumb ? (row.path as string).replace(/\.[a-z0-9]+$/i, '.thumb.jpg') : (row.path as string);
   let { data } = await supabase.storage.from('media').download(path);
-  if (!data && thumb) ({ data } = await supabase.storage.from('media').download(row.path as string));
+  if (!data && thumb && /\.jpe?g$/i.test(row.path as string)) ({ data } = await supabase.storage.from('media').download(row.path as string));
   if (!data) return new Response('Não encontrado', { status: 404 });
 
   return new Response(data, {
-    headers: { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=604800, immutable' },
+    headers: { 'Content-Type': thumb || /\.jpe?g$/i.test(row.path as string) ? 'image/jpeg' : /\.mov$/i.test(row.path as string) ? 'video/quicktime' : 'video/mp4', 'Cache-Control': 'private, max-age=604800, immutable' },
   });
 }

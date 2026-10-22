@@ -1,18 +1,21 @@
-// Publicação automática dos posts agendados (por enquanto, só LinkedIn).
+// Publicação automática dos posts agendados (LinkedIn e Instagram).
 // Roda no servidor com a chave secreta do Supabase; sempre filtra pelo dono do post.
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { decrypt } from '@/lib/crypto';
 import { createPost, LinkedInError, uploadDocument, uploadImage, type LinkedInMedia } from '@/lib/linkedin';
 import { jpegsToPdf } from '@/lib/pdf';
-import { captionWithTags, kindOf, type PostAsset, type PostContent } from '@/lib/contentTypes';
+import { encrypt } from '@/lib/crypto';
+import * as ig from '@/lib/instagram';
+import { publicMediaUrl } from '@/lib/publicMedia';
+import { autoBlocker, captionWithTags, kindOf, type PostAsset, type PostContent } from '@/lib/contentTypes';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
 export async function getConnection(admin: Admin, userId: string, network: string) {
   const { data } = await admin
     .from('social_connections')
-    .select('external_id, name, access_token, expires_at')
+    .select('external_id, name, access_token, expires_at, meta')
     .eq('user_id', userId)
     .eq('network', network)
     .maybeSingle();
@@ -21,6 +24,7 @@ export async function getConnection(admin: Admin, userId: string, network: strin
     externalId: data.external_id as string,
     name: (data.name as string | null) ?? '',
     expiresAt: data.expires_at as string,
+    meta: (data.meta as Record<string, unknown> | null) ?? {},
     token: () => decrypt(data.access_token as string),
   };
 }
@@ -37,7 +41,7 @@ async function download(admin: Admin, path: string) {
 }
 
 /** Publica um post que está como "publicando". Devolve o link do post publicado. */
-async function publishLinkedIn(admin: Admin, post: { user_id: string; formato: string; content: PostContent; assets: PostAsset[] | null }) {
+async function publishLinkedIn(admin: Admin, post: PostForPublish) {
   const conn = await getConnection(admin, post.user_id, 'linkedin');
   if (!conn) throw new Error('O LinkedIn não está conectado. Conecte em Redes e agende de novo.');
   if (new Date(conn.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o LinkedIn expirou. Reconecte em Redes e agende de novo.');
@@ -60,7 +64,76 @@ async function publishLinkedIn(admin: Admin, post: { user_id: string; formato: s
   return createPost(token, author, postText(post.formato, post.content), media);
 }
 
+type PostForPublish = {
+  id: number;
+  user_id: string;
+  rede: string;
+  formato: string;
+  content: PostContent;
+  assets: PostAsset[] | null;
+  platform_ref: string | null;
+};
+
+/** Resultado de uma tentativa: publicado, ou "continua depois" (vídeo ainda processando no Instagram). */
+type Outcome = { done: true; url: string } | { done: false; ref: string };
+
+async function publishInstagram(admin: Admin, post: PostForPublish): Promise<Outcome> {
+  const conn = await getConnection(admin, post.user_id, 'instagram');
+  if (!conn) throw new Error('O Instagram não está conectado. Conecte em Redes e agende de novo.');
+  if (new Date(conn.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o Instagram expirou. Reconecte em Redes e agende de novo.');
+  const blocker = autoBlocker(post.rede, post.formato, post.content);
+  if (blocker) throw new Error(blocker);
+  const token = conn.token();
+  const igId = conn.externalId;
+  const caption = captionWithTags(post.content).slice(0, 2200);
+  const assets = post.assets ?? [];
+  const url = (a: PostAsset) => publicMediaUrl(a.path);
+  const kind = kindOf(post.formato);
+
+  // Reels: o vídeo pode levar minutos para processar. Guardamos o contêiner e continuamos na próxima rodada.
+  if (kind === 'video') {
+    let container = post.platform_ref;
+    if (!container) {
+      const { data: video } = await admin.from('media').select('path').eq('id', post.content.video!).eq('user_id', post.user_id).eq('kind', 'video').maybeSingle();
+      if (!video) throw new Error('O vídeo do reels não foi encontrado na sua biblioteca. Escolha de novo.');
+      container = await ig.createContainer(token, igId, { kind: 'reel', videoUrl: publicMediaUrl(video.path as string, 6 * 3600), caption, coverUrl: assets[0] ? publicMediaUrl(assets[0].path, 6 * 3600) : undefined });
+    }
+    if (!(await ig.waitReady(token, container, 40000))) return { done: false, ref: container };
+    const mediaId = await ig.publishContainer(token, igId, container);
+    return { done: true, url: (await ig.permalink(token, mediaId)) ?? `https://www.instagram.com/${conn.name}/` };
+  }
+
+  if (!assets.length) throw new Error('As imagens do post não foram encontradas. Reagende para gerar de novo.');
+
+  if (kind === 'stories') {
+    if (conn.meta.account_type && conn.meta.account_type !== 'BUSINESS') throw new Error('Stories por API só funcionam em conta Comercial do Instagram. Mude o tipo de conta no app do Instagram.');
+    for (const a of assets.slice(0, 10)) {
+      const c = await ig.createContainer(token, igId, { kind: 'story', url: url(a) });
+      await ig.waitReady(token, c, 20000);
+      await ig.publishContainer(token, igId, c);
+    }
+    return { done: true, url: `https://www.instagram.com/stories/${conn.name}/` };
+  }
+
+  let container: string;
+  if (assets.length > 1) {
+    const children: string[] = [];
+    for (const a of assets.slice(0, 10)) children.push(await ig.createContainer(token, igId, { kind: 'image', url: url(a), carouselItem: true }));
+    container = await ig.createContainer(token, igId, { kind: 'carousel', children, caption });
+  } else {
+    container = await ig.createContainer(token, igId, { kind: 'image', url: url(assets[0]), caption });
+  }
+  await ig.waitReady(token, container, 30000);
+  const mediaId = await ig.publishContainer(token, igId, container);
+  return { done: true, url: (await ig.permalink(token, mediaId)) ?? `https://www.instagram.com/${conn.name}/` };
+}
+
 function friendly(err: unknown) {
+  if (err instanceof ig.InstagramError) {
+    if (err.status === 401 || err.code === 190) return 'O Instagram recusou o acesso. Reconecte em Redes e agende de novo.';
+    if (err.code === 9 || err.code === 4) return 'O Instagram atingiu o limite de publicações de hoje. Tente amanhã.';
+    return `O Instagram não aceitou o post: ${err.message}`;
+  }
   if (err instanceof LinkedInError) {
     if (err.status === 401) return 'O LinkedIn recusou o acesso. Reconecte em Redes e agende de novo.';
     if (err.status === 403) return 'O LinkedIn não deu permissão para publicar. Reconecte em Redes.';
@@ -79,21 +152,33 @@ export async function publishOne(admin: Admin, postId: number, userId?: string) 
     .eq('id', postId)
     .eq('status', 'agendado');
   if (userId) claim = claim.eq('user_id', userId);
-  const { data: post } = await claim.select('id, user_id, rede, formato, content, assets').maybeSingle();
-  if (!post) return { ok: false as const, error: 'Este post não está agendado.' };
+  const { data: row } = await claim.select('id, user_id, rede, formato, content, assets, platform_ref').maybeSingle();
+  if (!row) return { ok: false as const, error: 'Este post não está agendado.' };
+  const post = row as unknown as PostForPublish;
 
   try {
-    if (post.rede !== 'LinkedIn') throw new Error(`A publicação automática no ${post.rede} ainda não está disponível.`);
-    const result = await publishLinkedIn(admin, post as never);
+    let outcome: Outcome;
+    if (post.rede === 'LinkedIn') outcome = { done: true, url: (await publishLinkedIn(admin, post)).url };
+    else if (post.rede === 'Instagram') outcome = await publishInstagram(admin, post);
+    else throw new Error(`A publicação automática no ${post.rede} ainda não está disponível.`);
+
+    if (!outcome.done) {
+      // Volta para a fila e tenta de novo em 2 minutos, reaproveitando o vídeo já enviado.
+      await admin
+        .from('posts')
+        .update({ status: 'agendado', platform_ref: outcome.ref, scheduled_at: new Date(Date.now() + 2 * 60 * 1000).toISOString() })
+        .eq('id', post.id);
+      return { ok: true as const, url: undefined, pending: true };
+    }
     await admin
       .from('posts')
-      .update({ status: 'publicado', published_at: new Date().toISOString(), external_url: result.url, publish_error: null, updated_at: new Date().toISOString() })
+      .update({ status: 'publicado', published_at: new Date().toISOString(), external_url: outcome.url, publish_error: null, platform_ref: null, updated_at: new Date().toISOString() })
       .eq('id', post.id);
-    return { ok: true as const, url: result.url };
+    return { ok: true as const, url: outcome.url };
   } catch (err) {
     console.error('[publicar]', post.id, err);
     const message = friendly(err);
-    await admin.from('posts').update({ status: 'erro', publish_error: message, updated_at: new Date().toISOString() }).eq('id', post.id);
+    await admin.from('posts').update({ status: 'erro', publish_error: message, platform_ref: null, updated_at: new Date().toISOString() }).eq('id', post.id);
     return { ok: false as const, error: message };
   }
 }
@@ -110,5 +195,32 @@ export async function publishDue() {
     .limit(8);
   const results: Array<{ id: number; ok: boolean; url?: string; error?: string }> = [];
   for (const row of data ?? []) results.push({ id: row.id as number, ...(await publishOne(admin, row.id as number)) });
+  await refreshInstagramTokens(admin).catch((err) => console.error('[instagram refresh]', err));
   return results;
+}
+
+/** Renova os tokens do Instagram que vencem em menos de 20 dias (o Instagram só deixa renovar depois de 24 h). */
+export async function refreshInstagramTokens(admin: Admin) {
+  const soon = new Date(Date.now() + 20 * 86400000).toISOString();
+  const dayAgo = new Date(Date.now() - 86400000).toISOString();
+  const { data } = await admin
+    .from('social_connections')
+    .select('user_id, access_token, expires_at')
+    .eq('network', 'instagram')
+    .lt('expires_at', soon)
+    .gt('expires_at', new Date().toISOString())
+    .lt('updated_at', dayAgo)
+    .limit(20);
+  for (const c of data ?? []) {
+    try {
+      const r = await ig.refreshToken(decrypt(c.access_token as string));
+      await admin
+        .from('social_connections')
+        .update({ access_token: encrypt(r.access_token), expires_at: new Date(Date.now() + (r.expires_in || 5184000) * 1000).toISOString(), updated_at: new Date().toISOString() })
+        .eq('user_id', c.user_id)
+        .eq('network', 'instagram');
+    } catch (err) {
+      console.error('[instagram refresh]', c.user_id, err);
+    }
+  }
 }

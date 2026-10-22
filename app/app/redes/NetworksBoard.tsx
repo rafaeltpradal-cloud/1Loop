@@ -51,7 +51,7 @@ function NetworkCard({ id, chosen, saved }: { id: NetworkId; chosen: boolean; sa
             <span style={{ fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.prefix}{saved.handle}</span>
             <span className="status" style={{ color: 'var(--done-ink)' }}><span className="dot" style={{ background: 'var(--teal)' }} />Perfil cadastrado</span>
             <span className="muted" style={{ fontSize: 12 }}>
-              {id === 'linkedin' ? (saved.status === 'connected' ? 'Publicação automática: conectada' : 'Publicação automática: conecte acima') : 'Publicação automática: em breve'}
+              {id === 'linkedin' || id === 'instagram' ? (saved.status === 'connected' ? 'Publicação automática: conectada' : 'Publicação automática: conecte acima') : 'Publicação automática: em breve'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

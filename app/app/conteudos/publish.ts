@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { canAutoPublish, type PostAsset } from '@/lib/contentTypes';
+import { autoBlocker, autoNetworkId, canAutoPublish, type PostAsset, type PostContent } from '@/lib/contentTypes';
 import { getConnection, publishOne } from '@/lib/publish';
 
 export type PublishResult = { ok: true; url?: string; asset?: PostAsset } | { ok: false; error: string };
@@ -51,19 +51,24 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
     .slice(0, 12);
 
   const admin = createAdminClient();
-  const { data: post } = await admin.from('posts').select('id, rede, formato, status, assets').eq('id', postId).eq('user_id', user.id).maybeSingle();
+  const { data: post } = await admin.from('posts').select('id, rede, formato, status, assets, content').eq('id', postId).eq('user_id', user.id).maybeSingle();
   if (!post) return { ok: false, error: 'Post não encontrado.' };
   if (!canAutoPublish(post.rede, post.formato)) return { ok: false, error: 'Este formato ainda não pode ser publicado sozinho nesta rede.' };
   if (post.status === 'publicado' || post.status === 'publicando') return { ok: false, error: 'Este post já foi publicado.' };
 
-  const conn = await getConnection(admin, user.id, 'linkedin');
-  if (!conn) return { ok: false, error: 'Conecte o LinkedIn em Redes para agendar.' };
-  if (new Date(conn.expiresAt).getTime() < at.getTime())
-    return { ok: false, error: 'A conexão com o LinkedIn vence antes dessa data. Reconecte em Redes para agendar.' };
+  const blocker = autoBlocker(post.rede, post.formato, (post.content ?? {}) as PostContent);
+  if (blocker) return { ok: false, error: blocker };
+  const network = autoNetworkId(post.rede)!;
+  const conn = await getConnection(admin, user.id, network);
+  if (!conn) return { ok: false, error: `Conecte o ${post.rede} em Redes para agendar.` };
+  // O LinkedIn não renova sozinho; o Instagram renova, então só precisa estar válido agora.
+  const limit = network === 'linkedin' ? at.getTime() : Date.now();
+  if (new Date(conn.expiresAt).getTime() < limit)
+    return { ok: false, error: `A conexão com o ${post.rede} vence antes dessa data. Reconecte em Redes para agendar.` };
 
   const { error } = await admin
     .from('posts')
-    .update({ status: 'agendado', scheduled_at: at.toISOString(), assets: clean, publish_error: null, updated_at: new Date().toISOString() })
+    .update({ status: 'agendado', scheduled_at: at.toISOString(), assets: clean, publish_error: null, platform_ref: null, updated_at: new Date().toISOString() })
     .eq('id', postId)
     .eq('user_id', user.id);
   if (error) return { ok: false, error: 'Não deu para agendar. Tente de novo.' };
@@ -82,7 +87,7 @@ export async function cancelSchedule(postId: number): Promise<PublishResult> {
   const admin = createAdminClient();
   const { error } = await admin
     .from('posts')
-    .update({ status: 'aprovado', scheduled_at: null, publish_error: null, updated_at: new Date().toISOString() })
+    .update({ status: 'aprovado', scheduled_at: null, publish_error: null, platform_ref: null, updated_at: new Date().toISOString() })
     .eq('id', postId)
     .eq('user_id', user.id)
     .in('status', ['agendado', 'erro']);

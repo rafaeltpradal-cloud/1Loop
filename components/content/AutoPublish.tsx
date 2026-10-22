@@ -31,6 +31,7 @@ export function AutoPublish({
   state,
   auto,
   prepareAssets,
+  blocker,
   onChange,
 }: {
   postId: number;
@@ -40,6 +41,8 @@ export function AutoPublish({
   state: PublishState;
   auto: AutoInfo;
   prepareAssets: () => Promise<PostAsset[]>;
+  /** O que falta no post para a rede aceitar. */
+  blocker?: string | null;
   onChange: (s: PublishState) => void;
 }) {
   const router = useRouter();
@@ -127,6 +130,17 @@ export function AutoPublish({
   }
 
   const showForm = state.status !== 'agendado' || editing;
+
+  if (blocker && state.status !== 'agendado') {
+    return (
+      <div className="autoBox">
+        <div>
+          <b>Falta um passo para agendar no {rede}</b>
+          <span className="muted">{blocker}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={state.status === 'erro' ? 'autoBox err' : 'autoBox'}>

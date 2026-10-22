@@ -3,14 +3,15 @@ import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { isNetworkId, networkByName, type NetworkId } from '@/lib/networks';
 import { NetworksBoard } from './NetworksBoard';
-import { LinkedInConnect, type LinkedInState } from '@/components/LinkedInConnect';
+import { NetworkConnect, type ConnectState } from '@/components/NetworkConnect';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { linkedinConfigured } from '@/lib/linkedin';
+import { instagramConfigured } from '@/lib/instagram';
 
 export const metadata = { title: 'Redes · 1loop creators' };
 
-export default async function RedesPage({ searchParams }: { searchParams: Promise<{ linkedin?: string }> }) {
-  const { linkedin: flash } = await searchParams;
+export default async function RedesPage({ searchParams }: { searchParams: Promise<{ linkedin?: string; instagram?: string }> }) {
+  const { linkedin: liFlash, instagram: igFlash } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
   const [{ data: accounts }, { data: interview }] = await Promise.all([
@@ -29,20 +30,22 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   }
   const count = Object.keys(saved).length;
 
-  // Conexão oficial com o LinkedIn (o token não sai do servidor).
-  let li: LinkedInState = { kind: linkedinConfigured() ? 'desconectado' : 'indisponivel' };
-  if (li.kind === 'desconectado') {
-    const { data: conn } = await createAdminClient()
-      .from('social_connections')
-      .select('name, picture, expires_at')
-      .eq('user_id', ctx.userId)
-      .eq('network', 'linkedin')
-      .maybeSingle();
-    if (conn) {
-      const daysLeft = Math.max(0, Math.ceil((new Date(conn.expires_at as string).getTime() - Date.now()) / 86400000));
-      li = { kind: 'conectado', name: (conn.name as string) ?? '', picture: (conn.picture as string | null) ?? null, expiresAt: conn.expires_at as string, daysLeft };
-    }
-  }
+  // Conexões oficiais (o token não sai do servidor).
+  const { data: conns } = await createAdminClient()
+    .from('social_connections')
+    .select('network, name, picture, expires_at, meta')
+    .eq('user_id', ctx.userId);
+  const stateOf = (network: 'linkedin' | 'instagram', configured: boolean): ConnectState => {
+    if (!configured) return { kind: 'indisponivel' };
+    const c = (conns ?? []).find((x) => x.network === network);
+    if (!c) return { kind: 'desconectado' };
+    const daysLeft = Math.max(0, Math.ceil((new Date(c.expires_at as string).getTime() - Date.now()) / 86400000));
+    const type = (c.meta as { account_type?: string } | null)?.account_type;
+    const detail = network === 'instagram' && type ? (type === 'BUSINESS' ? 'conta Comercial' : 'conta de Criador') : undefined;
+    return { kind: 'conectado', name: network === 'instagram' ? `@${c.name ?? ''}` : ((c.name as string) ?? ''), picture: (c.picture as string | null) ?? null, expiresAt: c.expires_at as string, daysLeft, detail };
+  };
+  const li = stateOf('linkedin', linkedinConfigured());
+  const ig = stateOf('instagram', instagramConfigured());
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
@@ -52,11 +55,14 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
           <span className="graphite">Onde seus conteúdos</span> <span className="grad">vão sair.</span>
         </h1>
         <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>
-          Cadastre seus perfis. As redes da sua estratégia aparecem primeiro. No LinkedIn, a publicação já pode ser automática: conecte uma vez e agende. As outras redes chegam em seguida.
+          Cadastre seus perfis. As redes da sua estratégia aparecem primeiro. No LinkedIn e no Instagram, a publicação já pode ser automática: conecte uma vez e agende. As outras redes chegam em seguida.
         </p>
       </div>
 
-      <LinkedInConnect state={li} flash={flash} />
+      <div className="grid2">
+        <NetworkConnect network="linkedin" state={li} flash={liFlash} />
+        <NetworkConnect network="instagram" state={ig} flash={igFlash} />
+      </div>
 
       <NetworksBoard chosen={chosen} saved={saved} />
 
