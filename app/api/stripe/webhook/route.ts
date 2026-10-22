@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
-import { recordExtraPack, syncSubscription } from '@/lib/billing';
+import { recordExtraPack, sendWelcomeEmail, syncSubscription } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 
@@ -27,7 +27,8 @@ export async function POST(request: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.mode === 'subscription' && session.subscription) {
-          await syncSubscription(typeof session.subscription === 'string' ? session.subscription : session.subscription.id);
+          const row = await syncSubscription(typeof session.subscription === 'string' ? session.subscription : session.subscription.id);
+          await sendWelcomeEmail(session, row);
         }
         if (session.mode === 'payment') await recordExtraPack(session);
         break;

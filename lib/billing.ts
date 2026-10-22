@@ -1,7 +1,9 @@
 import type Stripe from 'stripe';
-import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { EXTRA_PACK, planFromPriceId, type PlanId } from '@/lib/plans';
+import { EXTRA_PACK, PLANS, planFromPriceId, type PlanId } from '@/lib/plans';
+import { stripe, siteUrl } from '@/lib/stripe';
+import { sendEmail } from '@/lib/email';
+import { welcomeEmail } from '@/lib/emails/welcome';
 
 export type SubscriptionRow = {
   user_id: string;
@@ -70,4 +72,37 @@ export async function recordExtraPack(session: Stripe.Checkout.Session) {
   );
   if (error) throw error;
   return true;
+}
+
+// E-mail de confirmação da assinatura (enviado uma vez, quando o checkout é concluído).
+export async function sendWelcomeEmail(session: Stripe.Checkout.Session, row: SubscriptionRow) {
+  try {
+    const email = session.customer_details?.email || session.customer_email;
+    if (!email || !row.plan) return;
+    const admin = createAdminClient();
+    const { data: profile } = await admin.from('profiles').select('name').eq('id', row.user_id).maybeSingle();
+    const name = (profile?.name as string | undefined) || email.split('@')[0];
+    const plan = PLANS[row.plan];
+
+    // Valor real da próxima cobrança (já com o desconto Founders, se houver).
+    let amount = plan.priceFounders ?? plan.priceFull;
+    try {
+      const preview = await stripe().invoices.createPreview({ subscription: row.stripe_subscription_id });
+      if (typeof preview.amount_due === 'number' && preview.amount_due > 0) amount = preview.amount_due / 100;
+    } catch {
+      // Sem prévia: usa o preço da tabela.
+    }
+
+    const msg = welcomeEmail({
+      firstName: name.split(' ')[0],
+      planName: plan.name,
+      rhythm: plan.rhythm,
+      amount,
+      trialEnd: row.status === 'trialing' && row.trial_end ? new Date(row.trial_end) : null,
+      appUrl: siteUrl(),
+    });
+    await sendEmail({ to: email, ...msg });
+  } catch (err) {
+    console.error('[welcome email]', err);
+  }
 }
