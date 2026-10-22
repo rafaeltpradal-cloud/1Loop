@@ -10,7 +10,8 @@ export const runtime = 'nodejs';
 // customer.subscription.updated e customer.subscription.deleted.
 export async function POST(request: Request) {
   const signature = request.headers.get('stripe-signature');
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  // Aceita também o nome salvo sem o "T" final na Vercel.
+  const secret = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRE;
   if (!signature || !secret) return new NextResponse('Webhook não configurado', { status: 400 });
 
   let event: Stripe.Event;
