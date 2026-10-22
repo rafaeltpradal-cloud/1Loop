@@ -21,7 +21,10 @@ export function welcomeEmail(p: { firstName: string; planName: string; rhythm: s
 <tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#FFFFFF;border:1px solid #E3E6EA;border-radius:22px">
 <tr><td style="padding:32px 32px 8px">
-<div style="font-size:20px;font-weight:700;letter-spacing:-0.3px"><span style="color:#0E0F12">1loop</span> <span style="color:#7C4DFF">creators</span></div>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr>
+<td style="vertical-align:middle;padding-right:12px"><img src="${p.appUrl}/email-logo.png" width="40" height="40" alt="" style="display:block;border:0"></td>
+<td style="vertical-align:middle;font-size:21px;font-weight:700;letter-spacing:-0.3px"><span style="color:#0E0F12">1loop</span> <span style="color:#7C4DFF">creators</span></td>
+</tr></table>
 </td></tr>
 <tr><td style="padding:16px 32px 0">
 <h1 style="margin:0;font-size:26px;line-height:1.2;letter-spacing:-0.6px">Bem-vindo, ${esc(p.firstName)}. Seu teste começou.</h1>
