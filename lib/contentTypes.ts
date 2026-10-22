@@ -1,5 +1,5 @@
 // Tipos e utilitários dos conteúdos, sem dependências de servidor (usados também no navegador).
-import type { Scene } from '@/lib/scene';
+import type { Scene as CanvasScene } from '@/lib/scene';
 
 export type ImageStyle = 'notas' | 'claro' | 'escuro';
 export const IMAGE_STYLES: { id: ImageStyle; nome: string }[] = [
@@ -9,7 +9,7 @@ export const IMAGE_STYLES: { id: ImageStyle; nome: string }[] = [
 ];
 
 export type Slide = { titulo: string; texto: string };
-export type Scene = { fala: string; visual: string };
+export type ScriptScene = { fala: string; visual: string };
 export type Story = { tipo: 'texto' | 'enquete' | 'caixinha' | 'link'; texto: string; opcoes?: string[] };
 
 export type PostContent = {
@@ -19,13 +19,13 @@ export type PostContent = {
   cta: string;
   slides?: Slide[]; // carrossel
   imagem?: { frase: string; destaque?: string }; // imagem de série e prova social
-  roteiro?: { duracao: string; capa: string; cenas: Scene[] }; // reels / tiktok / shorts
+  roteiro?: { duracao: string; capa: string; cenas: ScriptScene[] }; // reels / tiktok / shorts
   stories?: Story[];
   partes?: string[]; // thread
   dica?: string; // dica de publicação
   estilo?: ImageStyle;
   foto?: number; // id da foto (biblioteca) usada no post
-  canvas?: Record<string, Scene>; // imagens editadas no editor visual (Pro e Multi), por imagem
+  canvas?: Record<string, CanvasScene>; // imagens editadas no editor visual (Pro e Multi), por imagem
 };
 
 export type MediaItem = { id: number; kind: 'foto' | 'referencia'; width: number | null; height: number | null };
