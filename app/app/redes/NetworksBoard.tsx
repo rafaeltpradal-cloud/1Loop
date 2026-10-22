@@ -52,7 +52,7 @@ function NetworkCard({ id, chosen, saved }: { id: NetworkId; chosen: boolean; sa
             <span className="muted" style={{ fontSize: 12 }}>Publicação automática: em breve</span>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <button type="button" className="btnGhost btnSm" onClick={() => setEditing(true)} disabled={pending}>Editar</button>
+            <button type="button" className="btnGhost btnSm" onClick={() => { setValue(saved.handle); setEditing(true); }} disabled={pending}>Editar</button>
             <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={remove} disabled={pending}>Remover</button>
           </div>
         </>
