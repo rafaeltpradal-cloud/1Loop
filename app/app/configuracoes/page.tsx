@@ -30,9 +30,15 @@ export default async function ConfiguracoesPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="eyebrow">Conta</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}><span className="graphite">Configurações</span></h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="eyebrow">Conta</div>
+          <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}><span className="graphite">Configurações</span></h1>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Tema</span>
+          <ThemeSwitcher compact />
+        </div>
       </div>
 
       <Section id="h-plano" title="Plano e pagamento">
@@ -59,11 +65,6 @@ export default async function ConfiguracoesPage() {
       <Section id="h-seguranca" title="Senha" desc={`Você entra com ${ctx.email}.`}>
         <PasswordForm />
       </Section>
-
-      <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: 'none' }}>
-        <span style={{ fontSize: 14, fontWeight: 700 }}>Tema</span>
-        <ThemeSwitcher compact />
-      </div>
 
       <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: 'none' }}>
         <span style={{ fontSize: 14, fontWeight: 700 }}>Sessão</span>
