@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StrategyView } from '@/components/StrategyView';
 import { RegenerateButton } from '@/components/RegenerateButton';
 import type { Strategy } from '@/lib/strategy';
+import { addDays, isoInBrazil } from '@/lib/dates';
 
 export const metadata = { title: 'Estratégia · 1loop creators' };
 
@@ -12,7 +13,7 @@ export default async function EstrategiaPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from('strategies')
-    .select('data, source, created_at')
+    .select('id, data, source, created_at')
     .eq('user_id', ctx.userId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -30,9 +31,9 @@ export default async function EstrategiaPage() {
   }
 
   const created = new Date(data.created_at as string);
-  const start = new Date(created);
-  start.setDate(start.getDate() + 1);
-  start.setHours(0, 0, 0, 0);
+  // O plano começa no dia seguinte ao que foi gerado (horário de Brasília).
+  const start = addDays(isoInBrazil(created), 1);
+  const today = isoInBrazil();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
@@ -43,17 +44,17 @@ export default async function EstrategiaPage() {
             <span className="graphite">Seu plano de</span> <span className="grad">30 dias.</span>
           </h1>
           <span className="muted" style={{ fontSize: 13 }}>
-            Gerado em {created.toLocaleDateString('pt-BR')}
+            Gerado em {created.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
             {data.source === 'demo' && ' · modo demonstração (configure a chave da IA para a versão completa)'}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="pageActions">
           <Link className="btnGhost btnSm" href="/app/entrevista">Ajustar respostas</Link>
           <RegenerateButton />
           <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
         </div>
       </div>
-      <StrategyView s={data.data as Strategy} startDate={start} />
+      <StrategyView s={data.data as Strategy} strategyId={Number(data.id)} start={start} today={today} />
       <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '999 1 360px', minWidth: 0 }}>
           <div className="eyebrow">Próximo passo</div>

@@ -50,8 +50,24 @@ function NavLinks({ items, pathname }: { items: Item[]; pathname: string }) {
   );
 }
 
-export function AppNav({ group }: { group: 'main' | 'account' }) {
+export function AppNav({ group }: { group: 'main' | 'account' | 'tabs' }) {
   const pathname = usePathname();
+  if (group === 'tabs') {
+    // Barra inferior do celular.
+    return (
+      <nav aria-label="Menu" className="tabBar">
+        {MAIN.map((it) => {
+          const active = it.href === '/app' ? pathname === '/app' : pathname.startsWith(it.href);
+          return (
+            <Link key={it.href} href={it.href} className="tabItem" aria-current={active ? 'page' : undefined}>
+              {it.icon}
+              <span>{it.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+    );
+  }
   if (group === 'account') {
     return (
       <nav aria-label="Conta" className="navGroup">

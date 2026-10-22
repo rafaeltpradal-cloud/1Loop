@@ -6,7 +6,7 @@ import { LandingInteractions } from './_landing/LandingInteractions';
 export const metadata: Metadata = {
   title: '1loop creators · Conteúdo com estratégia. Redes com resultado.',
   description:
-    'Uma entrevista sobre você, um plano de 30 dias e conteúdos prontos para cada rede, cada um com um objetivo claro. Teste 7 dias.',
+    'Uma entrevista sobre você, uma estratégia real e conteúdos prontos para cada rede, cada um com um objetivo claro. Teste 7 dias.',
 };
 
 export default async function LandingPage() {

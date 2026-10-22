@@ -4,7 +4,8 @@ import { PLANS, type PlanId } from '@/lib/plans';
 
 export type Pillar = { nome: string; percentual: number; descricao: string };
 export type FunnelStage = { etapa: string; papel: string; formatos: string[] };
-export type CalendarItem = { dia: number; pilar: number; formato: string; rede: string; comRosto: boolean; tema: string; objetivo: string };
+// "data" (AAAA-MM-DD) só existe quando a pessoa muda o post de dia no calendário.
+export type CalendarItem = { dia: number; pilar: number; formato: string; rede: string; comRosto: boolean; tema: string; objetivo: string; data?: string };
 export type WeekPlan = { semana: number; foco: string; acoes: string[] };
 export type Indicator = { nome: string; porque: string };
 
