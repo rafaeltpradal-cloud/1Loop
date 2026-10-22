@@ -3,6 +3,7 @@ import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { QUESTIONS, displayValue, type Answers } from '@/lib/interview';
 import { ProfileForm } from './ProfileForm';
+import { AvatarUploader } from './AvatarUploader';
 
 export const metadata = { title: 'Perfil · 1loop creators' };
 
@@ -16,20 +17,18 @@ export default async function PerfilPage() {
     supabase.from('interviews').select('answers').eq('user_id', ctx.userId).maybeSingle(),
   ]);
   const answers = (interview?.answers ?? {}) as Answers;
-  const initials = ctx.name.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('') || '1';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-        <span className="avatar" style={{ width: 64, height: 64, fontSize: 22 }} aria-hidden="true">{initials}</span>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-          <div className="eyebrow">Perfil</div>
-          <h1 style={{ fontSize: 'clamp(26px, 3.2vw, 36px)', letterSpacing: '-1px' }}><span className="graphite">{ctx.name}</span></h1>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+        <div className="eyebrow">Perfil</div>
+        <h1 style={{ fontSize: 'clamp(26px, 3.2vw, 36px)', letterSpacing: '-1px' }}><span className="graphite">{ctx.name}</span></h1>
       </div>
 
-      <section className="card" aria-labelledby="h-dados" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <section className="card" aria-labelledby="h-dados" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>
         <h2 id="h-dados" style={{ fontSize: 18 }}>Seus dados</h2>
+        <AvatarUploader name={ctx.name} url={ctx.avatarUrl} />
+        <hr className="divider" />
         <ProfileForm name={(profile?.name as string) || ctx.name} phone={(profile?.phone as string) || ''} email={ctx.email} />
       </section>
 

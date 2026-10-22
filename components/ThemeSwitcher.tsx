@@ -37,7 +37,7 @@ const OPTIONS: Array<{ id: ThemePref; label: string; icon: React.ReactNode }> = 
   },
 ];
 
-export function ThemeSwitcher() {
+export function ThemeSwitcher({ compact = false }: { compact?: boolean }) {
   const [pref, setPref] = useState<ThemePref>(DEFAULT_THEME);
 
   useEffect(() => {
@@ -51,11 +51,11 @@ export function ThemeSwitcher() {
   }
 
   return (
-    <div className="themeSwitch" role="radiogroup" aria-label="Tema">
+    <div className={compact ? 'themeSwitch compact' : 'themeSwitch'} role="radiogroup" aria-label="Tema">
       {OPTIONS.map((o) => (
-        <button key={o.id} type="button" role="radio" aria-checked={pref === o.id} onClick={() => choose(o.id)}>
+        <button key={o.id} type="button" role="radio" aria-checked={pref === o.id} onClick={() => choose(o.id)} title={o.label} aria-label={o.label}>
           {o.icon}
-          {o.label}
+          {!compact && o.label}
         </button>
       ))}
     </div>

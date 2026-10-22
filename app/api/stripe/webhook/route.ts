@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
-import { syncSubscription } from '@/lib/billing';
+import { recordExtraPack, syncSubscription } from '@/lib/billing';
 
 export const runtime = 'nodejs';
 
@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         if (session.mode === 'subscription' && session.subscription) {
           await syncSubscription(typeof session.subscription === 'string' ? session.subscription : session.subscription.id);
         }
+        if (session.mode === 'payment') await recordExtraPack(session);
         break;
       }
       case 'customer.subscription.created':

@@ -13,6 +13,7 @@ export type AppContext = {
   status: string;
   trialDaysLeft: number | null;
   hasStrategy: boolean;
+  avatarUrl: string | null;
 };
 
 // Carrega usuário, perfil e assinatura uma vez por requisição.
@@ -25,7 +26,7 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
   if (!user) redirect('/entrar');
 
   const [{ data: profile }, { data: subs }, { count }] = await Promise.all([
-    supabase.from('profiles').select('name').eq('id', user.id).maybeSingle(),
+    supabase.from('profiles').select('name, avatar_url').eq('id', user.id).maybeSingle(),
     supabase.from('subscriptions').select('plan, status, trial_end').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('strategies').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
   ]);
@@ -46,5 +47,6 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
     status: sub.status,
     trialDaysLeft,
     hasStrategy: (count ?? 0) > 0,
+    avatarUrl: (profile?.avatar_url as string | null | undefined) ?? null,
   };
 });

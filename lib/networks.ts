@@ -4,12 +4,12 @@ export type NetworkId = 'instagram' | 'linkedin' | 'tiktok' | 'youtube' | 'faceb
 export type Network = { id: NetworkId; name: string; short: string; color: string; placeholder: string; prefix: string };
 
 export const NETWORKS: Network[] = [
-  { id: 'instagram', name: 'Instagram', short: 'IG', color: '#E0458F', placeholder: '@seuperfil', prefix: '@' },
-  { id: 'linkedin', name: 'LinkedIn', short: 'in', color: '#3B6CF6', placeholder: 'linkedin.com/in/seu-nome', prefix: 'linkedin.com/in/' },
-  { id: 'tiktok', name: 'TikTok', short: 'TT', color: '#7C4DFF', placeholder: '@seuperfil', prefix: '@' },
-  { id: 'youtube', name: 'YouTube Shorts', short: 'YT', color: '#F08A24', placeholder: '@seucanal', prefix: '@' },
-  { id: 'facebook', name: 'Facebook', short: 'FB', color: '#12A594', placeholder: 'facebook.com/suapagina', prefix: 'facebook.com/' },
-  { id: 'threads', name: 'Threads', short: '@', color: '#5E646C', placeholder: '@seuperfil', prefix: '@' },
+  { id: 'instagram', name: 'Instagram', short: 'IG', color: '#E1306C', placeholder: '@seuperfil', prefix: '@' },
+  { id: 'linkedin', name: 'LinkedIn', short: 'in', color: '#0A66C2', placeholder: 'linkedin.com/in/seu-nome', prefix: 'linkedin.com/in/' },
+  { id: 'tiktok', name: 'TikTok', short: 'TT', color: '#111214', placeholder: '@seuperfil', prefix: '@' },
+  { id: 'youtube', name: 'YouTube Shorts', short: 'YT', color: '#FF0033', placeholder: '@seucanal', prefix: '@' },
+  { id: 'facebook', name: 'Facebook', short: 'FB', color: '#1877F2', placeholder: 'facebook.com/suapagina', prefix: 'facebook.com/' },
+  { id: 'threads', name: 'Threads', short: '@', color: '#111214', placeholder: '@seuperfil', prefix: '@' },
 ];
 
 export const isNetworkId = (v: unknown): v is NetworkId => NETWORKS.some((n) => n.id === v);

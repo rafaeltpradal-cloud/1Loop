@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getAppContext } from '@/lib/session';
 import { PLANS, brl } from '@/lib/plans';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
@@ -34,10 +35,6 @@ export default async function ConfiguracoesPage() {
         <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}><span className="graphite">Configurações</span></h1>
       </div>
 
-      <Section id="h-aparencia" title="Aparência" desc="No modo Sistema, o app acompanha o seu aparelho: se ele troca sozinho entre dia e noite, o app troca junto.">
-        <div><ThemeSwitcher /></div>
-      </Section>
-
       <Section id="h-plano" title="Plano e pagamento">
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <div>
@@ -50,9 +47,12 @@ export default async function ConfiguracoesPage() {
             {ctx.trialDaysLeft !== null && ` · ${ctx.trialDaysLeft} ${ctx.trialDaysLeft === 1 ? 'dia' : 'dias'}`}
           </span>
         </div>
-        <form action="/api/stripe/portal" method="post">
-          <button className="btnGhost btnSm" type="submit">Gerenciar assinatura e cartão</button>
-        </form>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Link className="btn3d btnSm" href="/app/plano">Ver planos e pacotes</Link>
+          <form action="/api/stripe/portal" method="post">
+            <button className="btnGhost btnSm" type="submit">Gerenciar assinatura e cartão</button>
+          </form>
+        </div>
         <p className="muted" style={{ fontSize: 13 }}>Você vai para o portal seguro do Stripe para trocar de plano, atualizar o cartão, ver faturas ou cancelar.</p>
       </Section>
 
@@ -60,11 +60,17 @@ export default async function ConfiguracoesPage() {
         <PasswordForm />
       </Section>
 
-      <Section id="h-sessao" title="Sessão">
+      <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: 'none' }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>Tema</span>
+        <ThemeSwitcher compact />
+      </div>
+
+      <div className="card" style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', boxShadow: 'none' }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>Sessão</span>
         <form action="/auth/sair" method="post">
-          <button className="btnGhost btnSm" type="submit">Sair da conta</button>
+          <button className="linkBtn" type="submit" style={{ fontSize: 13 }}>Sair da conta</button>
         </form>
-      </Section>
+      </div>
     </div>
   );
 }

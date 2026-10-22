@@ -51,6 +51,11 @@ export const PLANS: Record<PlanId, Plan> = {
   },
 };
 
+export const PLAN_ORDER: PlanId[] = ['basic', 'pro', 'multi'];
+
+// Pacote avulso: poucos posts extras, pagamento único.
+export const EXTRA_PACK = { posts: 5, price: 39 };
+
 export function isPlanId(v: unknown): v is PlanId {
   return v === 'basic' || v === 'pro' || v === 'multi';
 }

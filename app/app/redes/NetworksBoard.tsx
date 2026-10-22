@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { NETWORKS, type NetworkId } from '@/lib/networks';
 import { removeHandle, saveHandle } from './actions';
+import { NetworkIcon } from '@/components/NetworkIcon';
 
 type Saved = Partial<Record<NetworkId, { handle: string; status: string }>>;
 
@@ -37,7 +38,7 @@ function NetworkCard({ id, chosen, saved }: { id: NetworkId; chosen: boolean; sa
   return (
     <li className="card netCard" style={{ boxShadow: 'none', borderColor: chosen ? 'var(--line-2)' : 'var(--line)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="netBadge" style={{ background: n.color }} aria-hidden="true">{n.short}</span>
+        <NetworkIcon id={id} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
           <b style={{ fontSize: 16 }}>{n.name}</b>
           {chosen ? <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--violet)' }}>Na sua estratégia</span> : <span className="muted" style={{ fontSize: 12 }}>Opcional</span>}

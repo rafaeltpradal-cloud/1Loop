@@ -50,17 +50,19 @@ function NavLinks({ items, pathname }: { items: Item[]; pathname: string }) {
   );
 }
 
-export function AppNav() {
+export function AppNav({ group }: { group: 'main' | 'account' }) {
   const pathname = usePathname();
-  return (
-    <nav aria-label="Menu" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <div className="navGroup">
-        <NavLinks items={MAIN} pathname={pathname} />
-      </div>
-      <div className="navGroup">
+  if (group === 'account') {
+    return (
+      <nav aria-label="Conta" className="navGroup">
         <div className="navLabel">Conta</div>
         <NavLinks items={ACCOUNT} pathname={pathname} />
-      </div>
+      </nav>
+    );
+  }
+  return (
+    <nav aria-label="Menu" className="navGroup">
+      <NavLinks items={MAIN} pathname={pathname} />
     </nav>
   );
 }

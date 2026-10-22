@@ -1,7 +1,7 @@
 import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { planFromPriceId, type PlanId } from '@/lib/plans';
+import { EXTRA_PACK, planFromPriceId, type PlanId } from '@/lib/plans';
 
 export type SubscriptionRow = {
   user_id: string;
@@ -50,4 +50,24 @@ export async function syncSubscription(subscriptionId: string) {
   const { error } = await admin.from('subscriptions').upsert(row, { onConflict: 'stripe_subscription_id' });
   if (error) throw error;
   return row;
+}
+
+// Registra a compra de um pacote extra de posts (pagamento único).
+// Chamado pelo webhook e no retorno do pagamento; gravar duas vezes não duplica.
+export async function recordExtraPack(session: Stripe.Checkout.Session) {
+  if (session.mode !== 'payment' || session.metadata?.kind !== 'extra_pack' || session.payment_status !== 'paid') return false;
+  const userId = session.metadata?.user_id || session.client_reference_id;
+  if (!userId) return false;
+  const admin = createAdminClient();
+  const { error } = await admin.from('extra_packs').upsert(
+    {
+      user_id: userId,
+      posts: Number(session.metadata?.posts) || EXTRA_PACK.posts,
+      amount: session.amount_total ?? 0,
+      stripe_session_id: session.id,
+    },
+    { onConflict: 'stripe_session_id', ignoreDuplicates: true },
+  );
+  if (error) throw error;
+  return true;
 }
