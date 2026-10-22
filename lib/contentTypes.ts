@@ -25,11 +25,12 @@ export type PostContent = {
   dica?: string; // dica de publicação
   estilo?: ImageStyle;
   foto?: number; // id da foto (biblioteca) usada no post
+  video?: number; // id do vídeo (biblioteca) para reels
   canvas?: Record<string, CanvasScene>; // imagens editadas no editor visual (Pro e Multi), por imagem
 };
 
-export type MediaItem = { id: number; kind: 'foto' | 'referencia'; width: number | null; height: number | null };
-export const MEDIA_COLUMNS = 'id, kind, width, height';
+export type MediaItem = { id: number; kind: 'foto' | 'referencia' | 'video'; width: number | null; height: number | null; duration_s?: number | null };
+export const MEDIA_COLUMNS = 'id, kind, width, height, duration_s';
 
 export type PostRow = {
   id: number;
@@ -60,12 +61,26 @@ export type PostStatus = 'rascunho' | 'aprovado' | 'agendado' | 'publicando' | '
 /** Imagem pronta no storage para a publicação automática. */
 export type PostAsset = { path: string; w: number; h: number };
 
-/** Redes com publicação automática já disponível. */
-export const AUTO_NETWORKS = ['LinkedIn'];
-/** Formatos que dá para publicar sozinho (vídeo e stories precisam do app da rede). */
+/** Redes com publicação automática já disponível (nome usado nos posts → id da conexão). */
+export const AUTO_NETWORKS: Record<string, 'linkedin' | 'instagram'> = { LinkedIn: 'linkedin', Instagram: 'instagram' };
+export const autoNetworkId = (rede: string) => AUTO_NETWORKS[rede] ?? null;
+
+/** Formatos que dá para publicar sozinho em cada rede. */
 export function canAutoPublish(rede: string, formato: string) {
   const k = kindOf(formato);
-  return AUTO_NETWORKS.includes(rede) && k !== 'video' && k !== 'stories';
+  if (rede === 'LinkedIn') return k !== 'video' && k !== 'stories';
+  if (rede === 'Instagram') return true;
+  return false;
+}
+
+/** O que ainda falta no post para a rede aceitar (ou null se está tudo certo). */
+export function autoBlocker(rede: string, formato: string, c: Pick<PostContent, 'foto' | 'video'>) {
+  const k = kindOf(formato);
+  if (rede === 'Instagram') {
+    if (k === 'video' && !c.video) return 'Escolha o vídeo do reels para agendar no Instagram.';
+    if ((k === 'texto' || k === 'thread') && !c.foto) return 'O Instagram não publica só texto. Escolha uma foto para o post.';
+  }
+  return null;
 }
 export const MAX_VERSIONS = 6; // 1 geração + 5 refações por post
 
