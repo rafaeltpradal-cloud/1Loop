@@ -124,3 +124,13 @@ export function specialDatesByDay(years: number[]) {
   }
   return map;
 }
+
+/** O plano começa no dia seguinte ao que a estratégia foi gerada (horário de Brasília). */
+export function planStartFrom(createdAt: string | Date) {
+  return addDays(isoInBrazil(new Date(createdAt)), 1);
+}
+
+/** Dia de um post do calendário: o que a pessoa escolheu ou o sugerido pela estratégia. */
+export function itemDate(item: { dia: number; data?: string }, start: string) {
+  return item.data && isISODate(item.data) ? item.data : addDays(start, item.dia - 1);
+}

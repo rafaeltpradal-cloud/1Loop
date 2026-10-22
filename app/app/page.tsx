@@ -8,9 +8,10 @@ export const metadata = { title: 'Início · 1loop creators' };
 export default async function AppHome() {
   const ctx = await getAppContext();
   const supabase = await createClient();
-  const [{ data: interview }, { count: networks }] = await Promise.all([
+  const [{ data: interview }, { count: networks }, { count: posts }] = await Promise.all([
     supabase.from('interviews').select('answers, completed_at').eq('user_id', ctx.userId).maybeSingle(),
     supabase.from('social_accounts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId),
   ]);
   const answered = interview?.answers ? Object.keys(interview.answers as object).length : 0;
 
@@ -18,7 +19,7 @@ export default async function AppHome() {
     { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: !!interview?.completed_at, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista', soon: false },
     { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: '/app/estrategia', cta: 'Ver estratégia', soon: false },
     { n: 3, title: 'Conectar redes', desc: 'Cadastre os perfis onde seus conteúdos vão sair.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Cadastrar redes', soon: false },
-    { n: 4, title: 'Conteúdos da semana', desc: 'Lotes prontos para aprovar e publicar.', done: false, href: '/app/conteudos', cta: 'Em breve', soon: true },
+    { n: 4, title: 'Conteúdos da semana', desc: 'Lotes prontos para aprovar e publicar.', done: (posts ?? 0) > 0, href: '/app/conteudos', cta: 'Gerar conteúdos', soon: false },
   ];
   const nextStep = steps.find((s) => !s.done) ?? steps[0];
 

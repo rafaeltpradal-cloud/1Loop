@@ -16,7 +16,7 @@ const MAIN: Item[] = [
   { href: '/app/entrevista', label: 'Entrevista', icon: ic(<path d="M4 5h16v11H9l-5 4V5Z" />) },
   { href: '/app/estrategia', label: 'Estratégia', icon: ic(<path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />) },
   { href: '/app/redes', label: 'Redes', icon: ic(<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>) },
-  { href: '/app/conteudos', label: 'Conteúdos', soon: true, icon: ic(<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>) },
+  { href: '/app/conteudos', label: 'Conteúdos', icon: ic(<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>) },
 ];
 
 const ACCOUNT: Item[] = [

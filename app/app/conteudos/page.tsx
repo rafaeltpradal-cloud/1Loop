@@ -1,17 +1,67 @@
 import Link from 'next/link';
+import { getAppContext } from '@/lib/session';
+import { createClient } from '@/lib/supabase/server';
+import type { Strategy } from '@/lib/strategy';
+import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
+import { POST_COLUMNS, type PostRow } from '@/lib/contentTypes';
+import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
-export default function ConteudosPage() {
-  return (
-    <div className="card" style={{ padding: 32, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div className="eyebrow">Em breve</div>
-      <h1 style={{ fontSize: 30, letterSpacing: '-0.8px' }}><span className="graphite">Seus lotes de conteúdo vão aparecer aqui.</span></h1>
-      <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Na próxima etapa, a ferramenta transforma sua estratégia em conteúdos prontos (texto, imagem e roteiro) para você aprovar e publicar nas redes que você cadastrou.</p>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <Link className="btnGhost btnSm" href="/app/estrategia">Ver minha estratégia</Link>
-        <Link className="btnGhost btnSm" href="/app/redes">Minhas redes</Link>
+export default async function ConteudosPage() {
+  const ctx = await getAppContext();
+  const supabase = await createClient();
+  const { data: strategyRow } = await supabase
+    .from('strategies')
+    .select('id, data, created_at')
+    .eq('user_id', ctx.userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!strategyRow) {
+    return (
+      <div className="card" style={{ padding: 32, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="eyebrow">Conteúdos</div>
+        <h1 style={{ fontSize: 30, letterSpacing: '-0.8px' }}><span className="graphite">Primeiro a estratégia, depois os conteúdos.</span></h1>
+        <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Os conteúdos saem do calendário da sua estratégia: cada post já nasce com tema, formato, rede e objetivo.</p>
+        <div><Link className="btn3d" href="/app/estrategia">Ver minha estratégia</Link></div>
       </div>
+    );
+  }
+
+  const strategy = strategyRow.data as Strategy;
+  const start = planStartFrom(strategyRow.created_at as string);
+  const { data: posts } = await supabase.from('posts').select(POST_COLUMNS).eq('strategy_id', strategyRow.id).eq('user_id', ctx.userId);
+  const byIndex = new Map(((posts ?? []) as unknown as PostRow[]).map((p) => [p.item_index, p]));
+
+  const items: BoardItem[] = strategy.calendario.map((it, index) => ({
+    index,
+    date: itemDate(it, start),
+    rede: it.rede,
+    formato: it.formato,
+    tema: it.tema,
+    objetivo: it.objetivo,
+    comRosto: it.comRosto,
+    pilar: strategy.pilares[it.pilar]?.nome ?? '',
+    post: byIndex.get(index) ?? null,
+  }));
+
+  const total = items.length;
+  const done = items.filter((i) => i.post).length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="eyebrow">Passo 4 · Conteúdos</div>
+        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
+          <span className="graphite">Conteúdos da</span> <span className="grad">semana.</span>
+        </h1>
+        <span className="muted" style={{ fontSize: 14 }}>
+          Gere o lote, revise, aprove e publique. {done} de {total} posts do plano já têm conteúdo.
+        </span>
+      </div>
+      <WeekBoard items={items} today={isoInBrazil()} planStart={start} />
     </div>
   );
 }

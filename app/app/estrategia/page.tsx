@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { StrategyView } from '@/components/StrategyView';
 import { RegenerateButton } from '@/components/RegenerateButton';
 import type { Strategy } from '@/lib/strategy';
-import { addDays, isoInBrazil } from '@/lib/dates';
+import { isoInBrazil, planStartFrom } from '@/lib/dates';
 
 export const metadata = { title: 'Estratégia · 1loop creators' };
 
@@ -32,7 +32,7 @@ export default async function EstrategiaPage() {
 
   const created = new Date(data.created_at as string);
   // O plano começa no dia seguinte ao que foi gerado (horário de Brasília).
-  const start = addDays(isoInBrazil(created), 1);
+  const start = planStartFrom(created);
   const today = isoInBrazil();
 
   return (
