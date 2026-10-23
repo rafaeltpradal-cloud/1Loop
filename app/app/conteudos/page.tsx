@@ -28,8 +28,8 @@ export default async function ConteudosPage() {
     return (
       <div className="card" style={{ padding: 32, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="eyebrow">Conteúdos</div>
-        <h1 style={{ fontSize: 30, letterSpacing: '-0.8px' }}><span className="graphite">Primeiro a estratégia, depois os conteúdos.</span></h1>
-        <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Os conteúdos saem do calendário da sua estratégia: cada post já nasce com tema, formato, rede e objetivo.</p>
+        <h1 className="pageTitle"><span className="graphite">Primeiro a estratégia, depois os conteúdos.</span></h1>
+        <p className="pageSub">Os posts nascem do calendário da estratégia.</p>
         <div><Link className="btn3d" href="/app/estrategia">Ver minha estratégia</Link></div>
       </div>
     );
@@ -59,13 +59,11 @@ export default async function ConteudosPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="eyebrow">Passo 4 · Conteúdos</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
+        <div className="eyebrow">Conteúdos</div>
+        <h1 className="pageTitle">
           <span className="graphite">Conteúdos da</span> <span className="grad">semana.</span>
         </h1>
-        <span className="muted" style={{ fontSize: 14 }}>
-          Gere o lote, revise, aprove e publique. {done} de {total} posts do plano {done === 1 ? 'já tem' : 'já têm'} conteúdo.
-        </span>
+        <span className="pageSub">{done} de {total} posts prontos</span>
       </div>
       <ContentTabs active="semana" />
       <WeekBoard

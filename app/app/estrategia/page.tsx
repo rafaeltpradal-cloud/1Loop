@@ -29,8 +29,8 @@ export default async function EstrategiaPage() {
     return (
       <div className="card" style={{ padding: 32, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="eyebrow">Estratégia</div>
-        <h1 style={{ fontSize: 30, letterSpacing: '-0.8px' }}><span className="graphite">Sua estratégia nasce da entrevista.</span></h1>
-        <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Responda as perguntas e a ferramenta monta seu plano de 30 dias: pilares, série, calendário e plano de ação.</p>
+        <h1 className="pageTitle"><span className="graphite">Sua estratégia nasce da entrevista.</span></h1>
+        <p className="pageSub">Responda a entrevista e o plano de 30 dias sai em seguida.</p>
         <div><Link className="btn3d" href="/app/entrevista">Fazer a entrevista</Link></div>
       </div>
     );
@@ -46,11 +46,11 @@ export default async function EstrategiaPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="eyebrow">Passo 2 · Sua estratégia</div>
-          <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
+          <div className="eyebrow">Estratégia</div>
+          <h1 className="pageTitle">
             <span className="graphite">Seu plano de</span> <span className="grad">30 dias.</span>
           </h1>
-          <span className="muted" style={{ fontSize: 13 }}>
+          <span className="pageSub">
             Gerado em {created.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
             {data.source === 'demo' && ' · modo demonstração (configure a chave da IA para a versão completa)'}
           </span>
@@ -68,13 +68,9 @@ export default async function EstrategiaPage() {
         canUndo={!!(data.data as Strategy).anterior}
       />
       <StrategyView s={{ ...(data.data as Strategy), anterior: undefined }} strategyId={Number(data.id)} start={start} today={today} />
-      <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '999 1 360px', minWidth: 0 }}>
-          <div className="eyebrow">Próximo passo</div>
-          <div style={{ fontSize: 22, fontWeight: 700 }}>Conecte suas redes</div>
-          <div className="muted" style={{ fontSize: 15, lineHeight: 1.5 }}>Cadastre os perfis onde essa estratégia vai rodar. Depois, os conteúdos da semana saem prontos para aprovar.</div>
-        </div>
-        <Link className="btn3d" href="/app/redes">Avançar para redes</Link>
+      <div className="nextRow">
+        <span>Próximo passo: <b>conectar as redes</b></span>
+        <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
       </div>
     </div>
   );

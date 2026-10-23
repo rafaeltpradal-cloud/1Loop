@@ -269,7 +269,7 @@ export function PostEditor({
       <div className="postHead">
         <Link href="/app/conteudos" className="backLink">‹ Conteúdos da semana</Link>
         <div className="eyebrow">{cap(formatLong(post.date))}</div>
-        <h1 style={{ fontSize: 'clamp(22px, 2.6vw, 30px)', lineHeight: 1.2, letterSpacing: '-0.6px' }}>{post.tema}</h1>
+        <h1 className="pageTitle">{post.tema}</h1>
         <div className="postMeta">
           {net && <NetworkIcon id={net.id} size={24} />}
           <span>{post.rede}</span>

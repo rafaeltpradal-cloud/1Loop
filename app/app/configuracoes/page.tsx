@@ -44,7 +44,7 @@ export default async function ConfiguracoesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="eyebrow">Conta</div>
-          <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}><span className="graphite">Configurações</span></h1>
+          <h1 className="pageTitle"><span className="graphite">Configurações</span></h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span className="muted" style={{ fontSize: 12, fontWeight: 700 }}>Tema</span>

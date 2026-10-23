@@ -653,3 +653,85 @@ html[data-theme="dark"] .statusPill.agendado, html[data-theme="dark"] .statusPil
 @media (max-width: 820px) { .sk-grid { grid-template-columns: 1fr; } .sk-card { height: 120px; } }
 @keyframes skMove { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+
+/* =========================================================================
+   Visual minimalista (área logada): letras menores, botões discretos,
+   superfícies leves e menos sombra. Mesma estrutura e mesma paleta.
+   ========================================================================= */
+.shell { font-size: 14px; }
+.content { padding-top: 32px; }
+
+/* Títulos */
+.shell .pageTitle { font-size: 26px; line-height: 1.15; letter-spacing: -0.6px; font-weight: 700; }
+.shell .pageSub { font-size: 13.5px; line-height: 1.5; color: var(--muted); max-width: 640px; }
+.content .eyebrow { font-size: 11px; letter-spacing: 1.4px; color: var(--muted-2); }
+.content h2 { letter-spacing: -0.2px; }
+.content section > h2, .content .card > h2, .content h2[id^="h-"] { font-size: 15px !important; font-weight: 700; }
+
+/* Botões: menores, sem caixa alta, sem efeito 3D */
+.shell .btn3d, .shell .btnGhost {
+  min-height: 40px; padding: 0 16px; border-radius: 10px; gap: 6px;
+  font-size: 13px; font-weight: 600; letter-spacing: 0; text-transform: none;
+}
+.shell .btn3d { background: var(--ink-2); box-shadow: 0 1px 2px rgba(14, 15, 18, .12); }
+.shell .btn3d:hover { background: var(--ink); transform: none; box-shadow: 0 2px 6px rgba(14, 15, 18, .16); }
+.shell .btnGhost { background: var(--surface); border: 1px solid var(--line); box-shadow: none; color: var(--ink-2); }
+.shell .btnGhost:hover { border-color: var(--line-2); background: var(--hover); }
+.shell .btnSm { min-height: 32px; padding: 0 12px; font-size: 12.5px; letter-spacing: 0; border-radius: 8px; }
+.shell .linkBtn { min-height: 32px; font-size: 12.5px; font-weight: 600; color: var(--muted); text-decoration: none; }
+.shell .linkBtn:hover { color: var(--ink); text-decoration: underline; }
+html[data-theme="dark"] .shell .btn3d { background: #E8EAED; color: #0E0F12; }
+html[data-theme="dark"] .shell .btn3d:hover { background: #FFFFFF; color: #0E0F12; }
+
+/* Superfícies: cantos menores, quase sem sombra, menos espaço interno */
+.shell .card { border-radius: 16px; box-shadow: 0 1px 2px var(--shadow); }
+.content .card:is([style*="padding: 2"], [style*="padding: 3"], [style*="padding: 4"]) { padding: 20px !important; }
+.shell .panel { border-radius: 14px; padding: 18px; }
+.shell .panelDark { border-radius: 14px; padding: 18px; }
+.shell .pill { min-height: 26px; padding: 0 10px; font-size: 12px; font-weight: 600; }
+.content .muted { line-height: 1.5; }
+
+/* Formulários */
+.shell .field { gap: 6px; }
+.shell .field label { font-size: 11px; letter-spacing: 1px; }
+.shell .field input, .shell .field textarea { min-height: 40px; padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+.shell .input { min-height: 36px; padding: 7px 12px; border-radius: 9px; font-size: 14px; }
+.shell .chip { min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 14px; }
+
+/* Menu lateral */
+.shell .sidebar { flex-basis: 220px; max-width: 240px; padding: 18px 14px; gap: 16px; }
+.shell .navItem { font-size: 13.5px; padding-top: 8px; padding-bottom: 8px; border-radius: 10px; }
+.shell .navItem[aria-current="page"] { box-shadow: none; }
+.shell .planCard { padding: 10px 12px !important; }
+.shell .brandSwBtn { min-height: 42px; padding: 6px 8px; box-shadow: none; border-radius: 12px; }
+.shell .brandSwMark { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.shell .brandSwName { font-size: 13px; }
+
+/* Peça à IA: mais compacto */
+.shell .aiAsk { padding: 14px; gap: 10px; border-radius: 14px; box-shadow: none; }
+.shell .aiAskHead .muted { display: none; }
+.shell .aiAskIcon { width: 26px; height: 26px; border-radius: 8px; }
+.shell .aiAskHead b { font-size: 13.5px !important; }
+.shell .aiAskForm textarea { min-height: 40px; padding: 9px 12px; border-radius: 10px; font-size: 14px; }
+.shell .aiChip { min-height: 28px; padding: 4px 10px; font-size: 12px; }
+.shell .aiAskReply { font-size: 13px; padding: 10px 12px; border-radius: 10px; }
+
+/* Letras menores também onde o tamanho está escrito direto no componente */
+.content [style*="font-size: 26px"] { font-size: 21px !important; }
+.content [style*="font-size: 24px"] { font-size: 20px !important; }
+.content [style*="font-size: 22px"] { font-size: 18px !important; }
+.content [style*="font-size: 20px"] { font-size: 17px !important; }
+.content [style*="font-size: 18px"] { font-size: 15.5px !important; }
+.content [style*="font-size: 17px"] { font-size: 15px !important; }
+.content [style*="font-size: 16px"] { font-size: 14px !important; }
+.content [style*="font-size: 15px"] { font-size: 13.5px !important; }
+.content [style*="font-size: 14px"] { font-size: 13px !important; }
+
+/* Barra do próximo passo (substitui os cartões grandes) */
+.shell .nextRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px 0 4px; border-top: 1px solid var(--line); font-size: 13.5px; color: var(--muted); }
+.shell .nextRow b { color: var(--ink); font-weight: 600; }
+
+@media (max-width: 820px) {
+  .shell .pageTitle { font-size: 22px; }
+  .content { padding-top: 20px; }
+}

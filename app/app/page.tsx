@@ -27,14 +27,14 @@ export default async function AppHome() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 1040 }}>
       <div className="rise" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Início</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-          <span className="graphite">Olá, {ctx.firstName}.</span> <span className="grad">Vamos colocar seu conteúdo em loop.</span>
+        <h1 className="pageTitle">
+          <span className="graphite">Olá,</span> <span className="grad">{ctx.firstName}.</span>
         </h1>
       </div>
 
       <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: 18, alignItems: 'center', flex: '999 1 420px', minWidth: 0 }}>
-          <LoopMark size={64} stroke={1.4} />
+          <LoopMark size={40} stroke={1.4} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div className="eyebrow">Próximo passo</div>
             <div style={{ fontSize: 22, fontWeight: 700 }}>{nextStep.title}</div>

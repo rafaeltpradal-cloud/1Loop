@@ -101,7 +101,7 @@ export function AiAsk({
 
       {!busy && !reply && !out && (
         <div className="aiAskChips">
-          {suggestions.map((s) => (
+          {suggestions.slice(0, 3).map((s) => (
             <button key={s} type="button" className="aiChip" onClick={() => (setText(s), box.current?.focus())}>
               {s}
             </button>

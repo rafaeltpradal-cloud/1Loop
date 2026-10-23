@@ -15,12 +15,10 @@ export default async function FotosPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 1180 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Conteúdos</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-          <span className="graphite">Suas fotos e</span> <span className="grad">referências.</span>
+        <h1 className="pageTitle">
+          <span className="graphite">Fotos e</span> <span className="grad">referências.</span>
         </h1>
-        <span className="muted" style={{ fontSize: 14, lineHeight: 1.55, maxWidth: 720 }}>
-          <b>Fotos</b> entram nos posts: viram o fundo das imagens e a IA escreve o texto olhando para elas. <b>Referências</b> são posts que você admira; a IA se inspira no estilo, sem copiar.
-        </span>
+        <span className="pageSub">Fotos entram nos posts. Referências inspiram o estilo.</span>
       </div>
       <ContentTabs active="fotos" />
       <MediaLibrary items={((data ?? []) as unknown as MediaItem[])} />

@@ -22,7 +22,7 @@ export default async function PerfilPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
         <div className="eyebrow">Perfil</div>
-        <h1 style={{ fontSize: 'clamp(26px, 3.2vw, 36px)', letterSpacing: '-1px' }}><span className="graphite">{ctx.name}</span></h1>
+        <h1 className="pageTitle"><span className="graphite">{ctx.name}</span></h1>
       </div>
 
       <section className="card" aria-labelledby="h-dados" style={{ padding: 28, display: 'flex', flexDirection: 'column', gap: 22 }}>

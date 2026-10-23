@@ -199,9 +199,6 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
           })}
         </ol>
       )}
-      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>
-        Cada conteúdo leva uns 20 segundos para ficar pronto. A publicação automática nas redes chega em breve; por enquanto, você copia o texto, baixa as imagens e publica em poucos toques.
-      </p>
     </div>
   );
 }

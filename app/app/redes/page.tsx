@@ -50,13 +50,11 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
-        <div className="eyebrow">Passo 3 · Suas redes</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-          <span className="graphite">Onde seus conteúdos</span> <span className="grad">vão sair.</span>
+        <div className="eyebrow">Redes</div>
+        <h1 className="pageTitle">
+          <span className="graphite">Suas</span> <span className="grad">redes.</span>
         </h1>
-        <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>
-          Cadastre seus perfis. As redes da sua estratégia aparecem primeiro. No LinkedIn e no Instagram, a publicação já pode ser automática: conecte uma vez e agende. As outras redes chegam em seguida.
-        </p>
+        <p className="pageSub">Conecte LinkedIn e Instagram para publicar no horário, sem abrir o app.</p>
       </div>
 
       <div className="grid2">
@@ -66,16 +64,12 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
 
       <NetworksBoard chosen={chosen} saved={saved} />
 
-      <div className="card" style={{ padding: 24, display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div className="eyebrow">Próximo passo</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>Conteúdos da semana</div>
-          <div className="muted" style={{ fontSize: 14 }}>{count ? `${count} ${count === 1 ? 'perfil cadastrado' : 'perfis cadastrados'}.` : 'Você pode cadastrar depois, se preferir.'}</div>
-        </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <Link className="btnGhost btnSm" href="/app/estrategia">Voltar à estratégia</Link>
-          <Link className="btn3d" href="/app/conteudos">{count ? 'Avançar' : 'Pular por agora'}</Link>
-        </div>
+      <div className="nextRow">
+        <span>Próximo passo: <b>conteúdos da semana</b></span>
+        <span style={{ display: 'flex', gap: 8 }}>
+          <Link className="btnGhost btnSm" href="/app/estrategia">Voltar</Link>
+          <Link className="btn3d btnSm" href="/app/conteudos">{count ? 'Avançar →' : 'Pular por agora'}</Link>
+        </span>
       </div>
     </div>
   );

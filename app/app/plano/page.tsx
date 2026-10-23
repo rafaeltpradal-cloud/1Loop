@@ -46,7 +46,7 @@ export default async function PlanoPage({ searchParams }: { searchParams: Promis
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1080 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Plano</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}>
+        <h1 className="pageTitle">
           <span className="graphite">Seu plano é o</span> <span className="grad">{plan.name}.</span>
         </h1>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>

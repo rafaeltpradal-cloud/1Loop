@@ -30,13 +30,10 @@ export default async function MarcasPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Conta</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 38px)', letterSpacing: '-1px' }}>
+        <h1 className="pageTitle">
           <span className="graphite">Suas</span> <span className="grad">marcas.</span>
         </h1>
-        <p className="muted" style={{ fontSize: 15, lineHeight: 1.6, maxWidth: 640 }}>
-          Cada marca é independente: entrevista, estratégia, conteúdos, redes conectadas e biblioteca próprias. Escolha no topo do menu com qual marca
-          você quer trabalhar agora.
-        </p>
+        <p className="pageSub">Cada marca tem entrevista, estratégia, conteúdos e redes próprios.</p>
       </div>
 
       {!multi && (

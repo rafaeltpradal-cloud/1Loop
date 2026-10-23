@@ -21,15 +21,11 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div className="eyebrow">Passo 1 · Entrevista</div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
+        <div className="eyebrow">Entrevista</div>
+        <h1 className="pageTitle">
           <span className="graphite">{brandMode ? `Vamos conhecer a marca ${ctx.brandName}.` : `${ctx.firstName}, vamos conhecer você.`}</span>
         </h1>
-        <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 680 }}>
-          {brandMode
-            ? 'Responda pensando nesta marca: as respostas viram o perfil de voz e a estratégia de 30 dias só dela. As outras marcas não mudam.'
-            : 'Suas respostas viram o seu perfil de voz e a base da sua estratégia de 30 dias. Elas ficam salvas a cada passo.'}
-        </p>
+        <p className="pageSub">{brandMode ? 'Responda pensando nesta marca. Tudo fica salvo.' : 'Leva uns 10 minutos. Tudo fica salvo a cada passo.'}</p>
       </div>
       <Interview initial={sanitizeAnswers(data?.answers)} hasStrategy={ctx.hasStrategy} />
     </div>
