@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
-import { autoNetworkId, kindOf, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
+import { autoNetworkId, kindOf, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow, serieNumberFor } from '@/lib/contentTypes';
 import { PLANS, maxVersions } from '@/lib/plans';
 import { interactionsOf, type Metrics } from '@/lib/metricsShared';
 import type { PostPerf } from '@/components/perf/PostPerformance';
@@ -35,7 +35,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   // Número na série (#001, #002...) para as imagens de série.
   const serieNumero =
     strategy && kindOf(post.formato) === 'imagem'
-      ? strategy.calendario.slice(0, post.item_index + 1).filter((c) => kindOf(c.formato) === 'imagem').length
+      ? serieNumberFor(strategy.calendario, post.item_index, strategy.serie?.inicio)
       : undefined;
 
   const net = NETWORKS.find((n) => n.name === post.rede);

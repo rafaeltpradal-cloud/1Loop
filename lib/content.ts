@@ -23,7 +23,7 @@ const NETWORK_RULES: Record<string, string> = {
 
 const FORMAT_RULES: Record<FormatKind, string> = {
   carrossel: '"slides": 5 a 7 slides. O 1º é a capa com o gancho (título curto, até 8 palavras, e texto de apoio curto). Do 2º ao penúltimo, 1 ideia por slide (título até 8 palavras, texto até 30 palavras). O último é a chamada (salvar, compartilhar, comentar ou a oferta). A "legenda" complementa o carrossel sem repetir tudo.',
-  imagem: '"imagem": uma frase de impacto de até 22 palavras em "frase" e, em "destaque", o trecho exato da frase (até 6 palavras) que deve ser marcado. A "legenda" desenvolve a ideia da imagem.',
+  imagem: '"imagem": uma frase de impacto de até 22 palavras em "frase" e, em "destaque", o trecho exato do FIM da frase (até 6 palavras) que deve ser marcado. Quando a frase tiver duas partes (o que todo mundo pensa e a virada), separe as partes com uma linha em branco (\\n\\n). A "legenda" desenvolve a ideia da imagem.',
   video: '"roteiro": vídeo vertical de 30 a 45 segundos. "capa": texto da capa (até 6 palavras). "cenas": 4 a 6 cenas; a 1ª é o gancho dos 3 primeiros segundos. Em cada cena, "fala" é o que a pessoa diz (ou o texto na tela, se for sem rosto) e "visual" é o que aparece. A última cena é a chamada. "duracao" como "35s".',
   stories: '"stories": sequência de 4 ou 5 stories. Tipos: "texto", "enquete" (com 2 "opcoes"), "caixinha" (pergunta aberta) e "link" (chamada para a oferta). Texto de cada story até 25 palavras. A "legenda" pode ser uma linha curta.',
   thread: '"partes": 5 a 7 posts encadeados, cada um com até 280 caracteres; o 1º é o gancho e o último a chamada. A "legenda" é igual ao 1º post.',

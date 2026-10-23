@@ -103,3 +103,9 @@ export function captionWithTags(c: PostContent) {
   const tags = c.hashtags.length ? `\n\n${c.hashtags.map((h) => `#${h}`).join(' ')}` : '';
   return `${c.legenda}${tags}`;
 }
+
+/** Número do post na série (#001, #002…), contando a partir do início da série nesta estratégia. */
+export function serieNumberFor(calendario: { formato: string }[], index: number, inicio?: number) {
+  const n = calendario.slice(0, index + 1).filter((c) => kindOf(c.formato) === 'imagem').length;
+  return (inicio ?? 1) - 1 + n;
+}

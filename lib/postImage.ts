@@ -4,12 +4,14 @@ import { kindOf, type ImageStyle, type PostContent, type Story } from '@/lib/con
 import { drawScene, fitSize, layoutText, loadSceneImages, newId, type Layer, type Scene, type TextLayer } from '@/lib/scene';
 
 export type Brand = { name: string; handle?: string; serie: string };
+/** Data (AAAA-MM-DD) e horário (HH:MM) do post, mostrados na imagem estilo bloco de notas. */
+export type PostMeta = { date?: string; time?: string };
 export type ImageSpec = { key: string; label: string; w: number; h: number; build: (ctx: CanvasRenderingContext2D, font: string) => Scene };
 
 type Palette = { bg: string; ink: string; muted: string; line: string; tagBg: string; tagInk: string; hiStyle: 'box' | 'gradient'; accent: string; glow?: boolean; topBar?: boolean };
 
 const PALETTES: Record<ImageStyle, Palette> = {
-  notas: { bg: '#121211', ink: '#F5F5F2', muted: '#8D8D88', line: '#2A2A27', tagBg: '#FFD640', tagInk: '#121211', hiStyle: 'box', accent: '#F5B800' },
+  notas: { bg: '#121210', ink: '#F2EEE6', muted: '#8A867E', line: '#262624', tagBg: '#E09A00', tagInk: '#121210', hiStyle: 'box', accent: '#E09A00' },
   claro: { bg: '#F7F7F5', ink: '#0E0F12', muted: '#5E646C', line: '#E3E6EA', tagBg: '#0E0F12', tagInk: '#FFFFFF', hiStyle: 'gradient', accent: '#7C4DFF', topBar: true },
   escuro: { bg: '#0E0F12', ink: '#FFFFFF', muted: '#9AA1AA', line: '#26282E', tagBg: '#FFFFFF', tagInk: '#0E0F12', hiStyle: 'gradient', accent: '#A98BFF', glow: true },
 };
@@ -99,6 +101,49 @@ const serieTag = (n?: number) => (n ? `#${String(n).padStart(3, '0')}` : '#');
 // ---------------------------------------------------------------------------
 // Imagens por formato
 // ---------------------------------------------------------------------------
+
+const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/** Imagem de série no estilo do app de notas do celular (igual ao modelo do Rafael). */
+function notesQuote(c0: PostContent, brand: Brand, serieNumero: number | undefined, meta: PostMeta): ImageSpec {
+  const W = 1080;
+  const H = 1350;
+  const s = W / 800;
+  return {
+    key: 'imagem',
+    label: 'Imagem de série',
+    w: W,
+    h: H,
+    build: (ctx, font) => {
+      const p = PALETTES.notas;
+      const c: Ctx = { ctx, font, W, H, pad: Math.round(62 * s), p, style: 'notas' };
+      const time = /^\d{2}:\d{2}$/.test(meta.time ?? '') ? (meta.time as string) : '07:30';
+      const [y, m, d] = (meta.date ?? '').split('-').map(Number);
+      const dateLine = y && m && d ? `${d} de ${MESES[m - 1]} de ${y} às ${time}` : `às ${time}`;
+      const layers: Layer[] = [
+        text({ x: 53 * s, y: 26 * s, w: 200 * s, text: time.replace(/^0/, ''), size: 22 * s, weight: 700, color: p.ink, lh: 1.1 }),
+        text({ x: 42 * s, y: 80 * s, w: 300 * s, text: '‹ Notas', size: 26 * s, weight: 500, color: p.accent, lh: 1.1 }),
+        text({ x: 0, y: 148 * s, w: W, text: dateLine, size: 16 * s, weight: 500, color: '#7C7972', align: 'center', lh: 1.1 }),
+      ];
+      const tag = text({ x: c.pad, y: 204 * s, w: W - c.pad * 2, text: serieTag(serieNumero), size: 19 * s, weight: 800, color: p.tagInk, bg: p.tagBg, bgMode: 'fit', pad: 6 * s, radius: 6 * s, lh: 1.15 });
+      layers.push(tag);
+      const box = layoutText(ctx, tag, font);
+      layers.push(text({ x: c.pad + box.boxW + 12 * s, y: 210 * s, w: W - c.pad * 2 - box.boxW, text: brand.serie.toUpperCase(), size: 17 * s, weight: 700, color: '#7C7972', lh: 1.1 }));
+      const frase = c0.imagem?.frase || c0.gancho;
+      const top = 250 * s;
+      const bottom = 860 * s;
+      const partial = { id: newId(), type: 'text' as const, x: c.pad, y: top, w: W - c.pad * 2, text: frase, weight: 700, color: p.ink, align: 'left' as const, lh: 1.57, hi: c0.imagem?.destaque || undefined, hiStyle: 'brush' as const, ruled: p.line, cursor: p.accent };
+      const size = fitSize(ctx, partial, font, bottom - top, 46 * s, 30 * s);
+      const main: TextLayer = { ...partial, size };
+      layers.push(main);
+      // Linhas de caderno vazias até a barra de ferramentas.
+      const { h } = layoutText(ctx, main, font);
+      const step = size * 1.57;
+      for (let ly = top + h + step - 2; ly < 870 * s; ly += step) layers.push({ id: newId(), type: 'rect', x: c.pad, y: ly, w: W - c.pad * 2, h: 2, fill: p.line });
+      return { w: W, h: H, bg: p.bg, chrome: { kind: 'notes', ink: p.ink, accent: p.accent, line: p.line }, layers };
+    },
+  };
+}
 
 function quoteImage(c0: PostContent, style: ImageStyle, brand: Brand, serieNumero: number | undefined, prova: boolean): ImageSpec {
   const W = 1080;
@@ -240,11 +285,11 @@ function photoImage(c0: PostContent, style: ImageStyle): ImageSpec {
 }
 
 /** Todas as imagens de um post, na ordem de publicação. */
-export function imagesFor(formato: string, c: PostContent, brand: Brand, serieNumero?: number): ImageSpec[] {
+export function imagesFor(formato: string, c: PostContent, brand: Brand, serieNumero?: number, meta: PostMeta = {}): ImageSpec[] {
   const style = c.estilo ?? 'notas';
   const kind = kindOf(formato);
   if (kind === 'carrossel') return carouselImages(c, style, brand);
-  if (kind === 'imagem') return [quoteImage(c, style, brand, serieNumero, false)];
+  if (kind === 'imagem') return [style === 'notas' && !c.foto ? notesQuote(c, brand, serieNumero, meta) : quoteImage(c, style, brand, serieNumero, false)];
   if (kind === 'prova') return [quoteImage(c, style, brand, serieNumero, true)];
   if (kind === 'video') return [coverImage(c, style, brand)];
   if (kind === 'stories') return storyImages(c, style, brand);

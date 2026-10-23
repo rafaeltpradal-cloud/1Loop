@@ -17,10 +17,11 @@ export type TextLayer = {
   align: 'left' | 'center' | 'right';
   lh: number;
   hi?: string; // trecho em destaque
-  hiStyle?: 'box' | 'gradient';
+  hiStyle?: 'box' | 'gradient' | 'brush';
   hiColor?: string;
   hiInk?: string;
   ruled?: string; // cor das linhas de caderno sob o texto
+  cursor?: string; // cursor piscando no fim do texto (estilo bloco de notas)
   bg?: string; // fundo atrás do texto (etiquetas e botões)
   bgMode?: 'fit' | 'full';
   pad?: number;
@@ -29,7 +30,9 @@ export type TextLayer = {
 export type RectLayer = { id: string; type: 'rect'; x: number; y: number; w: number; h: number; fill: Fill; radius?: number; stroke?: string };
 export type ImageLayer = { id: string; type: 'image'; x: number; y: number; w: number; h: number; media: number; fit: 'cover' | 'contain'; radius?: number };
 export type Layer = TextLayer | RectLayer | ImageLayer;
-export type Scene = { w: number; h: number; bg: Fill; glow?: boolean; layers: Layer[] };
+/** chrome "notes": ícones do app de notas (barra de status, compartilhar, mais e barra de ferramentas). */
+export type Chrome = { kind: 'notes'; ink: string; accent: string; line: string };
+export type Scene = { w: number; h: number; bg: Fill; glow?: boolean; chrome?: Chrome; layers: Layer[] };
 
 export const BRAND_GRADIENT = ['#3B6CF6', '#7C4DFF', '#E0458F', '#F08A24'];
 export const mediaUrl = (id: number, thumb = false) => `/api/media/${id}${thumb ? '?thumb=1' : ''}`;
@@ -163,7 +166,35 @@ function drawText(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
     let cx = l.align === 'center' ? innerX + (innerW - line.width) / 2 : l.align === 'right' ? innerX + innerW - line.width : innerX;
     line.words.forEach((w, k) => {
       const ww = ctx.measureText(w.t).width;
-      if (w.hi && l.hiStyle === 'box') {
+      if (w.hi && l.hiStyle === 'brush') {
+        // Marca-texto: faixa amarela com pontas mais escuras, como pincel.
+        const prev = line.words[k - 1];
+        const next = line.words[k + 1];
+        const startRun = !prev?.hi;
+        const endRun = !next?.hi;
+        const x0 = cx - (startRun ? l.size * 0.08 : 0);
+        const bw = ww + (endRun ? l.size * 0.08 : space) + (startRun ? l.size * 0.08 : 0);
+        const c = l.hiColor ?? '#E8C23A';
+        ctx.fillStyle = c;
+        ctx.fillRect(x0, base - l.size * 0.82, bw + 0.5, l.size * 1.04);
+        // Pontas do pincel, um pouco mais escuras.
+        const edge = l.size * 0.22;
+        if (startRun) {
+          const g = ctx.createLinearGradient(x0, 0, x0 + edge, 0);
+          g.addColorStop(0, 'rgba(120,85,0,0.75)');
+          g.addColorStop(1, 'rgba(120,85,0,0)');
+          ctx.fillStyle = g;
+          ctx.fillRect(x0, base - l.size * 0.82, edge, l.size * 1.04);
+        }
+        if (endRun) {
+          const g = ctx.createLinearGradient(x0 + bw - edge, 0, x0 + bw, 0);
+          g.addColorStop(0, 'rgba(120,85,0,0)');
+          g.addColorStop(1, 'rgba(120,85,0,0.75)');
+          ctx.fillStyle = g;
+          ctx.fillRect(x0 + bw - edge, base - l.size * 0.82, edge, l.size * 1.04);
+        }
+        ctx.fillStyle = l.hiInk ?? '#141210';
+      } else if (w.hi && l.hiStyle === 'box') {
         const next = line.words[k + 1];
         const extend = next?.hi ? space : 0;
         ctx.fillStyle = l.hiColor ?? '#FFD640';
@@ -178,7 +209,88 @@ function drawText(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
       ctx.fillText(w.t, cx, base);
       cx += ww + space;
     });
+    if (l.cursor && i === lines.length - 1) {
+      ctx.fillStyle = l.cursor;
+      ctx.fillRect(cx - space + l.size * 0.1, base - l.size * 0.86, Math.max(3, l.size * 0.07), l.size * 1.08);
+    }
   });
+}
+
+// ---------------------------------------------------------------------------
+// Ícones do app de notas (desenhados, não editáveis)
+// ---------------------------------------------------------------------------
+
+function drawNotesChrome(ctx: CanvasRenderingContext2D, c: Chrome, W: number, H: number) {
+  const s = W / 800; // desenhado numa grade de 800 × 1000
+  ctx.save();
+  ctx.scale(s, s);
+  const h = H / s;
+  // Barra de status: sinal e bateria
+  ctx.fillStyle = c.ink;
+  [6, 9, 12, 15].forEach((bh, i) => ctx.fillRect(663 + i * 7, 49 - bh, 4.5, bh));
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2;
+  roundRect(ctx, 705, 33, 35, 17, 5);
+  ctx.globalAlpha = 0.5;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  roundRect(ctx, 708, 36, 29, 11, 3);
+  ctx.fill();
+  ctx.fillRect(742, 38.5, 2.5, 6);
+  // Navegação: compartilhar e mais
+  ctx.strokeStyle = c.accent;
+  ctx.lineWidth = 2.6;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(681, 82); ctx.lineTo(681, 104);
+  ctx.moveTo(673, 89); ctx.lineTo(681, 81); ctx.lineTo(689, 89);
+  ctx.moveTo(672, 97); ctx.lineTo(670, 97); ctx.lineTo(670, 110); ctx.lineTo(692, 110); ctx.lineTo(692, 97); ctx.lineTo(690, 97);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(742, 96, 14, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = c.accent;
+  [-6, 0, 6].forEach((dx) => { ctx.beginPath(); ctx.arc(742 + dx, 96, 1.9, 0, Math.PI * 2); ctx.fill(); });
+  // Barra de ferramentas
+  const ty = h - 112;
+  ctx.fillStyle = c.line;
+  ctx.fillRect(0, ty, 800, 1.5);
+  const iy = h - 62;
+  ctx.beginPath();
+  // checklist
+  ctx.moveTo(75, iy - 10); ctx.lineTo(79, iy - 6); ctx.lineTo(86, iy - 14);
+  ctx.moveTo(75, iy + 2); ctx.lineTo(79, iy + 6); ctx.lineTo(86, iy - 2);
+  ctx.moveTo(91, iy - 9); ctx.lineTo(103, iy - 9);
+  ctx.moveTo(91, iy + 3); ctx.lineTo(103, iy + 3);
+  ctx.moveTo(75, iy + 12); ctx.lineTo(103, iy + 12);
+  ctx.stroke();
+  // tabela
+  roundRect(ctx, 231, iy - 12, 27, 24, 4);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(231, iy - 4); ctx.lineTo(258, iy - 4);
+  ctx.moveTo(240, iy - 12); ctx.lineTo(240, iy + 12);
+  ctx.stroke();
+  // câmera
+  ctx.beginPath();
+  ctx.moveTo(387, iy - 7); ctx.lineTo(393, iy - 7); ctx.lineTo(396, iy - 12); ctx.lineTo(404, iy - 12); ctx.lineTo(407, iy - 7); ctx.lineTo(413, iy - 7);
+  ctx.lineTo(413, iy + 11); ctx.lineTo(387, iy + 11); ctx.closePath();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(400, iy + 2, 5.5, 0, Math.PI * 2);
+  ctx.stroke();
+  // caneta
+  ctx.beginPath();
+  ctx.moveTo(545, iy + 12); ctx.lineTo(547, iy + 4); ctx.lineTo(562, iy - 11); ctx.lineTo(568, iy - 5); ctx.lineTo(553, iy + 10); ctx.closePath();
+  ctx.moveTo(558, iy - 7); ctx.lineTo(564, iy - 1);
+  ctx.stroke();
+  // nova nota
+  ctx.beginPath();
+  ctx.moveTo(710, iy - 11); ctx.lineTo(699, iy - 11); ctx.lineTo(699, iy + 13); ctx.lineTo(723, iy + 13); ctx.lineTo(723, iy + 2);
+  ctx.moveTo(708, iy + 5); ctx.lineTo(709, iy - 1); ctx.lineTo(720, iy - 12); ctx.lineTo(725, iy - 7); ctx.lineTo(714, iy + 4); ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +358,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, family: s
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, scene.w, scene.h);
   }
+  if (scene.chrome?.kind === 'notes') drawNotesChrome(ctx, scene.chrome, scene.w, scene.h);
   for (const l of scene.layers) {
     if (l.type === 'rect') {
       ctx.fillStyle = fillStyle(ctx, l.fill, l.x, l.y, l.w, l.h);
@@ -308,7 +421,8 @@ export function sanitizeScene(raw: unknown): Scene | null {
         align: l.align === 'center' || l.align === 'right' ? l.align : 'left',
         lh: num(l.lh, 0.8, 2.5, 1.2),
         hi: typeof l.hi === 'string' ? l.hi.slice(0, 200) : undefined,
-        hiStyle: l.hiStyle === 'box' || l.hiStyle === 'gradient' ? l.hiStyle : undefined,
+        hiStyle: l.hiStyle === 'box' || l.hiStyle === 'gradient' || l.hiStyle === 'brush' ? l.hiStyle : undefined,
+        cursor: optColor(l.cursor),
         hiColor: optColor(l.hiColor),
         hiInk: optColor(l.hiInk),
         ruled: optColor(l.ruled),
@@ -319,5 +433,7 @@ export function sanitizeScene(raw: unknown): Scene | null {
       });
     }
   }
-  return { w, h, bg: color(r.bg, '#FFFFFF'), glow: r.glow === true, layers };
+  const ch = r.chrome as Record<string, unknown> | undefined;
+  const chrome: Chrome | undefined = ch && ch.kind === 'notes' ? { kind: 'notes', ink: color(ch.ink, '#F2EEE6'), accent: color(ch.accent, '#E09A00'), line: color(ch.line, '#2A2A27') } : undefined;
+  return { w, h, bg: color(r.bg, '#FFFFFF'), glow: r.glow === true, chrome, layers };
 }

@@ -6,7 +6,7 @@ import { currentBrandId } from '@/lib/brands';
 import { PLANS, isPlanId } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
-import { kindOf, revisePost, type InputImage, type PostContent } from '@/lib/content';
+import { kindOf, revisePost, serieNumberFor, type InputImage, type PostContent } from '@/lib/content';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
 
   try {
     const kind = kindOf(item.formato);
-    const serieNumero = kind === 'imagem' ? strategy.calendario.slice(0, (post.item_index as number) + 1).filter((c) => kindOf(c.formato) === 'imagem').length : undefined;
+    const serieNumero = kind === 'imagem' ? serieNumberFor(strategy.calendario, post.item_index as number, strategy.serie?.inicio) : undefined;
     const { content, resposta } = await revisePost({
       strategy,
       item,

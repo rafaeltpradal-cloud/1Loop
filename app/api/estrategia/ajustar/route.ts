@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { currentBrandId } from '@/lib/brands';
 import { sanitizeAnswers } from '@/lib/interview';
-import { reviseStrategy, type Strategy } from '@/lib/strategy';
+import { applyModelo, reviseStrategy, type Strategy } from '@/lib/strategy';
 import { PLANS, isPlanId } from '@/lib/plans';
 
 export const runtime = 'nodejs';
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
     const { strategy, resposta } = await reviseStrategy(current, sanitizeAnswers(interview?.answers ?? {}), plan, pedido);
     const previous: Strategy = { ...current };
     delete previous.anterior;
-    const next: Strategy = { ...strategy, ajustes: used + 1, anterior: previous };
+    const kept = applyModelo({ ...strategy, serie: { ...strategy.serie, inicio: current.serie?.inicio }, modelo: current.modelo }, null);
+    const next: Strategy = { ...kept, ajustes: used + 1, anterior: previous };
     const { error } = await admin.from('strategies').update({ data: next }).eq('id', row.id).eq('user_id', user.id);
     if (error) throw error;
 

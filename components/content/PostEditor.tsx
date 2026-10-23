@@ -97,7 +97,12 @@ export function PostEditor({
   const dirty = JSON.stringify(c) !== saved;
 
   // ----- imagens -----
-  const specs = useMemo(() => imagesFor(post.formato, c, brand, serieNumero), [post.formato, c, brand, serieNumero]);
+  // Data e horário que aparecem na imagem estilo bloco de notas (o do agendamento, se houver).
+  const metaTime = pub.scheduledAt
+    ? new Date(pub.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })
+    : defaultTime;
+  const metaDate = pub.scheduledAt ? new Date(pub.scheduledAt).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : post.date;
+  const specs = useMemo(() => imagesFor(post.formato, c, brand, serieNumero, { date: metaDate, time: metaTime }), [post.formato, c, brand, serieNumero, metaDate, metaTime]);
   const [urls, setUrls] = useState<string[]>([]);
   const [slide, setSlide] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);

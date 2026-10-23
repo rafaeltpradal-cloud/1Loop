@@ -8,7 +8,7 @@ import { PLANS, isPlanId, maxVersions } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
-import { generatePost, kindOf, POST_COLUMNS, type InputImage, type PostContent } from '@/lib/content';
+import { generatePost, kindOf, POST_COLUMNS, serieNumberFor, type InputImage, type PostContent } from '@/lib/content';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
   const date = itemDate(item, planStartFrom(strategyRow.created_at as string));
   const kind = kindOf(item.formato);
-  const serieNumero = kind === 'imagem' ? strategy.calendario.slice(0, index + 1).filter((c) => kindOf(c.formato) === 'imagem').length : undefined;
+  const serieNumero = kind === 'imagem' ? serieNumberFor(strategy.calendario, index, strategy.serie?.inicio) : undefined;
 
   try {
     const answers = resolveAnswers(sanitizeAnswers(interview?.answers ?? {}));
@@ -95,6 +95,7 @@ export async function POST(req: Request) {
     const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x) });
     // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
     if (prev?.estilo) content.estilo = prev.estilo;
+    else if (strategy.modelo?.estilo) content.estilo = strategy.modelo.estilo;
     if (prev?.foto) content.foto = prev.foto;
     if (prev?.ajustes) content.ajustes = prev.ajustes;
 

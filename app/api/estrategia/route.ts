@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { sanitizeAnswers } from '@/lib/interview';
-import { generateStrategy } from '@/lib/strategy';
+import { applyModelo, generateStrategy, type Strategy } from '@/lib/strategy';
 import { isPlanId } from '@/lib/plans';
 import { currentBrandId } from '@/lib/brands';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -40,7 +40,10 @@ export async function POST() {
       { status: 429 },
     );
   try {
-    const { strategy, source } = await generateStrategy(sanitizeAnswers(interview.answers), plan);
+    const generated = await generateStrategy(sanitizeAnswers(interview.answers), plan);
+    const { data: prevRow } = await supabase.from('strategies').select('data').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const strategy = applyModelo(generated.strategy, (prevRow?.data as Strategy | undefined) ?? null);
+    const source = generated.source;
     const { error } = await supabase.from('strategies').insert({ user_id: user.id, brand_id: brandId, plan, source, data: strategy });
     if (error) throw error;
     return NextResponse.json({ ok: true, source });

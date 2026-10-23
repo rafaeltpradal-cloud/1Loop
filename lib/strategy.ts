@@ -17,7 +17,10 @@ export type Strategy = {
   resumo: string;
   objetivo: string;
   posicionamento: string;
-  serie: { nome: string; descricao: string };
+  /** inicio: número do primeiro post da série nesta estratégia (o contador continua entre meses). */
+  serie: { nome: string; descricao: string; inicio?: number };
+  /** Modelo fixo da marca: todo post sai neste formato e estilo (ex.: Imagem de série no bloco de notas). */
+  modelo?: { formato: string; estilo?: 'notas' | 'claro' | 'escuro'; serie?: string };
   ritmo: { frequencia: string; horario: string; redes: string[] };
   pilares: Pillar[];
   funil: FunnelStage[];
@@ -306,4 +309,26 @@ export function demoStrategy(answers: Answers, plan: PlanId): Strategy {
       { nome: 'Leads e vendas', porque: 'O resultado que importa no fim do mês.' },
     ],
   };
+}
+
+/**
+ * Aplica o modelo fixo da marca (se houver) e continua o contador da série a partir da estratégia anterior.
+ * Usado ao gerar uma estratégia nova e ao ajustar a atual com a IA.
+ */
+export function applyModelo(next: Strategy, prev?: Strategy | null): Strategy {
+  const modelo = next.modelo ?? prev?.modelo;
+  const out: Strategy = { ...next, serie: { ...next.serie } };
+  if (modelo) {
+    out.modelo = modelo;
+    out.calendario = out.calendario.map((c) => ({ ...c, formato: modelo.formato }));
+    if (modelo.serie) out.serie.nome = modelo.serie;
+  }
+  if (out.serie.inicio === undefined && prev) {
+    const sameSerie = prev.serie?.nome?.trim().toLowerCase() === out.serie.nome.trim().toLowerCase();
+    if (sameSerie) {
+      const usados = prev.calendario.filter((c) => /imagem de s[ée]rie/i.test(c.formato)).length;
+      out.serie.inicio = (prev.serie.inicio ?? 1) + usados;
+    }
+  }
+  return out;
 }
