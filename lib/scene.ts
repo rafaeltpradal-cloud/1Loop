@@ -53,8 +53,10 @@ export function tokenize(text: string, hi?: string): Word[][] {
   const paragraphs = text.split('\n').map((p) => p.split(/\s+/).filter(Boolean).map((t) => ({ t, hi: false })));
   if (hiWords.length) {
     const flat = paragraphs.flat();
-    for (let i = 0; i + hiWords.length <= flat.length; i++) {
-      if (hiWords.every((h, k) => flat[i + k].t === h)) {
+    // Ignora pontuação e maiúsculas; o destaque costuma estar no fim, então procura de trás para frente.
+    const norm = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+    for (let i = flat.length - hiWords.length; i >= 0; i--) {
+      if (hiWords.every((h, k) => norm(flat[i + k].t) === norm(h))) {
         for (let k = 0; k < hiWords.length; k++) flat[i + k].hi = true;
         break;
       }
