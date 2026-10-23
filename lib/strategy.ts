@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createJson } from '@/lib/aiJson';
 import { QUESTIONS, resolveAnswers, type Answers } from '@/lib/interview';
 import { PLANS, type PlanId } from '@/lib/plans';
 
@@ -81,13 +82,6 @@ function interviewText(answers: Answers) {
   }).join('\n');
 }
 
-function extractJson(text: string): unknown {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) throw new Error('Resposta sem JSON');
-  return JSON.parse(text.slice(start, end + 1));
-}
-
 export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
   // "Outro" vira o texto que a pessoa escreveu.
   const answers = resolveAnswers(rawAnswers);
@@ -96,7 +90,7 @@ export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promi
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
-  const message = await client.messages.create({
+  const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 8000,
     system: SYSTEM,
@@ -108,8 +102,7 @@ export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promi
     ],
   });
 
-  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-  return { strategy: normalizeStrategy(extractJson(text), answers, plan), source: 'ai' };
+  return { strategy: normalizeStrategy(parsed, answers, plan), source: 'ai' };
 }
 
 const NETWORK_NAMES = ['Instagram', 'LinkedIn', 'TikTok', 'YouTube Shorts', 'Facebook', 'Threads'];
@@ -127,7 +120,7 @@ export async function reviseStrategy(
   delete atual.ajustes;
   delete atual.anterior;
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
-  const message = await client.messages.create({
+  const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 8000,
     system: `${SYSTEM.replace('Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.', '')}
@@ -153,8 +146,7 @@ Devolva a estratégia COMPLETA já ajustada, nesse formato, e mais o campo "resp
       },
     ],
   });
-  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-  const raw = extractJson(text) as Record<string, unknown>;
+  const raw = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
   // Redes: as que o ajuste devolveu (só nomes conhecidos); se não vier nenhuma, as de antes.
   const ritmo = (raw.ritmo && typeof raw.ritmo === 'object' ? raw.ritmo : {}) as Record<string, unknown>;
   const novas = arr<unknown>(ritmo.redes).filter((r): r is string => typeof r === 'string' && NETWORK_NAMES.includes(r));

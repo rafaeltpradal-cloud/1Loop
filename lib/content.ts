@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { createJson } from '@/lib/aiJson';
 import { QUESTIONS, type Answers } from '@/lib/interview';
 import type { CalendarItem, Strategy } from '@/lib/strategy';
 import { formatLong, specialDatesByDay, fromISO } from '@/lib/dates';
@@ -109,17 +110,10 @@ Formato exato do JSON (inclua só os campos do formato pedido, além dos comuns)
 }`;
 }
 
-function extractJson(text: string): unknown {
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if (start === -1 || end <= start) throw new Error('Resposta sem JSON');
-  return JSON.parse(text.slice(start, end + 1));
-}
-
 export async function generatePost(input: GenerateInput): Promise<{ content: PostContent; source: 'ai' | 'demo' }> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) return { content: demoContent(input), source: 'demo' };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
-  const message = await client.messages.create({
+  const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 3000,
     system: SYSTEM,
@@ -135,8 +129,7 @@ export async function generatePost(input: GenerateInput): Promise<{ content: Pos
       },
     ],
   });
-  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-  return { content: normalizeContent(extractJson(text), input), source: 'ai' };
+  return { content: normalizeContent(parsed, input), source: 'ai' };
 }
 
 /** Ajusta um conteúdo pronto conforme o pedido da pessoa. Devolve o conteúdo novo e uma frase do que mudou. */
@@ -156,7 +149,7 @@ export async function revisePost(input: GenerateInput & { current: PostContent; 
     dica: current.dica,
   };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
-  const message = await client.messages.create({
+  const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 3000,
     system: `${SYSTEM}
@@ -182,8 +175,7 @@ Devolva o JSON COMPLETO do conteúdo ajustado, no mesmo formato acima, e mais o 
       },
     ],
   });
-  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
-  const raw = extractJson(text) as Record<string, unknown>;
+  const raw = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
   const content = normalizeContent(raw, input);
   // Mantém o que é da pessoa: estilo, foto, vídeo e edições visuais (se o texto das imagens não mudou).
   if (current.estilo) content.estilo = current.estilo;
