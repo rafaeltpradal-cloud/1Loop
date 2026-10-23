@@ -9,6 +9,8 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
   const { bemvindo } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
+  // No Multi, a entrevista é da marca em uso.
+  const brandMode = ctx.brands.length > 1 && ctx.brandName.trim().toLowerCase() !== ctx.name.trim().toLowerCase();
   const { data } = await supabase.from('interviews').select('answers').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle();
 
   return (
@@ -21,10 +23,12 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Passo 1 · Entrevista</div>
         <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-          <span className="graphite">{ctx.firstName}, vamos conhecer você.</span>
+          <span className="graphite">{brandMode ? `Vamos conhecer a ${ctx.brandName}.` : `${ctx.firstName}, vamos conhecer você.`}</span>
         </h1>
         <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 680 }}>
-          Suas respostas viram o seu perfil de voz e a base da sua estratégia de 30 dias. Elas ficam salvas a cada passo.
+          {brandMode
+            ? 'Responda pensando nesta marca: as respostas viram o perfil de voz e a estratégia de 30 dias só dela. As outras marcas não mudam.'
+            : 'Suas respostas viram o seu perfil de voz e a base da sua estratégia de 30 dias. Elas ficam salvas a cada passo.'}
         </p>
       </div>
       <Interview initial={sanitizeAnswers(data?.answers)} hasStrategy={ctx.hasStrategy} />

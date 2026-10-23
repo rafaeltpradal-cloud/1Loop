@@ -7,9 +7,8 @@ import { createBrand, deleteBrand, renameBrand, switchBrand } from './actions';
 export type BrandInfo = { id: number; name: string; locked: boolean; interview: boolean; strategy: boolean; networks: string[] };
 
 function status(b: BrandInfo) {
-  if (!b.interview) return 'Falta a entrevista';
-  if (!b.strategy) return 'Falta gerar a estratégia';
-  return b.networks.length ? `Conectada: ${b.networks.join(', ')}` : 'Estratégia pronta · nenhuma rede conectada';
+  const step = !b.interview ? 'Falta a entrevista' : !b.strategy ? 'Falta gerar a estratégia' : 'Estratégia pronta';
+  return `${step} · ${b.networks.length ? `Conectada: ${b.networks.join(', ')}` : 'nenhuma rede conectada'}`;
 }
 
 export function BrandManager({ brands, current, limit }: { brands: BrandInfo[]; current: number; limit: number }) {
