@@ -177,7 +177,7 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
       </div>
 
       <aside className="card" style={{ flex: '1 1 280px', minWidth: 0, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'none' }}>
-        <div className="eyebrow">Seu perfil de voz</div>
+        <div className="eyebrow">Seu perfil de estilo</div>
         {blocks.map((b) => (
           <div key={b} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{b}</div>

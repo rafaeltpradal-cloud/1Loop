@@ -35,7 +35,7 @@ export const PLANS: Record<PlanId, Plan> = {
     refacoes: 3,
     postAdjusts: 10,
     strategyAdjusts: 10,
-    features: ['Entrevista e perfil de voz', 'Painel de estratégia de 30 dias (2 versões por mês)', 'Com ou sem rosto, todos os formatos', 'Suas fotos e referências nos posts', 'Publicação automática'],
+    features: ['Entrevista e perfil de estilo', 'Painel de estratégia de 30 dias (2 versões por mês)', 'Com ou sem rosto, todos os formatos', 'Suas fotos e referências nos posts', 'Publicação automática'],
   },
   pro: {
     id: 'pro',

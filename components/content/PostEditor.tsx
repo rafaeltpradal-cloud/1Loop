@@ -410,7 +410,7 @@ export function PostEditor({
         <section className="card editorPanel" aria-label="Editar conteúdo">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h2 style={{ fontSize: 17 }}>Texto e conteúdo</h2>
-            <span className="muted" style={{ fontSize: 12 }}>{post.source === 'demo' ? 'Versão de demonstração' : 'Escrito pela IA com a sua voz'}</span>
+            <span className="muted" style={{ fontSize: 12 }}>{post.source === 'demo' ? 'Versão de demonstração' : 'Escrito pela IA no seu estilo'}</span>
           </div>
 
           {c.imagem && (

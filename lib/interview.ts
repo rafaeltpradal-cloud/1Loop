@@ -76,19 +76,19 @@ export const QUESTIONS: Question[] = [
     options: ['Sim, com rosto (fotos e vídeos)', 'Não, sem rosto', 'Às vezes'],
   },
   {
-    id: 'tom', block: 'Voz', kind: 'single',
+    id: 'tom', block: 'Estilo', kind: 'single',
     title: 'Qual tom combina com você?',
     hint: 'Você pode ajustar depois de ver os primeiros conteúdos.',
     options: ['Provocativo e opinativo', 'Didático', 'Bastidores e histórias', 'Analítico, com dados', 'Leve e bem-humorado'],
   },
   {
-    id: 'referencias', block: 'Voz', kind: 'text', optional: true,
+    id: 'referencias', block: 'Estilo', kind: 'text', optional: true,
     title: 'Quem você admira nas redes?',
     hint: 'Opcional. Ajuda a entender o estilo que você gosta.',
     placeholder: 'Nomes ou @perfis',
   },
   {
-    id: 'limites', block: 'Voz', kind: 'text', optional: true,
+    id: 'limites', block: 'Estilo', kind: 'text', optional: true,
     title: 'Tem algo que você nunca falaria ou faria nos conteúdos?',
     hint: 'Opcional. Assuntos, palavras ou formatos que não combinam com você.',
     placeholder: 'Ex.: Não falo de política; não faço dancinha',
