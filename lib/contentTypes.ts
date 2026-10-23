@@ -27,6 +27,7 @@ export type PostContent = {
   foto?: number; // id da foto (biblioteca) usada no post
   video?: number; // id do vídeo (biblioteca) para reels
   canvas?: Record<string, CanvasScene>; // imagens editadas no editor visual (Pro e Multi), por imagem
+  ajustes?: number; // pedidos de ajuste feitos à IA neste post (só o servidor grava)
 };
 
 export type MediaItem = { id: number; kind: 'foto' | 'referencia' | 'video'; width: number | null; height: number | null; duration_s?: number | null };
@@ -83,6 +84,8 @@ export function autoBlocker(rede: string, formato: string, c: Pick<PostContent, 
   return null;
 }
 export const MAX_VERSIONS = 6; // 1 geração + 5 refações por post
+export const MAX_POST_ADJUSTS = 15; // pedidos de ajuste à IA por post
+export const MAX_STRATEGY_ADJUSTS = 10; // pedidos de ajuste à IA por estratégia
 
 export type FormatKind = 'carrossel' | 'imagem' | 'video' | 'stories' | 'thread' | 'texto' | 'prova';
 

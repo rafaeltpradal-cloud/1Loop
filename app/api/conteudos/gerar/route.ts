@@ -73,6 +73,7 @@ export async function POST(req: Request) {
     // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
     if (prev?.estilo) content.estilo = prev.estilo;
     if (prev?.foto) content.foto = prev.foto;
+    if (prev?.ajustes) content.ajustes = prev.ajustes;
 
     const fields = {
       date,

@@ -3,6 +3,8 @@ import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { StrategyView } from '@/components/StrategyView';
 import { RegenerateButton } from '@/components/RegenerateButton';
+import { StrategyAi } from '@/components/StrategyAi';
+import { MAX_STRATEGY_ADJUSTS } from '@/lib/contentTypes';
 import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, planStartFrom } from '@/lib/dates';
 
@@ -54,7 +56,13 @@ export default async function EstrategiaPage() {
           <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
         </div>
       </div>
-      <StrategyView s={data.data as Strategy} strategyId={Number(data.id)} start={start} today={today} />
+      <StrategyAi
+        key={Number(data.id)}
+        left={MAX_STRATEGY_ADJUSTS - ((data.data as Strategy).ajustes ?? 0)}
+        max={MAX_STRATEGY_ADJUSTS}
+        canUndo={!!(data.data as Strategy).anterior}
+      />
+      <StrategyView s={{ ...(data.data as Strategy), anterior: undefined }} strategyId={Number(data.id)} start={start} today={today} />
       <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '999 1 360px', minWidth: 0 }}>
           <div className="eyebrow">Próximo passo</div>

@@ -7,7 +7,7 @@ import { NetworkIcon } from '@/components/NetworkIcon';
 import { StatusPill } from '@/components/content/WeekBoard';
 import { networkByName } from '@/lib/networks';
 import { formatLong } from '@/lib/dates';
-import { autoBlocker, canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
+import { MAX_POST_ADJUSTS, autoBlocker, canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
 import { downloadImage, imagesFor, renderImage, type Brand } from '@/lib/postImage';
 import { mediaUrl, type Scene } from '@/lib/scene';
 import { MediaLibrary } from '@/components/content/MediaLibrary';
@@ -15,6 +15,7 @@ import { CanvasEditor } from '@/components/content/CanvasEditor';
 import { savePost, setPostStatus } from '@/app/app/conteudos/actions';
 import { schedulePost, uploadPostAsset } from '@/app/app/conteudos/publish';
 import { AutoPublish, type AutoInfo } from '@/components/content/AutoPublish';
+import { AiAsk, type AiReply } from '@/components/AiAsk';
 
 const OPEN_URL: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/feed/?shareActive=true',
@@ -34,6 +35,14 @@ const slug = (t: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'post';
+
+const AI_SUGGESTIONS: Record<string, string[]> = {
+  carrossel: ['Deixe o gancho da capa mais forte', 'Encurte o texto dos slides', 'Termine pedindo para salvar o post', 'Tom mais descontraído'],
+  video: ['Roteiro mais curto, até 30 segundos', 'Gancho mais provocativo nos 3 primeiros segundos', 'Troque a chamada final por seguir o perfil', 'Fala mais natural, como conversa'],
+  stories: ['Troque a enquete por uma caixinha de perguntas', 'Textos mais curtos', 'Termine com o link da oferta'],
+  thread: ['Corte para 5 posts', 'Primeiro post mais polêmico', 'Mais exemplos práticos'],
+  padrao: ['Deixe mais curto e direto', 'Tom mais descontraído', 'Termine com uma pergunta para comentar', 'Hashtags mais específicas'],
+};
 
 // undefined some na ida ao servidor; null avisa que foi removido.
 const toPayload = (c: PostContent) => ({ ...c, foto: c.foto ?? null, video: c.video ?? null, canvas: c.canvas ?? null });
@@ -75,6 +84,7 @@ export function PostEditor({
   const [redoing, setRedoing] = useState(false);
   const [pending, startTransition] = useTransition();
   const [picker, setPicker] = useState<'' | 'foto' | 'video'>('');
+  const [aiPrev, setAiPrev] = useState<PostContent | null>(null);
   const [editing, setEditing] = useState(false);
 
   const kind = kindOf(post.formato);
@@ -230,6 +240,16 @@ export function PostEditor({
     });
   }
 
+  async function askAi(pedido: string): Promise<AiReply> {
+    const res = await fetch('/api/conteudos/ajustar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ postId: post.id, pedido }) });
+    const json = (await res.json().catch(() => ({}))) as { content?: PostContent; resposta?: string; left?: number; error?: string };
+    if (!res.ok || !json.content) return { ok: false, error: json.error || 'A IA não conseguiu ajustar agora.' };
+    setAiPrev(c);
+    setC(json.content);
+    setSlide(0);
+    return { ok: true, resposta: json.resposta ?? 'Pronto, ajustei.', left: json.left };
+  }
+
   function pickVideo(m: MediaItem | null) {
     setPicker('');
     set({ video: m ? m.id : undefined });
@@ -260,6 +280,32 @@ export function PostEditor({
           <StatusPill status={status} />
         </div>
       </div>
+
+      {status !== 'publicado' && status !== 'publicando' && (
+        <AiAsk
+          title="Peça à IA"
+          hint="Diga o que quer mudar neste post. A IA ajusta e você revisa antes de salvar."
+          placeholder="Ex.: deixe o gancho mais forte e fale do lançamento de sexta"
+          suggestions={AI_SUGGESTIONS[kind] ?? AI_SUGGESTIONS.padrao}
+          left={MAX_POST_ADJUSTS - (post.content.ajustes ?? 0)}
+          max={MAX_POST_ADJUSTS}
+          onAsk={askAi}
+        >
+          {aiPrev && (
+            <span className="aiAskActs">
+              {dirty ? (
+                <>
+                  <button type="button" className="btn3d btnSm" onClick={save} disabled={pending}>{pending ? 'Salvando…' : 'Salvar'}</button>
+                  <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => (setC(aiPrev), setAiPrev(null))}>Desfazer</button>
+                </>
+              ) : (
+                <span style={{ fontSize: 13 }}>Salvo ✓</span>
+              )}
+              {aiPrev.canvas && !c.canvas && dirty && <span style={{ fontSize: 12, fontWeight: 500, flexBasis: '100%' }}>O texto das imagens mudou, então as edições feitas no canvas voltaram ao modelo.</span>}
+            </span>
+          )}
+        </AiAsk>
+      )}
 
       <div className="postGrid">
         {/* Prévia */}

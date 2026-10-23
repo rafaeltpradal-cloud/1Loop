@@ -139,6 +139,65 @@ export async function generatePost(input: GenerateInput): Promise<{ content: Pos
   return { content: normalizeContent(extractJson(text), input), source: 'ai' };
 }
 
+/** Ajusta um conteúdo pronto conforme o pedido da pessoa. Devolve o conteúdo novo e uma frase do que mudou. */
+export async function revisePost(input: GenerateInput & { current: PostContent; pedido: string }): Promise<{ content: PostContent; resposta: string }> {
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
+  const { current, pedido } = input;
+  const atual = {
+    gancho: current.gancho,
+    legenda: current.legenda,
+    hashtags: current.hashtags,
+    cta: current.cta,
+    slides: current.slides,
+    imagem: current.imagem,
+    roteiro: current.roteiro,
+    stories: current.stories,
+    partes: current.partes,
+    dica: current.dica,
+  };
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
+  const message = await client.messages.create({
+    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+    max_tokens: 3000,
+    system: `${SYSTEM}
+Agora você está AJUSTANDO um conteúdo que já existe, a pedido do cliente. Mude só o que o pedido exige e mantenha o resto igual (mesmo formato, mesma rede, mesmo tema, salvo se o pedido mandar mudar). Se o pedido for impossível ou contrário às regras (inventar números, depoimentos, fatos), faça o mais próximo possível sem inventar e explique em "resposta".`,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          ...(input.foto ? [{ type: 'image' as const, source: { type: 'base64' as const, media_type: input.foto.mediaType, data: input.foto.data } }] : []),
+          {
+            type: 'text' as const,
+            text: `${promptFor(input)}
+
+Conteúdo atual (JSON):
+${JSON.stringify(atual)}
+
+Pedido do cliente:
+"""${pedido}"""
+
+Devolva o JSON COMPLETO do conteúdo ajustado, no mesmo formato acima, e mais o campo "resposta": uma frase curta (até 25 palavras), em segunda pessoa, dizendo o que você mudou.`,
+          },
+        ],
+      },
+    ],
+  });
+  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+  const raw = extractJson(text) as Record<string, unknown>;
+  const content = normalizeContent(raw, input);
+  // Mantém o que é da pessoa: estilo, foto, vídeo e edições visuais (se o texto das imagens não mudou).
+  if (current.estilo) content.estilo = current.estilo;
+  if (current.foto) content.foto = current.foto;
+  if (current.video) content.video = current.video;
+  const sameVisual =
+    JSON.stringify(content.slides ?? null) === JSON.stringify(current.slides ?? null) &&
+    JSON.stringify(content.imagem ?? null) === JSON.stringify(current.imagem ?? null) &&
+    (content.roteiro?.capa ?? '') === (current.roteiro?.capa ?? '');
+  if (current.canvas && sameVisual) content.canvas = current.canvas;
+  const resposta = typeof raw.resposta === 'string' && raw.resposta.trim() ? raw.resposta.trim().slice(0, 240) : 'Pronto, ajustei o conteúdo.';
+  return { content, resposta };
+}
+
 // ---------------------------------------------------------------------------
 // Normalização (a tela sempre recebe o que precisa)
 // ---------------------------------------------------------------------------

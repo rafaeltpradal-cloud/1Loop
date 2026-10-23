@@ -10,6 +10,9 @@ export type WeekPlan = { semana: number; foco: string; acoes: string[] };
 export type Indicator = { nome: string; porque: string };
 
 export type Strategy = {
+  /** Pedidos de ajuste feitos à IA nesta estratégia e a versão anterior (para desfazer). Só o servidor grava. */
+  ajustes?: number;
+  anterior?: Strategy;
   resumo: string;
   objetivo: string;
   posicionamento: string;
@@ -107,6 +110,63 @@ export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promi
 
   const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
   return { strategy: normalizeStrategy(extractJson(text), answers, plan), source: 'ai' };
+}
+
+const NETWORK_NAMES = ['Instagram', 'LinkedIn', 'TikTok', 'YouTube Shorts', 'Facebook', 'Threads'];
+
+/** Ajusta a estratégia atual conforme o pedido da pessoa, mantendo o que não foi pedido para mudar. */
+export async function reviseStrategy(
+  current: Strategy,
+  rawAnswers: Answers,
+  plan: PlanId,
+  pedido: string,
+): Promise<{ strategy: Strategy; resposta: string }> {
+  if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
+  const answers = resolveAnswers(rawAnswers);
+  const atual: Partial<Strategy> = { ...current };
+  delete atual.ajustes;
+  delete atual.anterior;
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
+  const message = await client.messages.create({
+    model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
+    max_tokens: 8000,
+    system: `${SYSTEM.replace('Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.', '')}
+Agora você está AJUSTANDO uma estratégia que já existe, a pedido do cliente. Mude só o que o pedido exige e mantenha todo o resto igual, inclusive os dias do calendário que não precisam mudar. Se o pedido incluir uma rede nova, ela pode entrar em "ritmo.redes" e no calendário. Não invente números de resultado.
+Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.`,
+    messages: [
+      {
+        role: 'user',
+        content: `Plano contratado: ${PLANS[plan].name} (${PLANS[plan].rhythm}).
+
+Entrevista do cliente:
+${interviewText(answers)}
+
+Estratégia atual (JSON):
+${JSON.stringify(atual)}
+
+Pedido do cliente:
+"""${pedido}"""
+
+${schemaFor(plan)}
+
+Devolva a estratégia COMPLETA já ajustada, nesse formato, e mais o campo "resposta": até 2 frases curtas, em segunda pessoa, dizendo o que mudou.`,
+      },
+    ],
+  });
+  const text = message.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+  const raw = extractJson(text) as Record<string, unknown>;
+  // Redes: as que o ajuste devolveu (só nomes conhecidos); se não vier nenhuma, as de antes.
+  const ritmo = (raw.ritmo && typeof raw.ritmo === 'object' ? raw.ritmo : {}) as Record<string, unknown>;
+  const novas = arr<unknown>(ritmo.redes).filter((r): r is string => typeof r === 'string' && NETWORK_NAMES.includes(r));
+  const redes = novas.length ? Array.from(new Set(novas)) : current.ritmo.redes;
+  const strategy = normalizeStrategy(raw, { ...answers, redes }, plan);
+  // Mudanças de dia feitas à mão continuam valendo nos posts que não mudaram.
+  strategy.calendario = strategy.calendario.map((c) => {
+    const old = current.calendario.find((o) => o.dia === c.dia);
+    return old?.data && old.tema === c.tema ? { ...c, data: old.data } : c;
+  });
+  const resposta = typeof raw.resposta === 'string' && raw.resposta.trim() ? raw.resposta.trim().slice(0, 400) : 'Pronto, ajustei a estratégia.';
+  return { strategy, resposta };
 }
 
 // ---------------------------------------------------------------------------
