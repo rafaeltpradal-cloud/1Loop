@@ -11,7 +11,9 @@ export const THEME_SCRIPT = `(function(){
   function read(){try{var v=localStorage.getItem(KEY);return v==='light'||v==='dark'||v==='system'?v:DEF;}catch(e){return DEF;}}
   function apply(pref){
     pref=pref||read();
-    var dark=pref==='dark'||(pref==='system'&&!!mq&&mq.matches);
+    // A landing (página inicial) foi desenhada só no claro: lá o tema escuro não vale.
+    var landing=location.pathname==='/';
+    var dark=!landing&&(pref==='dark'||(pref==='system'&&!!mq&&mq.matches));
     var el=document.documentElement;
     el.setAttribute('data-theme',dark?'dark':'light');
     el.setAttribute('data-theme-pref',pref);
