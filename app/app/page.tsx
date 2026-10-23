@@ -24,8 +24,8 @@ export default async function AppHome() {
   const nextStep = steps.find((s) => !s.done) ?? steps[0];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28, maxWidth: 1040 }}>
-      <div className="rise" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="page">
+      <div className="pageHead rise">
         <div className="eyebrow">Início</div>
         <h1 className="pageTitle">
           <span className="graphite">Olá,</span> <span className="grad">{ctx.firstName}.</span>

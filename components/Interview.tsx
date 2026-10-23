@@ -164,7 +164,7 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btnGhost btnSm" type="button" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>Voltar</button>
+          <button className="btnGhost" type="button" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>Voltar</button>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             {q.optional && !isLast && (
               <button className="linkBtn" type="button" onClick={next}>Pular</button>

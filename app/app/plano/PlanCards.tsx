@@ -44,7 +44,7 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
                 ...(isCurrent ? { borderColor: 'var(--violet)', boxShadow: '0 0 0 1px var(--violet)' } : {}),
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, minHeight: 26 }}>
                 <b style={{ fontSize: 20 }}>{p.name}</b>
                 {isCurrent && <span className="pill" style={{ minHeight: 26, fontSize: 11, color: 'var(--violet)' }}>Seu plano</span>}
               </div>
@@ -62,7 +62,7 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
               </ul>
               <div style={{ flex: 1 }} />
               {isCurrent ? (
-                <div className="muted" style={{ fontSize: 13, fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center' }}>Plano atual</div>
+                <div className="muted" style={{ fontSize: 13, fontWeight: 600, minHeight: 32, display: 'flex', alignItems: 'center' }}>Plano atual</div>
               ) : confirming === id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--ink-2)' }}>

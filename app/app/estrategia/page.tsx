@@ -43,9 +43,9 @@ export default async function EstrategiaPage() {
   const today = isoInBrazil();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="page">
+      <div className="pageHeadRow">
+        <div className="pageHead">
           <div className="eyebrow">Estratégia</div>
           <h1 className="pageTitle">
             <span className="graphite">Seu plano de</span> <span className="grad">30 dias.</span>

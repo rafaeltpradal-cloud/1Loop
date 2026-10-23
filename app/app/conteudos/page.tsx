@@ -57,8 +57,8 @@ export default async function ConteudosPage() {
   const done = items.filter((i) => i.post).length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="page">
+      <div className="pageHead">
         <div className="eyebrow">Conteúdos</div>
         <h1 className="pageTitle">
           <span className="graphite">Conteúdos da</span> <span className="grad">semana.</span>

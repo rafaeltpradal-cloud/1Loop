@@ -19,8 +19,8 @@ export default async function PerfilPage() {
   const answers = (interview?.answers ?? {}) as Answers;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+    <div className="page">
+      <div className="pageHead">
         <div className="eyebrow">Perfil</div>
         <h1 className="pageTitle"><span className="graphite">{ctx.name}</span></h1>
       </div>

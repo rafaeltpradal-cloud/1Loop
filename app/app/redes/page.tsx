@@ -48,8 +48,8 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   const ig = stateOf('instagram', instagramConfigured());
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1180 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
+    <div className="page">
+      <div className="pageHead">
         <div className="eyebrow">Redes</div>
         <h1 className="pageTitle">
           <span className="graphite">Suas</span> <span className="grad">redes.</span>

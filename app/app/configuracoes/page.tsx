@@ -40,9 +40,9 @@ export default async function ConfiguracoesPage() {
   const plan = PLANS[ctx.plan];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 820 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="page">
+      <div className="pageHeadRow">
+        <div className="pageHead">
           <div className="eyebrow">Conta</div>
           <h1 className="pageTitle"><span className="graphite">Configurações</span></h1>
         </div>

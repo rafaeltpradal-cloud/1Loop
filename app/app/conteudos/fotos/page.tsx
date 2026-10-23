@@ -12,8 +12,8 @@ export default async function FotosPage() {
   const { data } = await supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).order('created_at', { ascending: false });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 1180 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div className="page">
+      <div className="pageHead">
         <div className="eyebrow">Conteúdos</div>
         <h1 className="pageTitle">
           <span className="graphite">Fotos e</span> <span className="grad">referências.</span>

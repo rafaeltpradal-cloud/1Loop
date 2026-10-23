@@ -14,13 +14,13 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
   const { data } = await supabase.from('interviews').select('answers').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1100 }}>
+    <div className="page">
       {bemvindo && (
         <div className="formNote rise" role="status">
           Pronto, {ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.
         </div>
       )}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="pageHead">
         <div className="eyebrow">Entrevista</div>
         <h1 className="pageTitle">
           <span className="graphite">{brandMode ? `Vamos conhecer a marca ${ctx.brandName}.` : `${ctx.firstName}, vamos conhecer você.`}</span>
