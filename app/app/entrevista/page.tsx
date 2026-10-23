@@ -23,7 +23,7 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div className="eyebrow">Passo 1 · Entrevista</div>
         <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-          <span className="graphite">{brandMode ? `Vamos conhecer a ${ctx.brandName}.` : `${ctx.firstName}, vamos conhecer você.`}</span>
+          <span className="graphite">{brandMode ? `Vamos conhecer a marca ${ctx.brandName}.` : `${ctx.firstName}, vamos conhecer você.`}</span>
         </h1>
         <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, maxWidth: 680 }}>
           {brandMode
