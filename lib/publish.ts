@@ -16,7 +16,7 @@ type Admin = ReturnType<typeof createAdminClient>;
 export async function getConnection(admin: Admin, brandId: number, network: string) {
   const { data } = await admin
     .from('social_connections')
-    .select('external_id, name, access_token, expires_at, meta')
+    .select('external_id, name, access_token, expires_at, meta, scopes')
     .eq('brand_id', brandId)
     .eq('network', network)
     .maybeSingle();
@@ -26,6 +26,7 @@ export async function getConnection(admin: Admin, brandId: number, network: stri
     name: (data.name as string | null) ?? '',
     expiresAt: data.expires_at as string,
     meta: (data.meta as Record<string, unknown> | null) ?? {},
+    scopes: (data.scopes as string | null) ?? '',
     token: () => decrypt(data.access_token as string),
   };
 }

@@ -5,7 +5,8 @@ import { siteUrl } from '@/lib/stripe';
 
 const GRAPH = 'https://graph.instagram.com';
 const V = () => process.env.INSTAGRAM_API_VERSION || 'v25.0';
-export const INSTAGRAM_SCOPES = 'instagram_business_basic,instagram_business_content_publish';
+export const INSTAGRAM_SCOPES = 'instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights';
+export const hasInsightsScope = (scopes?: string | null) => !!scopes && scopes.includes('instagram_business_manage_insights');
 
 export const instagramConfigured = () => !!(process.env.INSTAGRAM_APP_ID?.trim() && process.env.INSTAGRAM_APP_SECRET?.trim());
 export const instagramRedirectUri = () => `${siteUrl()}/api/instagram/callback`;
@@ -150,4 +151,66 @@ export async function permalink(token: string, mediaId: string) {
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Desempenho (insights)
+// ---------------------------------------------------------------------------
+
+export type IgMedia = {
+  id: string;
+  caption?: string;
+  media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM';
+  media_product_type?: 'FEED' | 'REELS' | 'STORY' | 'AD';
+  permalink?: string;
+  timestamp: string;
+  thumbnail_url?: string;
+  media_url?: string;
+  like_count?: number;
+  comments_count?: number;
+};
+
+export async function profileStats(token: string) {
+  const q = new URLSearchParams({ fields: 'user_id,username,followers_count,follows_count,media_count', access_token: token });
+  return json<{ followers_count?: number; follows_count?: number; media_count?: number; username?: string }>(await fetch(`${GRAPH}/${V()}/me?${q}`), 'Perfil do Instagram');
+}
+
+/** Posts mais recentes do perfil (inclui os que não saíram pelo 1loop). */
+export async function listMedia(token: string, igUserId: string, limit = 40) {
+  const q = new URLSearchParams({
+    fields: 'id,caption,media_type,media_product_type,permalink,timestamp,thumbnail_url,media_url,like_count,comments_count',
+    limit: String(limit),
+    access_token: token,
+  });
+  const r = await json<{ data?: IgMedia[] }>(await fetch(`${GRAPH}/${V()}/${igUserId}/media?${q}`), 'Posts do Instagram');
+  return r.data ?? [];
+}
+
+export type MediaMetrics = { views?: number; reach?: number; likes?: number; comments?: number; saved?: number; shares?: number; interactions?: number };
+
+/** Números de um post. Pode levar até 48 h para aparecer. */
+export async function mediaInsights(token: string, mediaId: string): Promise<MediaMetrics> {
+  const q = new URLSearchParams({ metric: 'views,reach,likes,comments,saved,shares,total_interactions', access_token: token });
+  const r = await json<{ data?: Array<{ name: string; values?: Array<{ value: number }>; total_value?: { value: number } }> }>(
+    await fetch(`${GRAPH}/${V()}/${mediaId}/insights?${q}`),
+    'Números do post',
+  );
+  const out: MediaMetrics = {};
+  for (const m of r.data ?? []) {
+    const v = m.values?.[0]?.value ?? m.total_value?.value;
+    if (typeof v !== 'number') continue;
+    const key = m.name === 'total_interactions' ? 'interactions' : (m.name as keyof MediaMetrics);
+    out[key] = v;
+  }
+  return out;
+}
+
+/** Alcance do perfil por dia (até 30 dias por pedido). */
+export async function dailyReach(token: string, igUserId: string, sinceSec: number, untilSec: number) {
+  const q = new URLSearchParams({ metric: 'reach', period: 'day', since: String(sinceSec), until: String(untilSec), access_token: token });
+  const r = await json<{ data?: Array<{ name: string; values?: Array<{ value: number; end_time: string }> }> }>(
+    await fetch(`${GRAPH}/${V()}/${igUserId}/insights?${q}`),
+    'Alcance do perfil',
+  );
+  return (r.data?.find((d) => d.name === 'reach')?.values ?? []).map((v) => ({ day: v.end_time.slice(0, 10), value: v.value }));
 }

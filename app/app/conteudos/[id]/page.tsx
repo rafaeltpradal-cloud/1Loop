@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
 import { autoNetworkId, kindOf, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
 import { PLANS, maxVersions } from '@/lib/plans';
+import { interactionsOf, type Metrics } from '@/lib/metricsShared';
+import type { PostPerf } from '@/components/perf/PostPerformance';
 import { NETWORKS } from '@/lib/networks';
 import { PostEditor } from '@/components/content/PostEditor';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -54,8 +56,33 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     auto = { available: true, connected: !!conn && new Date(conn.expires_at as string).getTime() > Date.now(), expiresAt: (conn?.expires_at as string) ?? undefined };
   }
 
+  // Desempenho do post publicado.
+  let perf: PostPerf = null;
+  if (post.status === 'publicado') {
+    const admin = createAdminClient();
+    const { data: pm } = await admin
+      .from('post_metrics')
+      .select('id, network, metrics, source, updated_at')
+      .eq('brand_id', ctx.brandId)
+      .eq('post_id', post.id)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pm) {
+      const { data: hist } = await admin.from('post_metric_history').select('day, metrics').eq('post_metric_id', pm.id).order('day').limit(60);
+      perf = {
+        network: pm.network as string,
+        metrics: pm.metrics as Metrics,
+        source: pm.source as 'api' | 'manual',
+        updatedAt: pm.updated_at as string,
+        history: (hist ?? []).map((h) => interactionsOf(h.metrics as Metrics)),
+      };
+    }
+  }
+
   return (
     <PostEditor
+      perf={perf}
       post={post}
       brand={{ name: ctx.brands.length > 1 ? ctx.brandName : ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
       serieNumero={serieNumero}

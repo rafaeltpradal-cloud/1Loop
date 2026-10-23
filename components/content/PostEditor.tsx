@@ -16,6 +16,7 @@ import { savePost, setPostStatus } from '@/app/app/conteudos/actions';
 import { schedulePost, uploadPostAsset } from '@/app/app/conteudos/publish';
 import { AutoPublish, type AutoInfo } from '@/components/content/AutoPublish';
 import { AiAsk, type AiReply } from '@/components/AiAsk';
+import { PostPerformance, type PostPerf } from '@/components/perf/PostPerformance';
 
 const OPEN_URL: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/feed/?shareActive=true',
@@ -63,6 +64,7 @@ export function PostEditor({
   canCanvas,
   auto,
   defaultTime,
+  perf = null,
 }: {
   post: PostRow;
   brand: Brand;
@@ -73,6 +75,7 @@ export function PostEditor({
   canCanvas: boolean;
   auto: AutoInfo;
   defaultTime: string;
+  perf?: PostPerf;
 }) {
   const router = useRouter();
   const [c, setC] = useState<PostContent>(post.content);
@@ -596,6 +599,8 @@ export function PostEditor({
           </div>
         )}
       </section>
+
+      {status === 'publicado' && <PostPerformance postId={post.id} rede={post.rede} perf={perf} />}
 
       {picker && (
         <div className="canvasPicker" role="dialog" aria-modal="true" aria-label={picker === 'video' ? 'Escolher vídeo do post' : 'Escolher foto do post'}>
