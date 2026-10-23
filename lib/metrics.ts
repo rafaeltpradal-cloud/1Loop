@@ -105,7 +105,11 @@ export async function syncAll() {
   const admin = createAdminClient();
   const { data } = await admin.from('social_connections').select('brand_id, scopes').eq('network', 'instagram').limit(200);
   const results: Array<{ brand: number; ok: boolean }> = [];
+  const sixHoursAgo = new Date(Date.now() - 6 * 3600 * 1000).toISOString();
   for (const c of (data ?? []).filter((c) => ig.hasInsightsScope(c.scopes as string))) {
+    // O endereço é aberto (o agendador chama sem senha): marca atualizada há pouco fica de fora.
+    const { data: last } = await admin.from('account_metrics').select('updated_at').eq('brand_id', c.brand_id).gte('updated_at', sixHoursAgo).limit(1);
+    if (last?.length) continue;
     const r = await syncInstagram(admin, c.brand_id as number);
     results.push({ brand: c.brand_id as number, ok: r.ok });
   }
