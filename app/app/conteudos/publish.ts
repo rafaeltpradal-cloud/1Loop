@@ -51,7 +51,7 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
     .slice(0, 12);
 
   const admin = createAdminClient();
-  const { data: post } = await admin.from('posts').select('id, rede, formato, status, assets, content').eq('id', postId).eq('user_id', user.id).maybeSingle();
+  const { data: post } = await admin.from('posts').select('id, brand_id, rede, formato, status, assets, content').eq('id', postId).eq('user_id', user.id).maybeSingle();
   if (!post) return { ok: false, error: 'Post não encontrado.' };
   if (!canAutoPublish(post.rede, post.formato)) return { ok: false, error: 'Este formato ainda não pode ser publicado sozinho nesta rede.' };
   if (post.status === 'publicado' || post.status === 'publicando') return { ok: false, error: 'Este post já foi publicado.' };
@@ -59,7 +59,7 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
   const blocker = autoBlocker(post.rede, post.formato, (post.content ?? {}) as PostContent);
   if (blocker) return { ok: false, error: blocker };
   const network = autoNetworkId(post.rede)!;
-  const conn = await getConnection(admin, user.id, network);
+  const conn = await getConnection(admin, post.brand_id as number, network);
   if (!conn) return { ok: false, error: `Conecte o ${post.rede} em Redes para agendar.` };
   // O LinkedIn não renova sozinho; o Instagram renova, então só precisa estar válido agora.
   const limit = network === 'linkedin' ? at.getTime() : Date.now();

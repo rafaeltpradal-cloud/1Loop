@@ -14,7 +14,7 @@ export default async function EstrategiaPage() {
   const { data } = await supabase
     .from('strategies')
     .select('id, data, source, created_at')
-    .eq('user_id', ctx.userId)
+    .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();

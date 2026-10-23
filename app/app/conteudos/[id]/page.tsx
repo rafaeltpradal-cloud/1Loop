@@ -19,14 +19,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
 
   const ctx = await getAppContext();
   const supabase = await createClient();
-  const { data } = await supabase.from('posts').select(POST_COLUMNS).eq('id', postId).eq('user_id', ctx.userId).maybeSingle();
+  const { data } = await supabase.from('posts').select(POST_COLUMNS).eq('id', postId).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle();
   if (!data) notFound();
   const post = data as unknown as PostRow;
 
   const [{ data: strategyRow }, { data: accounts }, { data: media }] = await Promise.all([
-    supabase.from('strategies').select('data').eq('id', post.strategy_id).eq('user_id', ctx.userId).maybeSingle(),
-    supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId),
-    supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).order('created_at', { ascending: false }),
+    supabase.from('strategies').select('data').eq('id', post.strategy_id).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle(),
+    supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).order('created_at', { ascending: false }),
   ]);
   const strategy = strategyRow?.data as Strategy | undefined;
 
@@ -48,7 +48,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     const { data: conn } = await createAdminClient()
       .from('social_connections')
       .select('expires_at')
-      .eq('user_id', ctx.userId)
+      .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId)
       .eq('network', network)
       .maybeSingle();
     auto = { available: true, connected: !!conn && new Date(conn.expires_at as string).getTime() > Date.now(), expiresAt: (conn?.expires_at as string) ?? undefined };
@@ -57,7 +57,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   return (
     <PostEditor
       post={post}
-      brand={{ name: ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
+      brand={{ name: ctx.brands.length > 1 ? ctx.brandName : ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
       serieNumero={serieNumero}
       versionsLeft={Math.max(0, MAX_VERSIONS - post.versions)}
       media={(media ?? []) as unknown as MediaItem[]}

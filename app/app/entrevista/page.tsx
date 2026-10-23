@@ -9,7 +9,7 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
   const { bemvindo } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
-  const { data } = await supabase.from('interviews').select('answers').eq('user_id', ctx.userId).maybeSingle();
+  const { data } = await supabase.from('interviews').select('answers').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle();
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 1100 }}>

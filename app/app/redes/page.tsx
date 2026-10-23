@@ -15,8 +15,8 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   const ctx = await getAppContext();
   const supabase = await createClient();
   const [{ data: accounts }, { data: interview }] = await Promise.all([
-    supabase.from('social_accounts').select('network, handle, status').eq('user_id', ctx.userId),
-    supabase.from('interviews').select('answers').eq('user_id', ctx.userId).maybeSingle(),
+    supabase.from('social_accounts').select('network, handle, status').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    supabase.from('interviews').select('answers').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle(),
   ]);
 
   const answers = (interview?.answers ?? {}) as Record<string, unknown>;
@@ -34,7 +34,7 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   const { data: conns } = await createAdminClient()
     .from('social_connections')
     .select('network, name, picture, expires_at, meta')
-    .eq('user_id', ctx.userId);
+    .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId);
   const stateOf = (network: 'linkedin' | 'instagram', configured: boolean): ConnectState => {
     if (!configured) return { kind: 'indisponivel' };
     const c = (conns ?? []).find((x) => x.network === network);

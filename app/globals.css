@@ -576,3 +576,36 @@ html[data-theme="dark"] .statusPill.agendado, html[data-theme="dark"] .statusPil
   .lw, .tint, .grad, .rise, .spinner, .micBtn.on .micDot, .postLoading { animation: none; }
   body { transition: none; }
 }
+
+/* Marcas (plano Multi) */
+.brandSw { position: relative; }
+.brandSwBtn { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 10px; min-height: 48px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; text-align: left; box-shadow: 0 4px 12px var(--shadow); }
+.brandSwBtn:hover { border-color: var(--line-2); }
+.brandSwBtn > svg { margin-left: auto; color: var(--muted); flex: none; }
+.brandSwMark { flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--blue), var(--violet) 55%, var(--pink)); letter-spacing: .3px; }
+.brandSwMark.sm { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.brandSwMark.plus { background: var(--hover); color: var(--ink-2); font-size: 16px; }
+.brandSwText { display: flex; flex-direction: column; min-width: 0; }
+.brandSwLabel { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted-2); }
+.brandSwName { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.brandSwMenu { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0; min-width: 220px; padding: 6px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); box-shadow: 0 16px 40px rgba(14, 15, 18, .14); display: flex; flex-direction: column; gap: 2px; }
+.brandSwItem { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 6px 10px; border-radius: 10px; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; text-decoration: none; }
+.brandSwItem:hover:not(:disabled) { background: var(--hover); }
+.brandSwItem:disabled { opacity: .55; cursor: default; }
+.brandSwCheck { margin-left: auto; color: var(--violet); font-weight: 800; }
+.brandSwLock { margin-left: auto; font-size: 10px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; color: var(--muted-2); }
+.brandSwSep { height: 1px; background: var(--line-soft); margin: 4px 2px; }
+.brandSw.compact .brandSwBtn { width: auto; max-width: 46vw; min-height: 40px; padding: 4px 8px 4px 4px; gap: 8px; box-shadow: none; border-radius: 12px; }
+.brandSw.compact .brandSwMark { width: 28px; height: 28px; }
+.brandSw.compact .brandSwName { font-size: 13px; }
+.brandSw.compact .brandSwMenu { left: auto; right: auto; min-width: 240px; }
+.mobileBar .brandSw { margin-right: auto; margin-left: 8px; min-width: 0; }
+.brandList { display: flex; flex-direction: column; gap: 10px; }
+.brandRow { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); flex-wrap: wrap; }
+.brandRow.on { border-color: var(--violet); box-shadow: 0 0 0 1px var(--violet) inset; }
+.brandRow .brandRowMain { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 200px; }
+.brandRow .brandRowActs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.brandTag { font-size: 11px; font-weight: 800; letter-spacing: .5px; padding: 3px 8px; border-radius: 999px; background: var(--hover); color: var(--ink-2); }
+.brandTag.on { background: var(--note-bg); color: var(--note-ink); }
+.input { min-height: 46px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--surface-2); font: inherit; font-size: 15px; color: var(--ink); outline: none; min-width: 0; }
+.input:focus { border-color: var(--blue); background: var(--surface); box-shadow: 0 0 0 3px rgba(59, 108, 246, .15); }

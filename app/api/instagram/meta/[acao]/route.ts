@@ -32,18 +32,18 @@ async function removeConnection(igUser: string) {
   const admin = createAdminClient();
   const { data: rows } = await admin
     .from('social_connections')
-    .select('user_id, external_id, meta')
+    .select('user_id, brand_id, external_id, meta')
     .eq('network', 'instagram');
   const owners = (rows ?? []).filter(
     (r) => r.external_id === igUser || (r.meta as { app_user_id?: string } | null)?.app_user_id === igUser,
   );
   for (const r of owners) {
-    await admin.from('social_connections').delete().eq('user_id', r.user_id).eq('network', 'instagram');
-    await admin.from('social_accounts').update({ status: 'pending' }).eq('user_id', r.user_id).eq('network', 'instagram');
+    await admin.from('social_connections').delete().eq('brand_id', r.brand_id).eq('network', 'instagram');
+    await admin.from('social_accounts').update({ status: 'pending' }).eq('brand_id', r.brand_id).eq('network', 'instagram');
     await admin
       .from('posts')
       .update({ status: 'aprovado', scheduled_at: null, platform_ref: null })
-      .eq('user_id', r.user_id)
+      .eq('brand_id', r.brand_id)
       .eq('rede', 'Instagram')
       .eq('status', 'agendado');
   }

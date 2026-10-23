@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import type { MediaItem } from '@/lib/contentTypes';
+import { currentBrandId } from '@/lib/brands';
 
 const BUCKET = 'media';
 const MAX_ITEMS = 150;
@@ -38,7 +39,7 @@ export async function uploadMedia(formData: FormData): Promise<MediaResult> {
   }
   await supabase.storage.from(BUCKET).upload(`${user.id}/${name}.thumb.jpg`, thumb, { contentType: 'image/jpeg', upsert: false });
 
-  const { data, error } = await supabase.from('media').insert({ user_id: user.id, path, kind, width, height }).select('id, kind, width, height').single();
+  const { data, error } = await supabase.from('media').insert({ user_id: user.id, brand_id: await currentBrandId(user.id), path, kind, width, height }).select('id, kind, width, height').single();
   if (error || !data) {
     await supabase.storage.from(BUCKET).remove([path, `${user.id}/${name}.thumb.jpg`]);
     return { ok: false, error: 'Não deu para salvar a imagem.' };
@@ -95,7 +96,7 @@ export async function registerVideo(input: { path: string; mime: string; size: n
 
   const { data, error } = await supabase
     .from('media')
-    .insert({ user_id: user.id, path, kind: 'video', mime, size_bytes: Math.round(size), width: Math.round(width) || null, height: Math.round(height) || null, duration_s: Number(duration) || null })
+    .insert({ user_id: user.id, brand_id: await currentBrandId(user.id), path, kind: 'video', mime, size_bytes: Math.round(size), width: Math.round(width) || null, height: Math.round(height) || null, duration_s: Number(duration) || null })
     .select('id, kind, width, height, duration_s')
     .single();
   if (error || !data) {

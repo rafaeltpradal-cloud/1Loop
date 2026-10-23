@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { encrypt } from '@/lib/crypto';
 import { exchangeCode, LINKEDIN_SCOPES, userInfo } from '@/lib/linkedin';
 import { siteUrl } from '@/lib/stripe';
+import { currentBrandId } from '@/lib/brands';
 
 export const runtime = 'nodejs';
 
@@ -34,10 +35,12 @@ export async function GET(req: Request) {
     const token = await exchangeCode(code);
     const me = await userInfo(token.access_token);
     const admin = createAdminClient();
+    const brandId = await currentBrandId(user.id, admin);
     const now = new Date();
     const { error } = await admin.from('social_connections').upsert(
       {
         user_id: user.id,
+        brand_id: brandId,
         network: 'linkedin',
         external_id: me.sub,
         name: me.name ?? null,
@@ -47,14 +50,14 @@ export async function GET(req: Request) {
         expires_at: new Date(now.getTime() + (token.expires_in || 5184000) * 1000).toISOString(),
         updated_at: now.toISOString(),
       },
-      { onConflict: 'user_id,network' },
+      { onConflict: 'brand_id,network' },
     );
     if (error) throw error;
 
     // O cartão do LinkedIn em Redes passa a "conectado".
-    const { data: account } = await admin.from('social_accounts').select('id').eq('user_id', user.id).eq('network', 'linkedin').maybeSingle();
+    const { data: account } = await admin.from('social_accounts').select('id').eq('brand_id', brandId).eq('network', 'linkedin').maybeSingle();
     if (account) await admin.from('social_accounts').update({ status: 'connected', updated_at: now.toISOString() }).eq('id', account.id);
-    else await admin.from('social_accounts').insert({ user_id: user.id, network: 'linkedin', handle: me.name ?? 'perfil', status: 'connected' });
+    else await admin.from('social_accounts').insert({ user_id: user.id, brand_id: brandId, network: 'linkedin', handle: me.name ?? 'perfil', status: 'connected' });
 
     return back('conectado');
   } catch (err) {

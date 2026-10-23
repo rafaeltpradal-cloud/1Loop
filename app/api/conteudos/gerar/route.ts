@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
+import { currentBrandId } from '@/lib/brands';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
@@ -32,10 +33,11 @@ export async function POST(req: Request) {
   const index = Number(body.index);
   if (!Number.isInteger(index) || index < 0) return NextResponse.json({ error: 'Post inválido.' }, { status: 400 });
 
+  const brandId = await currentBrandId(user.id);
   const [{ data: subs }, { data: strategyRow }, { data: interview }] = await Promise.all([
     supabase.from('subscriptions').select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
-    supabase.from('strategies').select('id, data, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('interviews').select('answers').eq('user_id', user.id).maybeSingle(),
+    supabase.from('strategies').select('id, data, created_at').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
   if (!subs?.[0] || !ACTIVE_STATUSES.includes(subs[0].status)) return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
   if (!strategyRow) return NextResponse.json({ error: 'Gere sua estratégia antes dos conteúdos.' }, { status: 400 });
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     const answers = resolveAnswers(sanitizeAnswers(interview?.answers ?? {}));
     const prev = existing?.content as PostContent | undefined;
     // A IA enxerga a foto do post e até 3 referências de estilo.
-    const { data: media } = await admin.from('media').select('id, path, kind').eq('user_id', user.id).order('created_at', { ascending: false }).limit(200);
+    const { data: media } = await admin.from('media').select('id, path, kind').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(200);
     const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
     const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
     const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
     };
     const query = existing
       ? admin.from('posts').update({ ...fields, versions: existing.versions + 1 }).eq('id', existing.id).eq('user_id', user.id)
-      : admin.from('posts').insert({ ...fields, user_id: user.id, strategy_id: strategyRow.id, item_index: index, versions: 1 });
+      : admin.from('posts').insert({ ...fields, user_id: user.id, brand_id: brandId, strategy_id: strategyRow.id, item_index: index, versions: 1 });
     const { data: post, error } = await query.select(POST_COLUMNS).single();
     if (error) throw error;
     return NextResponse.json({ post });

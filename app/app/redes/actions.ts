@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { cleanHandle, isNetworkId } from '@/lib/networks';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { currentBrandId } from '@/lib/brands';
 
 export async function saveHandle(network: string, raw: string): Promise<{ ok: boolean; error?: string }> {
   if (!isNetworkId(network)) return { ok: false, error: 'Rede inválida.' };
@@ -15,9 +17,11 @@ export async function saveHandle(network: string, raw: string): Promise<{ ok: bo
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
 
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const brandId = await currentBrandId(user.id, admin);
+  const { error } = await admin
     .from('social_accounts')
-    .upsert({ user_id: user.id, network, handle, updated_at: new Date().toISOString() }, { onConflict: 'user_id,network' });
+    .upsert({ user_id: user.id, brand_id: brandId, network, handle, updated_at: new Date().toISOString() }, { onConflict: 'brand_id,network' });
   if (error) return { ok: false, error: 'Não foi possível salvar agora. Tente de novo.' };
 
   revalidatePath('/app', 'layout');
@@ -31,7 +35,9 @@ export async function removeHandle(network: string): Promise<{ ok: boolean }> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false };
-  const { error } = await supabase.from('social_accounts').delete().eq('user_id', user.id).eq('network', network);
+  const admin = createAdminClient();
+  const brandId = await currentBrandId(user.id, admin);
+  const { error } = await admin.from('social_accounts').delete().eq('user_id', user.id).eq('brand_id', brandId).eq('network', network);
   revalidatePath('/app', 'layout');
   return { ok: !error };
 }
@@ -44,12 +50,12 @@ export async function disconnectNetwork(network: 'linkedin' | 'instagram'): Prom
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
-  const { createAdminClient } = await import('@/lib/supabase/admin');
   const { getConnection } = await import('@/lib/publish');
   const admin = createAdminClient();
+  const brandId = await currentBrandId(user.id, admin);
   if (network === 'linkedin') {
     const { revokeToken } = await import('@/lib/linkedin');
-    const conn = await getConnection(admin, user.id, 'linkedin');
+    const conn = await getConnection(admin, brandId, 'linkedin');
     if (conn) {
       try {
         await revokeToken(conn.token());
@@ -59,9 +65,10 @@ export async function disconnectNetwork(network: 'linkedin' | 'instagram'): Prom
     }
   }
   const rede = network === 'linkedin' ? 'LinkedIn' : 'Instagram';
-  await admin.from('social_connections').delete().eq('user_id', user.id).eq('network', network);
-  await admin.from('social_accounts').update({ status: 'pending' }).eq('user_id', user.id).eq('network', network);
-  await admin.from('posts').update({ status: 'aprovado', scheduled_at: null, platform_ref: null }).eq('user_id', user.id).eq('rede', rede).eq('status', 'agendado');
+  // Só a conexão desta marca; a mesma conta pode continuar ligada em outra marca.
+  await admin.from('social_connections').delete().eq('brand_id', brandId).eq('network', network);
+  await admin.from('social_accounts').update({ status: 'pending' }).eq('brand_id', brandId).eq('network', network);
+  await admin.from('posts').update({ status: 'aprovado', scheduled_at: null, platform_ref: null }).eq('brand_id', brandId).eq('rede', rede).eq('status', 'agendado');
   revalidatePath('/app/redes');
   revalidatePath('/app/conteudos');
   return { ok: true };

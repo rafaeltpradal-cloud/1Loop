@@ -2,12 +2,15 @@ import Link from 'next/link';
 import { Brand, LoopMark, Wordmark } from '@/components/Logo';
 import { AppNav } from '@/components/AppNav';
 import { Avatar } from '@/components/Avatar';
+import { BrandSwitcher } from '@/components/BrandSwitcher';
 import { getAppContext } from '@/lib/session';
 import { PLANS } from '@/lib/plans';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAppContext();
   const plan = PLANS[ctx.plan];
+  const multi = ctx.brandLimit > 1 || ctx.brands.length > 1;
+  const switcher = (compact?: boolean) => <BrandSwitcher current={ctx.brandId} brands={ctx.brands} limit={ctx.brandLimit} compact={compact} />;
 
   return (
     <div className="shell">
@@ -15,8 +18,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <header className="mobileBar">
         <Link href="/app" aria-label="1loop creators — início" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', minHeight: 44 }}>
           <LoopMark size={30} />
-          <Wordmark size={18} />
+          {!multi && <Wordmark size={18} />}
         </Link>
+        {multi && switcher(true)}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <Link href="/app/plano" className="mobilePlan">
             <span className="dot" style={{ background: ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
@@ -36,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       <aside className="sidebar">
         <Brand href="/app" />
+        {multi && switcher()}
         <AppNav group="main" />
         <div className="sidebarFoot">
           <AppNav group="account" />

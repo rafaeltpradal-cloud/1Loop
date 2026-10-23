@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { encrypt } from '@/lib/crypto';
 import { exchangeCode, me } from '@/lib/instagram';
 import { siteUrl } from '@/lib/stripe';
+import { currentBrandId } from '@/lib/brands';
 
 export const runtime = 'nodejs';
 
@@ -38,10 +39,12 @@ export async function GET(req: Request) {
     if (accountType === 'PERSONAL') return back('pessoal');
 
     const admin = createAdminClient();
+    const brandId = await currentBrandId(user.id, admin);
     const now = new Date();
     const { error } = await admin.from('social_connections').upsert(
       {
         user_id: user.id,
+        brand_id: brandId,
         network: 'instagram',
         external_id: igUserId,
         name: profile.username ?? profile.name ?? null,
@@ -52,15 +55,15 @@ export async function GET(req: Request) {
         meta: { account_type: accountType, app_user_id: profile.id ? String(profile.id) : null },
         updated_at: now.toISOString(),
       },
-      { onConflict: 'user_id,network' },
+      { onConflict: 'brand_id,network' },
     );
     if (error) throw error;
 
     // O cartão do Instagram em Redes passa a "conectado", com o @ da conta.
     const handle = profile.username ?? 'perfil';
-    const { data: account } = await admin.from('social_accounts').select('id').eq('user_id', user.id).eq('network', 'instagram').maybeSingle();
+    const { data: account } = await admin.from('social_accounts').select('id').eq('brand_id', brandId).eq('network', 'instagram').maybeSingle();
     if (account) await admin.from('social_accounts').update({ status: 'connected', handle, updated_at: now.toISOString() }).eq('id', account.id);
-    else await admin.from('social_accounts').insert({ user_id: user.id, network: 'instagram', handle, status: 'connected' });
+    else await admin.from('social_accounts').insert({ user_id: user.id, brand_id: brandId, network: 'instagram', handle, status: 'connected' });
 
     return back('conectado');
   } catch (err) {

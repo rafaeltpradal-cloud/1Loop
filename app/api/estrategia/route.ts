@@ -4,6 +4,7 @@ import { ACTIVE_STATUSES } from '@/lib/billing';
 import { sanitizeAnswers } from '@/lib/interview';
 import { generateStrategy } from '@/lib/strategy';
 import { isPlanId } from '@/lib/plans';
+import { currentBrandId } from '@/lib/brands';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -16,9 +17,10 @@ export async function POST() {
   } = await supabase.auth.getUser();
   if (!user) return new NextResponse('Não autenticado', { status: 401 });
 
+  const brandId = await currentBrandId(user.id);
   const [{ data: subs }, { data: interview }] = await Promise.all([
     supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
-    supabase.from('interviews').select('answers').eq('user_id', user.id).maybeSingle(),
+    supabase.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
   const sub = subs?.[0];
   if (!sub || !ACTIVE_STATUSES.includes(sub.status)) return new NextResponse('Assinatura inativa', { status: 402 });
@@ -27,7 +29,7 @@ export async function POST() {
   const plan = isPlanId(sub.plan) ? sub.plan : 'pro';
   try {
     const { strategy, source } = await generateStrategy(sanitizeAnswers(interview.answers), plan);
-    const { error } = await supabase.from('strategies').insert({ user_id: user.id, plan, source, data: strategy });
+    const { error } = await supabase.from('strategies').insert({ user_id: user.id, brand_id: brandId, plan, source, data: strategy });
     if (error) throw error;
     return NextResponse.json({ ok: true, source });
   } catch (err) {

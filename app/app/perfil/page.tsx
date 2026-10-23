@@ -14,7 +14,7 @@ export default async function PerfilPage() {
   const supabase = await createClient();
   const [{ data: profile }, { data: interview }] = await Promise.all([
     supabase.from('profiles').select('name, phone').eq('id', ctx.userId).maybeSingle(),
-    supabase.from('interviews').select('answers').eq('user_id', ctx.userId).maybeSingle(),
+    supabase.from('interviews').select('answers').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle(),
   ]);
   const answers = (interview?.answers ?? {}) as Answers;
 

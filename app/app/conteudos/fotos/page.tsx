@@ -9,7 +9,7 @@ export const metadata = { title: 'Fotos e referências · 1loop creators' };
 export default async function FotosPage() {
   const ctx = await getAppContext();
   const supabase = await createClient();
-  const { data } = await supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).order('created_at', { ascending: false });
+  const { data } = await supabase.from('media').select(MEDIA_COLUMNS).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).order('created_at', { ascending: false });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 1180 }}>

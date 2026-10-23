@@ -12,11 +12,12 @@ import { autoBlocker, captionWithTags, kindOf, type PostAsset, type PostContent 
 
 type Admin = ReturnType<typeof createAdminClient>;
 
-export async function getConnection(admin: Admin, userId: string, network: string) {
+/** Conexão de uma rede em uma marca. */
+export async function getConnection(admin: Admin, brandId: number, network: string) {
   const { data } = await admin
     .from('social_connections')
     .select('external_id, name, access_token, expires_at, meta')
-    .eq('user_id', userId)
+    .eq('brand_id', brandId)
     .eq('network', network)
     .maybeSingle();
   if (!data) return null;
@@ -42,7 +43,7 @@ async function download(admin: Admin, path: string) {
 
 /** Publica um post que está como "publicando". Devolve o link do post publicado. */
 async function publishLinkedIn(admin: Admin, post: PostForPublish) {
-  const conn = await getConnection(admin, post.user_id, 'linkedin');
+  const conn = await getConnection(admin, post.brand_id, 'linkedin');
   if (!conn) throw new Error('O LinkedIn não está conectado. Conecte em Redes e agende de novo.');
   if (new Date(conn.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o LinkedIn expirou. Reconecte em Redes e agende de novo.');
   const token = conn.token();
@@ -67,6 +68,7 @@ async function publishLinkedIn(admin: Admin, post: PostForPublish) {
 type PostForPublish = {
   id: number;
   user_id: string;
+  brand_id: number;
   rede: string;
   formato: string;
   content: PostContent;
@@ -78,7 +80,7 @@ type PostForPublish = {
 type Outcome = { done: true; url: string } | { done: false; ref: string };
 
 async function publishInstagram(admin: Admin, post: PostForPublish): Promise<Outcome> {
-  const conn = await getConnection(admin, post.user_id, 'instagram');
+  const conn = await getConnection(admin, post.brand_id, 'instagram');
   if (!conn) throw new Error('O Instagram não está conectado. Conecte em Redes e agende de novo.');
   if (new Date(conn.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o Instagram expirou. Reconecte em Redes e agende de novo.');
   const blocker = autoBlocker(post.rede, post.formato, post.content);
@@ -152,7 +154,7 @@ export async function publishOne(admin: Admin, postId: number, userId?: string) 
     .eq('id', postId)
     .eq('status', 'agendado');
   if (userId) claim = claim.eq('user_id', userId);
-  const { data: row } = await claim.select('id, user_id, rede, formato, content, assets, platform_ref').maybeSingle();
+  const { data: row } = await claim.select('id, user_id, brand_id, rede, formato, content, assets, platform_ref').maybeSingle();
   if (!row) return { ok: false as const, error: 'Este post não está agendado.' };
   const post = row as unknown as PostForPublish;
 
@@ -205,7 +207,7 @@ export async function refreshInstagramTokens(admin: Admin) {
   const dayAgo = new Date(Date.now() - 86400000).toISOString();
   const { data } = await admin
     .from('social_connections')
-    .select('user_id, access_token, expires_at')
+    .select('brand_id, access_token, expires_at')
     .eq('network', 'instagram')
     .lt('expires_at', soon)
     .gt('expires_at', new Date().toISOString())
@@ -217,10 +219,10 @@ export async function refreshInstagramTokens(admin: Admin) {
       await admin
         .from('social_connections')
         .update({ access_token: encrypt(r.access_token), expires_at: new Date(Date.now() + (r.expires_in || 5184000) * 1000).toISOString(), updated_at: new Date().toISOString() })
-        .eq('user_id', c.user_id)
+        .eq('brand_id', c.brand_id)
         .eq('network', 'instagram');
     } catch (err) {
-      console.error('[instagram refresh]', c.user_id, err);
+      console.error('[instagram refresh]', c.brand_id, err);
     }
   }
 }

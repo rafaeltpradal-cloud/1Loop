@@ -15,7 +15,7 @@ export default async function ConteudosPage() {
   const { data: strategyRow } = await supabase
     .from('strategies')
     .select('id, data, created_at')
-    .eq('user_id', ctx.userId)
+    .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -33,7 +33,7 @@ export default async function ConteudosPage() {
 
   const strategy = strategyRow.data as Strategy;
   const start = planStartFrom(strategyRow.created_at as string);
-  const { data: posts } = await supabase.from('posts').select(POST_COLUMNS).eq('strategy_id', strategyRow.id).eq('user_id', ctx.userId);
+  const { data: posts } = await supabase.from('posts').select(POST_COLUMNS).eq('strategy_id', strategyRow.id).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId);
   const byIndex = new Map(((posts ?? []) as unknown as PostRow[]).map((p) => [p.item_index, p]));
 
   const items: BoardItem[] = strategy.calendario.map((it, index) => ({

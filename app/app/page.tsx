@@ -9,9 +9,9 @@ export default async function AppHome() {
   const ctx = await getAppContext();
   const supabase = await createClient();
   const [{ data: interview }, { count: networks }, { count: posts }] = await Promise.all([
-    supabase.from('interviews').select('answers, completed_at').eq('user_id', ctx.userId).maybeSingle(),
-    supabase.from('social_accounts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId),
-    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId),
+    supabase.from('interviews').select('answers, completed_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle(),
+    supabase.from('social_accounts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
   ]);
   const answered = interview?.answers ? Object.keys(interview.answers as object).length : 0;
 
