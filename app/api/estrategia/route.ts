@@ -5,6 +5,8 @@ import { sanitizeAnswers } from '@/lib/interview';
 import { generateStrategy } from '@/lib/strategy';
 import { isPlanId } from '@/lib/plans';
 import { currentBrandId } from '@/lib/brands';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getUsage } from '@/lib/usage';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -27,6 +29,16 @@ export async function POST() {
   if (!interview) return new NextResponse('Entrevista não encontrada', { status: 400 });
 
   const plan = isPlanId(sub.plan) ? sub.plan : 'pro';
+  // Limite de estratégias novas por mês (no Multi, por marca).
+  const usage = await getUsage(createAdminClient(), user.id, brandId, plan);
+  if (usage.strategies.used >= usage.strategies.max)
+    return NextResponse.json(
+      {
+        error: `Você já gerou as ${usage.strategies.max} estratégias de ${usage.month}. Use "Peça à IA" para ajustar a atual; novas versões voltam em 1º de ${usage.nextMonth}.`,
+        limit: true,
+      },
+      { status: 429 },
+    );
   try {
     const { strategy, source } = await generateStrategy(sanitizeAnswers(interview.answers), plan);
     const { error } = await supabase.from('strategies').insert({ user_id: user.id, brand_id: brandId, plan, source, data: strategy });

@@ -21,6 +21,7 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
   const [answers, setAnswers] = useState<Answers>(initial);
   const [idx, setIdx] = useState(firstOpen === -1 ? 0 : firstOpen);
   const [phase, setPhase] = useState<'asking' | 'generating' | 'error'>('asking');
+  const [limitMsg, setLimitMsg] = useState('');
   const [msg, setMsg] = useState(0);
   const [, startTransition] = useTransition();
 
@@ -62,7 +63,14 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
     const timer = setInterval(() => setMsg((m) => (m + 1) % GENERATING_MSGS.length), 2200);
     try {
       await saveAnswers(answers, true);
+      setLimitMsg('');
       const res = await fetch('/api/estrategia', { method: 'POST' });
+      if (res.status === 429) {
+        const json = (await res.json().catch(() => ({}))) as { error?: string };
+        setLimitMsg(json.error || 'Você chegou ao limite de estratégias deste mês.');
+        setPhase('error');
+        return;
+      }
       if (!res.ok) throw new Error(await res.text());
       router.push('/app/estrategia');
       router.refresh();
@@ -85,9 +93,19 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
           </>
         ) : (
           <>
-            <h2 style={{ fontSize: 24 }}>Não conseguimos gerar a estratégia agora.</h2>
-            <p className="muted">Suas respostas estão salvas. Tente de novo em instantes.</p>
-            <button className="btn3d" type="button" onClick={() => void generate()}>Tentar de novo</button>
+            {limitMsg ? (
+              <>
+                <h2 style={{ fontSize: 24 }}>Suas respostas foram salvas.</h2>
+                <p className="muted" style={{ maxWidth: 520, lineHeight: 1.55 }}>{limitMsg}</p>
+                <a className="btn3d" href="/app/estrategia">Ver minha estratégia</a>
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize: 24 }}>Não conseguimos gerar a estratégia agora.</h2>
+                <p className="muted">Suas respostas estão salvas. Tente de novo em instantes.</p>
+                <button className="btn3d" type="button" onClick={() => void generate()}>Tentar de novo</button>
+              </>
+            )}
           </>
         )}
       </div>

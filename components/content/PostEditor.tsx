@@ -7,7 +7,7 @@ import { NetworkIcon } from '@/components/NetworkIcon';
 import { StatusPill } from '@/components/content/WeekBoard';
 import { networkByName } from '@/lib/networks';
 import { formatLong } from '@/lib/dates';
-import { MAX_POST_ADJUSTS, autoBlocker, canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
+import { autoBlocker, canAutoPublish, captionWithTags, IMAGE_STYLES, kindOf, type MediaItem, type PostAsset, type PostContent, type PostRow } from '@/lib/contentTypes';
 import { downloadImage, imagesFor, renderImage, type Brand } from '@/lib/postImage';
 import { mediaUrl, type Scene } from '@/lib/scene';
 import { MediaLibrary } from '@/components/content/MediaLibrary';
@@ -58,6 +58,7 @@ export function PostEditor({
   brand,
   serieNumero,
   versionsLeft,
+  adjustMax,
   media,
   canCanvas,
   auto,
@@ -67,6 +68,7 @@ export function PostEditor({
   brand: Brand;
   serieNumero?: number;
   versionsLeft: number;
+  adjustMax: number;
   media: MediaItem[];
   canCanvas: boolean;
   auto: AutoInfo;
@@ -287,8 +289,8 @@ export function PostEditor({
           hint="Diga o que quer mudar neste post. A IA ajusta e você revisa antes de salvar."
           placeholder="Ex.: deixe o gancho mais forte e fale do lançamento de sexta"
           suggestions={AI_SUGGESTIONS[kind] ?? AI_SUGGESTIONS.padrao}
-          left={MAX_POST_ADJUSTS - (post.content.ajustes ?? 0)}
-          max={MAX_POST_ADJUSTS}
+          left={adjustMax - (post.content.ajustes ?? 0)}
+          max={adjustMax}
           onAsk={askAi}
         >
           {aiPrev && (

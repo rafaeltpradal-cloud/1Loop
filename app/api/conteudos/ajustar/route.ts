@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { currentBrandId } from '@/lib/brands';
+import { PLANS, isPlanId } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
-import { kindOf, MAX_POST_ADJUSTS, revisePost, type InputImage, type PostContent } from '@/lib/content';
+import { kindOf, revisePost, type InputImage, type PostContent } from '@/lib/content';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const brandId = await currentBrandId(user.id, admin);
   const [{ data: subs }, { data: post }, { data: interview }] = await Promise.all([
-    admin.from('subscriptions').select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    admin.from('subscriptions').select('plan, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     admin.from('posts').select('id, strategy_id, item_index, date, status, content').eq('id', postId).eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
     admin.from('interviews').select('answers').eq('brand_id', brandId).eq('user_id', user.id).maybeSingle(),
   ]);
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
   if (!post) return NextResponse.json({ error: 'Post não encontrado.' }, { status: 404 });
   if (post.status === 'publicando' || post.status === 'publicado') return NextResponse.json({ error: 'Este post já foi publicado.' }, { status: 400 });
 
+  const MAX_POST_ADJUSTS = PLANS[isPlanId(subs[0].plan) ? subs[0].plan : 'pro'].postAdjusts;
   const current = post.content as PostContent;
   const used = current.ajustes ?? 0;
   if (used >= MAX_POST_ADJUSTS)

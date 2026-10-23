@@ -635,3 +635,9 @@ html[data-theme="dark"] .statusPill.agendado, html[data-theme="dark"] .statusPil
   .aiAskForm { flex-direction: column; align-items: stretch; }
   .aiAskSend { width: 100%; }
 }
+.quotaLine { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: space-between; font-size: 13px; color: var(--muted); padding: 0 4px; }
+.quotaLine b { color: var(--ink); }
+.quotaLine a { color: var(--ink); font-weight: 700; }
+.usageGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.usageItem { display: flex; flex-direction: column; gap: 8px; }
+@media (max-width: 560px) { .usageGrid { grid-template-columns: 1fr; } }

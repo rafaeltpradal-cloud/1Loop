@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server';
 import { StrategyView } from '@/components/StrategyView';
 import { RegenerateButton } from '@/components/RegenerateButton';
 import { StrategyAi } from '@/components/StrategyAi';
-import { MAX_STRATEGY_ADJUSTS } from '@/lib/contentTypes';
+import { PLANS } from '@/lib/plans';
+import { getUsage } from '@/lib/usage';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, planStartFrom } from '@/lib/dates';
 
@@ -32,6 +34,7 @@ export default async function EstrategiaPage() {
     );
   }
 
+  const usage = await getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
   const created = new Date(data.created_at as string);
   // O plano começa no dia seguinte ao que foi gerado (horário de Brasília).
   const start = planStartFrom(created);
@@ -52,14 +55,14 @@ export default async function EstrategiaPage() {
         </div>
         <div className="pageActions">
           <Link className="btnGhost btnSm" href="/app/entrevista">Ajustar respostas</Link>
-          <RegenerateButton />
+          <RegenerateButton left={usage.strategies.max - usage.strategies.used} max={usage.strategies.max} month={usage.month} nextMonth={usage.nextMonth} />
           <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
         </div>
       </div>
       <StrategyAi
         key={Number(data.id)}
-        left={MAX_STRATEGY_ADJUSTS - ((data.data as Strategy).ajustes ?? 0)}
-        max={MAX_STRATEGY_ADJUSTS}
+        left={PLANS[ctx.plan].strategyAdjusts - ((data.data as Strategy).ajustes ?? 0)}
+        max={PLANS[ctx.plan].strategyAdjusts}
         canUndo={!!(data.data as Strategy).anterior}
       />
       <StrategyView s={{ ...(data.data as Strategy), anterior: undefined }} strategyId={Number(data.id)} start={start} today={today} />

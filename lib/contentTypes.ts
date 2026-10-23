@@ -83,9 +83,6 @@ export function autoBlocker(rede: string, formato: string, c: Pick<PostContent, 
   }
   return null;
 }
-export const MAX_VERSIONS = 6; // 1 geração + 5 refações por post
-export const MAX_POST_ADJUSTS = 15; // pedidos de ajuste à IA por post
-export const MAX_STRATEGY_ADJUSTS = 10; // pedidos de ajuste à IA por estratégia
 
 export type FormatKind = 'carrossel' | 'imagem' | 'video' | 'stories' | 'thread' | 'texto' | 'prova';
 

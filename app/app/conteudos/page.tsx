@@ -6,6 +6,8 @@ import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
 import { POST_COLUMNS, type PostRow } from '@/lib/contentTypes';
 import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 import { ContentTabs } from '@/components/content/ContentTabs';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getUsage } from '@/lib/usage';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -48,6 +50,7 @@ export default async function ConteudosPage() {
     post: byIndex.get(index) ?? null,
   }));
 
+  const usage = await getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
   const total = items.length;
   const done = items.filter((i) => i.post).length;
 
@@ -63,7 +66,12 @@ export default async function ConteudosPage() {
         </span>
       </div>
       <ContentTabs active="semana" />
-      <WeekBoard items={items} today={isoInBrazil()} planStart={start} />
+      <WeekBoard
+        items={items}
+        today={isoInBrazil()}
+        planStart={start}
+        quota={{ used: usage.posts.used, max: usage.posts.max, extras: usage.extras.available, month: usage.month, nextMonth: usage.nextMonth }}
+      />
     </div>
   );
 }

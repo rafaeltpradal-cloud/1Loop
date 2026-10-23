@@ -11,6 +11,11 @@ export type Plan = {
   brands: number;
   everyNDays: number; // 1 = todo dia, 3 = a cada 3 dias
   canvas: boolean; // editor visual das imagens
+  // Limites de uso da IA (no Multi, por marca). Renovam todo mês.
+  strategiesPerMonth: number; // estratégias novas por mês
+  refacoes: number; // vezes que dá para refazer cada post
+  postAdjusts: number; // pedidos de ajuste à IA por post
+  strategyAdjusts: number; // pedidos de ajuste à IA por estratégia
   features: string[];
 };
 
@@ -26,7 +31,11 @@ export const PLANS: Record<PlanId, Plan> = {
     brands: 1,
     everyNDays: 3,
     canvas: false,
-    features: ['Entrevista e perfil de voz', 'Painel de estratégia de 30 dias', 'Com ou sem rosto, todos os formatos', 'Suas fotos e referências nos posts', 'Publicação automática'],
+    strategiesPerMonth: 2,
+    refacoes: 3,
+    postAdjusts: 10,
+    strategyAdjusts: 10,
+    features: ['Entrevista e perfil de voz', 'Painel de estratégia de 30 dias (2 versões por mês)', 'Com ou sem rosto, todos os formatos', 'Suas fotos e referências nos posts', 'Publicação automática'],
   },
   pro: {
     id: 'pro',
@@ -39,7 +48,11 @@ export const PLANS: Record<PlanId, Plan> = {
     brands: 1,
     everyNDays: 1,
     canvas: true,
-    features: ['Tudo do Basic', 'Editor visual das imagens (canvas)', 'Plano de engajamento', 'Revisão mensal da estratégia'],
+    strategiesPerMonth: 3,
+    refacoes: 5,
+    postAdjusts: 15,
+    strategyAdjusts: 10,
+    features: ['Tudo do Basic, com 3 versões de estratégia por mês', 'Editor visual das imagens (canvas)', 'Plano de engajamento', 'Revisão mensal da estratégia'],
   },
   multi: {
     id: 'multi',
@@ -51,9 +64,16 @@ export const PLANS: Record<PlanId, Plan> = {
     brands: 6,
     everyNDays: 1,
     canvas: true,
+    strategiesPerMonth: 3,
+    refacoes: 5,
+    postAdjusts: 15,
+    strategyAdjusts: 10,
     features: ['Tudo do Pro em cada marca', 'Editor visual em todas as marcas', 'Até 6 marcas e time', 'Aprovação pelo cliente e relatórios'],
   },
 };
+
+/** Gerações de um post: a primeira + as refações. */
+export const maxVersions = (plan: PlanId) => 1 + PLANS[plan].refacoes;
 
 export const PLAN_ORDER: PlanId[] = ['basic', 'pro', 'multi'];
 

@@ -34,13 +34,20 @@ export function StatusPill({ status }: { status: PostRow['status'] }) {
   return <span className={`statusPill ${status}`}>{STATUS_LABEL[status]}</span>;
 }
 
-export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; today: string; planStart: string }) {
+export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string };
+
+export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem[]; today: string; planStart: string; quota: Quota }) {
   const router = useRouter();
   const [posts, setPosts] = useState<Record<number, PostRow | null>>(() => Object.fromEntries(items.map((i) => [i.index, i.post])));
   const [anchor, setAnchor] = useState(() => (today < planStart ? planStart : today));
   const [running, setRunning] = useState<number | null>(null);
   const [queue, setQueue] = useState<{ done: number; total: number } | null>(null);
   const [errors, setErrors] = useState<Record<number, string>>({});
+  const [gen, setGen] = useState(0); // posts novos gerados nesta tela
+  const baseLeft0 = Math.max(0, quota.max - quota.used);
+  const baseUsed = Math.min(quota.max, quota.used + Math.min(gen, baseLeft0));
+  const extrasLeft = Math.max(0, quota.extras - Math.max(0, gen - baseLeft0));
+  const left = quota.max - baseUsed + extrasLeft;
 
   const end = addDays(anchor, 6);
   const week = useMemo(() => items.filter((i) => i.date >= anchor && i.date <= end).sort((a, b) => a.date.localeCompare(b.date) || a.index - b.index), [items, anchor, end]);
@@ -61,7 +68,9 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
       const res = await fetch('/api/conteudos/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index }) });
       const json = (await res.json().catch(() => ({}))) as { post?: PostRow; error?: string };
       if (!res.ok || !json.post) throw new Error(json.error || 'Não deu para gerar agora.');
+      const isNew = !posts[index];
       setPosts((p) => ({ ...p, [index]: json.post! }));
+      if (isNew) setGen((g) => g + 1);
       return true;
     } catch (err) {
       setErrors((e) => ({ ...e, [index]: err instanceof Error ? err.message : 'Não deu para gerar agora.' }));
@@ -72,7 +81,7 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
   }
 
   async function generateWeek() {
-    const list = missing.map((i) => i.index);
+    const list = missing.map((i) => i.index).slice(0, Math.max(0, left));
     setQueue({ done: 0, total: list.length });
     for (let k = 0; k < list.length; k++) {
       await generate(list[k]);
@@ -101,13 +110,31 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
           {counts.agendado > 0 && <span><b>{counts.agendado}</b> {counts.agendado === 1 ? 'agendado' : 'agendados'}</span>}
           <span><b>{counts.publicado}</b> {counts.publicado === 1 ? 'publicado' : 'publicados'}</span>
         </div>
-        {missing.length > 0 ? (
+        {missing.length > 0 && left <= 0 ? (
+          <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
+        ) : missing.length > 0 ? (
           <button type="button" className="btn3d weekGenerate" onClick={generateWeek} disabled={busy}>
-            {queue ? `Gerando ${Math.min(queue.done + 1, queue.total)} de ${queue.total}…` : `Gerar ${missing.length} ${missing.length === 1 ? 'conteúdo' : 'conteúdos'} da semana`}
+            {queue
+              ? `Gerando ${Math.min(queue.done + 1, queue.total)} de ${queue.total}…`
+              : `Gerar ${Math.min(missing.length, left)} ${Math.min(missing.length, left) === 1 ? 'conteúdo' : 'conteúdos'} da semana`}
           </button>
         ) : (
           week.length > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>Semana com todos os conteúdos prontos.</span>
         )}
+      </div>
+
+      <div className="quotaLine" role="status">
+        <span>
+          Posts novos em {quota.month}: <b>{baseUsed}</b> de {quota.max}
+          {quota.extras > 0 && ` · ${extrasLeft} ${extrasLeft === 1 ? 'extra' : 'extras'} de pacote`}
+        </span>
+        {left <= 0 ? (
+          <span>
+            Acabou a cota do mês. <Link href="/app/plano">Comprar +5 posts</Link> ou espere 1º de {quota.nextMonth}.
+          </span>
+        ) : missing.length > left ? (
+          <span>Dá para gerar mais {left} {left === 1 ? 'post' : 'posts'} este mês.</span>
+        ) : null}
       </div>
 
       {queue && (
@@ -161,7 +188,7 @@ export function WeekBoard({ items, today, planStart }: { items: BoardItem[]; tod
                   {p ? (
                     <Link className="btnGhost btnSm" href={`/app/conteudos/${p.id}`}>Abrir</Link>
                   ) : (
-                    <button type="button" className="btnGhost btnSm" onClick={() => generate(i.index).then((ok) => ok && router.refresh())} disabled={busy}>
+                    <button type="button" className="btnGhost btnSm" onClick={() => generate(i.index).then((ok) => ok && router.refresh())} disabled={busy || left <= 0} title={left <= 0 ? `Posts de ${quota.month} esgotados` : undefined}>
                       {isRunning ? 'Gerando…' : 'Gerar'}
                     </button>
                   )}

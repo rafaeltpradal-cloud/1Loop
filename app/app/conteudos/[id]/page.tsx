@@ -2,8 +2,8 @@ import { notFound } from 'next/navigation';
 import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
-import { autoNetworkId, kindOf, MAX_VERSIONS, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
-import { PLANS } from '@/lib/plans';
+import { autoNetworkId, kindOf, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow } from '@/lib/contentTypes';
+import { PLANS, maxVersions } from '@/lib/plans';
 import { NETWORKS } from '@/lib/networks';
 import { PostEditor } from '@/components/content/PostEditor';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -59,7 +59,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       post={post}
       brand={{ name: ctx.brands.length > 1 ? ctx.brandName : ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
       serieNumero={serieNumero}
-      versionsLeft={Math.max(0, MAX_VERSIONS - post.versions)}
+      versionsLeft={Math.max(0, maxVersions(ctx.plan) - post.versions)}
+      adjustMax={PLANS[ctx.plan].postAdjusts}
       media={(media ?? []) as unknown as MediaItem[]}
       canCanvas={PLANS[ctx.plan].canvas}
       auto={auto}

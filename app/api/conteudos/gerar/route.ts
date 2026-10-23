@@ -3,10 +3,12 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { currentBrandId } from '@/lib/brands';
+import { getUsage } from '@/lib/usage';
+import { PLANS, isPlanId, maxVersions } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
-import { generatePost, kindOf, MAX_VERSIONS, POST_COLUMNS, type InputImage, type PostContent } from '@/lib/content';
+import { generatePost, kindOf, POST_COLUMNS, type InputImage, type PostContent } from '@/lib/content';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -35,7 +37,7 @@ export async function POST(req: Request) {
 
   const brandId = await currentBrandId(user.id);
   const [{ data: subs }, { data: strategyRow }, { data: interview }] = await Promise.all([
-    supabase.from('subscriptions').select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     supabase.from('strategies').select('id, data, created_at').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
@@ -54,8 +56,29 @@ export async function POST(req: Request) {
     .eq('item_index', index)
     .eq('user_id', user.id)
     .maybeSingle();
-  if (existing && existing.versions >= MAX_VERSIONS)
-    return NextResponse.json({ error: 'Este post já foi refeito o máximo de vezes. Edite o texto direto na tela.' }, { status: 429 });
+  const plan = isPlanId(subs[0].plan) ? subs[0].plan : 'pro';
+  if (existing && existing.versions >= maxVersions(plan))
+    return NextResponse.json(
+      { error: `Este post já foi refeito ${PLANS[plan].refacoes} vezes, o máximo do seu plano. Use "Peça à IA" ou edite o texto direto na tela.`, limit: true },
+      { status: 429 },
+    );
+
+  // Post novo: entra na cota do mês da marca; passou dela, usa um post extra de pacote.
+  let extra = false;
+  if (!existing) {
+    const usage = await getUsage(admin, user.id, brandId, plan);
+    if (usage.posts.used >= usage.posts.max) {
+      if (usage.extras.available <= 0)
+        return NextResponse.json(
+          {
+            error: `Você já gerou os ${usage.posts.max} posts de ${usage.month}. Compre um pacote extra ou espere 1º de ${usage.nextMonth}.`,
+            limit: true,
+          },
+          { status: 429 },
+        );
+      extra = true;
+    }
+  }
 
   const date = itemDate(item, planStartFrom(strategyRow.created_at as string));
   const kind = kindOf(item.formato);
@@ -90,7 +113,7 @@ export async function POST(req: Request) {
     };
     const query = existing
       ? admin.from('posts').update({ ...fields, versions: existing.versions + 1 }).eq('id', existing.id).eq('user_id', user.id)
-      : admin.from('posts').insert({ ...fields, user_id: user.id, brand_id: brandId, strategy_id: strategyRow.id, item_index: index, versions: 1 });
+      : admin.from('posts').insert({ ...fields, user_id: user.id, brand_id: brandId, strategy_id: strategyRow.id, item_index: index, versions: 1, extra });
     const { data: post, error } = await query.select(POST_COLUMNS).single();
     if (error) throw error;
     return NextResponse.json({ post });

@@ -6,8 +6,7 @@ import { ACTIVE_STATUSES } from '@/lib/billing';
 import { currentBrandId } from '@/lib/brands';
 import { sanitizeAnswers } from '@/lib/interview';
 import { reviseStrategy, type Strategy } from '@/lib/strategy';
-import { MAX_STRATEGY_ADJUSTS } from '@/lib/contentTypes';
-import { isPlanId } from '@/lib/plans';
+import { PLANS, isPlanId } from '@/lib/plans';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -25,12 +24,13 @@ export async function POST(req: Request) {
   const admin = createAdminClient();
   const brandId = await currentBrandId(user.id, admin);
   const [{ data: subs }, { data: row }, { data: interview }] = await Promise.all([
-    admin.from('subscriptions').select('status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    admin.from('subscriptions').select('plan, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
     admin.from('strategies').select('id, plan, data').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     admin.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
   if (!subs?.[0] || !ACTIVE_STATUSES.includes(subs[0].status)) return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
   if (!row) return NextResponse.json({ error: 'Gere a estratégia antes de pedir ajustes.' }, { status: 400 });
+  const MAX_STRATEGY_ADJUSTS = PLANS[isPlanId(subs[0].plan) ? subs[0].plan : 'pro'].strategyAdjusts;
   const current = row.data as Strategy;
   const used = current.ajustes ?? 0;
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Você já fez os ${MAX_STRATEGY_ADJUSTS} pedidos de ajuste desta estratégia. Ajuste as respostas da entrevista e gere outra versão.` }, { status: 429 });
 
   try {
-    const plan = isPlanId(row.plan) ? row.plan : 'pro';
+    const plan = isPlanId(row.plan) ? row.plan : 'pro'; // calendário do plano em que a estratégia foi feita
     const { strategy, resposta } = await reviseStrategy(current, sanitizeAnswers(interview?.answers ?? {}), plan, pedido);
     const previous: Strategy = { ...current };
     delete previous.anterior;
