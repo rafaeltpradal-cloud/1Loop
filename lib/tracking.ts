@@ -2,10 +2,14 @@
 // Cada um só liga quando o ID correspondente está configurado na Vercel.
 // Os IDs não são segredo (aparecem no navegador de qualquer visitante).
 
+// Aceita tanto o ID puro quanto o código de instalação colado inteiro: tira só o ID de dentro.
+const pick = (raw: string | undefined, re: RegExp) => (raw ?? '').match(re)?.[0] ?? '';
+const pixelId = (raw: string | undefined) => (raw ?? '').match(/fbq\(\s*['"]init['"]\s*,\s*['"](\d{6,20})['"]/)?.[1] ?? pick(raw, /\d{6,20}/);
+
 export const TRACKING = {
-  ga: process.env.NEXT_PUBLIC_GA_ID?.trim() || '',
-  metaPixel: process.env.NEXT_PUBLIC_META_PIXEL_ID?.trim() || '',
-  linkedin: process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID?.trim() || '',
+  ga: pick(process.env.NEXT_PUBLIC_GA_ID, /G-[A-Z0-9]{4,16}/),
+  metaPixel: pixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID),
+  linkedin: pick(process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID, /\d{4,12}/),
 };
 
 export const ORIGIN_COOKIE = 'origem';
