@@ -15,6 +15,8 @@ export const metadata = { title: 'Estratégia · 1loop creators' };
 export default async function EstrategiaPage() {
   const ctx = await getAppContext();
   const supabase = await createClient();
+  // Começa a contar o uso do mês junto com as outras buscas.
+  const usageP = getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
   const { data } = await supabase
     .from('strategies')
     .select('id, data, source, created_at')
@@ -34,7 +36,7 @@ export default async function EstrategiaPage() {
     );
   }
 
-  const usage = await getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
+  const usage = await usageP;
   const created = new Date(data.created_at as string);
   // O plano começa no dia seguinte ao que foi gerado (horário de Brasília).
   const start = planStartFrom(created);

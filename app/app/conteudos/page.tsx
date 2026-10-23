@@ -14,6 +14,8 @@ export const metadata = { title: 'Conteúdos · 1loop creators' };
 export default async function ConteudosPage() {
   const ctx = await getAppContext();
   const supabase = await createClient();
+  // Começa a contar o uso do mês junto com as outras buscas.
+  const usageP = getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
   const { data: strategyRow } = await supabase
     .from('strategies')
     .select('id, data, created_at')
@@ -50,7 +52,7 @@ export default async function ConteudosPage() {
     post: byIndex.get(index) ?? null,
   }));
 
-  const usage = await getUsage(createAdminClient(), ctx.userId, ctx.brandId, ctx.plan);
+  const usage = await usageP;
   const total = items.length;
   const done = items.filter((i) => i.post).length;
 

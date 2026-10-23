@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { PLANS, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { listBrands, pickBrand } from '@/lib/brands';
+import { listBrands, pickBrand, type BrandRow } from '@/lib/brands';
 
 export type AppContext = {
   userId: string;
@@ -33,16 +33,19 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
   } = await supabase.auth.getUser();
   if (!user) redirect('/entrar');
 
-  const [{ data: profile }, { data: subs }] = await Promise.all([
+  // Tudo que dá para buscar ao mesmo tempo vai junto (cada ida ao banco custa tempo).
+  const admin = createAdminClient();
+  const [{ data: profile }, { data: subs }, { data: brandRows }] = await Promise.all([
     supabase.from('profiles').select('name, avatar_url').eq('id', user.id).maybeSingle(),
     supabase.from('subscriptions').select('plan, status, trial_end').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    admin.from('brands').select('id, name, created_at').eq('user_id', user.id).order('created_at').order('id'),
   ]);
 
   const sub = subs?.[0];
   if (!sub || !ACTIVE_STATUSES.includes(sub.status)) redirect('/planos?assinatura=pendente');
   const plan: PlanId = (sub.plan as PlanId) in PLANS ? (sub.plan as PlanId) : 'pro';
 
-  const brands = await listBrands(createAdminClient(), user.id, (profile?.name as string | undefined) || '');
+  const brands = brandRows?.length ? (brandRows as BrandRow[]) : await listBrands(admin, user.id, (profile?.name as string | undefined) || '');
   const brand = await pickBrand(brands, plan);
   const limit = PLANS[plan].brands;
   const { count } = await supabase.from('strategies').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('brand_id', brand.id);
