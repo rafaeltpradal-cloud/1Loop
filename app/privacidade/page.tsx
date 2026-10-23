@@ -1,14 +1,13 @@
 import { PublicShell } from '@/components/PublicShell';
+import { LegalText } from '@/components/LegalText';
+import { LEGAL_UPDATED, PRIVACIDADE } from '@/lib/legal';
 
 export const metadata = { title: 'Política de privacidade · 1loop creators' };
 
 export default function PrivacidadePage() {
   return (
     <PublicShell>
-      <article className="card" style={{ padding: 32, maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h1 style={{ fontSize: 30 }}>Política de privacidade</h1>
-        <p className="muted">[Texto da política de privacidade, em conformidade com a LGPD, a ser redigido com apoio jurídico antes do lançamento.]</p>
-      </article>
+      <LegalText title="Política de privacidade" updated={LEGAL_UPDATED} text={PRIVACIDADE} />
     </PublicShell>
   );
 }

@@ -849,3 +849,15 @@ html[data-theme="dark"] { --c-ig: #E85A9B; --c-li: #5B83F8; }
 .inviteHow[open] > *:not(summary) { margin-top: 8px; display: block; }
 .inviteHow[open] > a { display: inline-flex; }
 @media (max-width: 560px) { .inviteForm { flex-direction: column; } }
+
+/* Páginas de política e termos */
+.legal { padding: 36px; max-width: 760px; width: 100%; display: flex; flex-direction: column; gap: 12px; font-size: 15px; line-height: 1.7; color: var(--ink-2); }
+.legal h1 { font-size: 30px; letter-spacing: -0.6px; color: var(--ink); }
+.legal h2 { font-size: 17px; margin-top: 14px; color: var(--ink); }
+.legal p { margin: 0; }
+.legal ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.legalTable { overflow-x: auto; }
+.legal table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.legal th, .legal td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.legal th { font-weight: 700; color: var(--ink); }
+@media (max-width: 560px) { .legal { padding: 22px; } }
