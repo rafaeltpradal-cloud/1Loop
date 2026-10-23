@@ -207,8 +207,8 @@ export function PerformanceDashboard({ posts, days, ig, updatedAt }: { posts: Pe
                           </span>
                         </span>
                         <span className="perfLinks">
-                          {p.post_id && <Link href={`/app/conteudos/${p.post_id}`}>Abrir</Link>}
-                          {p.permalink && <a href={p.permalink} target="_blank" rel="noopener noreferrer">Ver</a>}
+                          {p.post_id ? <Link href={`/app/conteudos/${p.post_id}`}>Abrir</Link> : <span aria-hidden="true" />}
+                          {p.permalink ? <a href={p.permalink} target="_blank" rel="noopener noreferrer">Ver</a> : <span aria-hidden="true" />}
                         </span>
                       </span>
                     </th>

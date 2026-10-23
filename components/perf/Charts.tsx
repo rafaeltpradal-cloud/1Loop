@@ -16,12 +16,18 @@ const dayLabel = (iso: string) => {
   return `${Number(d)}/${Number(m)}`;
 };
 
-function niceMax(v: number) {
-  if (v <= 0) return 4;
-  const p = Math.pow(10, Math.floor(Math.log10(v)));
-  const n = v / p;
-  const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
-  return step * p;
+/** Escala com passos redondos e iguais (ex.: 1.150 · 1.250 · 1.350 ou 0 · 100 · 200 · 300). */
+function niceScale(lo: number, hi: number, count = 4) {
+  if (hi <= lo) hi = lo + 1;
+  const raw = (hi - lo) / count;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / p;
+  const step = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+  const floor = Math.floor(lo / step) * step;
+  const top = Math.ceil(hi / step) * step;
+  const ticks: number[] = [];
+  for (let t = floor; t <= top + step / 2; t += step) ticks.push(Math.round(t * 1000) / 1000);
+  return { floor, top, ticks };
 }
 
 type Tip = { x: number; y: number; title: string; rows: { label: string; value: string; color?: string }[] } | null;
@@ -68,11 +74,10 @@ export function LineChart({ points, label, color = 'var(--c-li)', height = 200 }
   const min = Math.min(...points.map((p) => p.value));
   const max = Math.max(...points.map((p) => p.value));
   // Seguidores mudam pouco: a escala começa perto do menor valor; alcance começa do zero.
-  const floor = min > 0 && (max - min) / max < 0.25 ? Math.floor((min * 0.98) / 10) * 10 : 0;
-  const top = floor + niceMax(Math.max(1, max - floor));
+  const zoom = min > 0 && (max - min) / max < 0.25;
+  const { floor, top, ticks } = niceScale(zoom ? min : 0, max, zoom ? 3 : 4);
   const x = (i: number) => PAD.l + (points.length <= 1 ? (W - PAD.l - PAD.r) / 2 : (i * (W - PAD.l - PAD.r)) / (points.length - 1));
   const y = (v: number) => PAD.t + (1 - (v - floor) / (top - floor)) * (H - PAD.t - PAD.b);
-  const ticks = [0, 0.5, 1].map((f) => floor + f * (top - floor));
   const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
   const area = points.length > 1 ? `${path} L${x(points.length - 1)},${y(floor)} L${x(0)},${y(floor)} Z` : '';
   const labelsEvery = Math.max(1, Math.ceil(points.length / Math.max(2, Math.floor(W / 90))));
@@ -134,12 +139,11 @@ export function ColumnChart({ bars, label, height = 220 }: { bars: Bar[]; label:
   const [hover, setHover] = useState<number | null>(null);
   const [box, W] = useWidth();
   const H = height;
-  const top = niceMax(Math.max(1, ...bars.map((b) => b.value)));
+  const { top, ticks } = niceScale(0, Math.max(1, ...bars.map((b) => b.value)), 4);
   const inner = W - PAD.l - PAD.r;
   const slot = inner / Math.max(1, bars.length);
   const bw = Math.min(24, Math.max(6, slot - 6));
   const y = (v: number) => PAD.t + (1 - v / top) * (H - PAD.t - PAD.b);
-  const ticks = [0, 0.5, 1].map((f) => f * top);
   const labelsEvery = Math.max(1, Math.ceil(bars.length / Math.max(2, Math.floor(W / 70))));
   const nets = useMemo(() => Array.from(new Set(bars.map((b) => b.network))), [bars]);
 
