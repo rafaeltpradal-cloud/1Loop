@@ -830,3 +830,22 @@ html[data-theme="dark"] { --c-ig: #E85A9B; --c-li: #5B83F8; }
 @media (max-width: 900px) { .statGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .perfManualGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .perfUpdated { margin-left: 0; width: 100%; } .statValue { font-size: 22px; } }
 .perfLink { font-size: 12.5px; font-weight: 600; color: var(--muted); text-decoration: none; } .perfLink:hover { color: var(--ink); }
+
+/* Redes: passo a passo de conexão */
+.liActions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: auto; }
+.connSteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.connSteps li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; }
+.connSteps li > span:last-child { display: flex; flex-direction: column; gap: 2px; font-size: 13px; line-height: 1.45; }
+.connSteps b { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.connNum { width: 24px; height: 24px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: var(--hover); color: var(--ink-2); }
+.inviteBox { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); font-size: 13px; line-height: 1.5; }
+.inviteBox p { margin: 0; color: var(--ink-2); }
+.inviteForm { display: flex; gap: 8px; }
+.inviteForm .input { flex: 1; min-width: 0; }
+.inviteHow { display: flex; flex-direction: column; gap: 8px; }
+.inviteHow summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--muted); width: fit-content; }
+.inviteHow summary:hover { color: var(--ink); }
+.inviteHow[open] { gap: 8px; }
+.inviteHow[open] > *:not(summary) { margin-top: 8px; display: block; }
+.inviteHow[open] > a { display: inline-flex; }
+@media (max-width: 560px) { .inviteForm { flex-direction: column; } }

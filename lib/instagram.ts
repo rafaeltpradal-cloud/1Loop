@@ -9,6 +9,8 @@ export const INSTAGRAM_SCOPES = 'instagram_business_basic,instagram_business_con
 export const hasInsightsScope = (scopes?: string | null) => !!scopes && scopes.includes('instagram_business_manage_insights');
 
 export const instagramConfigured = () => !!(process.env.INSTAGRAM_APP_ID?.trim() && process.env.INSTAGRAM_APP_SECRET?.trim());
+/** Enquanto a Meta não aprova o app, só contas convidadas (testadoras) conseguem conectar. Mude INSTAGRAM_ACCESS para "aberto" depois da aprovação. */
+export const instagramInviteOnly = () => (process.env.INSTAGRAM_ACCESS ?? '').trim().toLowerCase() !== 'aberto';
 export const instagramRedirectUri = () => `${siteUrl()}/api/instagram/callback`;
 const appId = () => process.env.INSTAGRAM_APP_ID!.trim();
 const secret = () => process.env.INSTAGRAM_APP_SECRET!.trim();

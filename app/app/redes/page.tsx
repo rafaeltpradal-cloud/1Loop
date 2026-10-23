@@ -6,7 +6,7 @@ import { NetworksBoard } from './NetworksBoard';
 import { NetworkConnect, type ConnectState } from '@/components/NetworkConnect';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { linkedinConfigured } from '@/lib/linkedin';
-import { instagramConfigured } from '@/lib/instagram';
+import { hasInsightsScope, instagramConfigured, instagramInviteOnly } from '@/lib/instagram';
 
 export const metadata = { title: 'Redes · 1loop creators' };
 
@@ -28,12 +28,11 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   for (const a of accounts ?? []) {
     if (isNetworkId(a.network)) saved[a.network] = { handle: a.handle as string, status: a.status as string };
   }
-  const count = Object.keys(saved).length;
 
   // Conexões oficiais (o token não sai do servidor).
   const { data: conns } = await createAdminClient()
     .from('social_connections')
-    .select('network, name, picture, expires_at, meta')
+    .select('network, name, picture, expires_at, meta, scopes')
     .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId);
   const stateOf = (network: 'linkedin' | 'instagram', configured: boolean): ConnectState => {
     if (!configured) return { kind: 'indisponivel' };
@@ -42,7 +41,8 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
     const daysLeft = Math.max(0, Math.ceil((new Date(c.expires_at as string).getTime() - Date.now()) / 86400000));
     const type = (c.meta as { account_type?: string } | null)?.account_type;
     const detail = network === 'instagram' && type ? (type === 'BUSINESS' ? 'conta Comercial' : 'conta de Criador') : undefined;
-    return { kind: 'conectado', name: network === 'instagram' ? `@${c.name ?? ''}` : ((c.name as string) ?? ''), picture: (c.picture as string | null) ?? null, expiresAt: c.expires_at as string, daysLeft, detail };
+    const missingInsights = network === 'instagram' && !hasInsightsScope(c.scopes as string | null);
+    return { kind: 'conectado', name: network === 'instagram' ? `@${c.name ?? ''}` : ((c.name as string) ?? ''), picture: (c.picture as string | null) ?? null, expiresAt: c.expires_at as string, daysLeft, detail, missingInsights };
   };
   const li = stateOf('linkedin', linkedinConfigured());
   const ig = stateOf('instagram', instagramConfigured());
@@ -59,7 +59,7 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
 
       <div className="grid2">
         <NetworkConnect network="linkedin" state={li} flash={liFlash} />
-        <NetworkConnect network="instagram" state={ig} flash={igFlash} />
+        <NetworkConnect network="instagram" state={ig} flash={igFlash} inviteOnly={instagramInviteOnly()} savedHandle={saved.instagram?.handle} />
       </div>
 
       <NetworksBoard chosen={chosen} saved={saved} />
@@ -68,7 +68,7 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
         <span>Próximo passo: <b>conteúdos da semana</b></span>
         <span style={{ display: 'flex', gap: 8 }}>
           <Link className="btnGhost btnSm" href="/app/estrategia">Voltar</Link>
-          <Link className="btn3d btnSm" href="/app/conteudos">{count ? 'Avançar →' : 'Pular por agora'}</Link>
+          <Link className="btn3d btnSm" href="/app/conteudos">{(conns ?? []).length ? 'Avançar →' : 'Pular por agora'}</Link>
         </span>
       </div>
     </div>
