@@ -4,6 +4,9 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { isPlanId } from '@/lib/plans';
 import { siteUrl } from '@/lib/stripe';
+import { cookies } from 'next/headers';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { ORIGIN_COOKIE, parseOrigin } from '@/lib/tracking';
 
 export type FormState = { error?: string; note?: string } | undefined;
 
@@ -30,7 +33,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     password,
     options: {
       data: { name, phone, plan },
-      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(`/checkout?plano=${plan}`)}`,
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(`/pagamento?plano=${plan}`)}`,
     },
   });
 
@@ -39,12 +42,22 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     return { error: 'Não foi possível criar sua conta agora. Tente de novo em instantes.' };
   }
 
+  // Guarda de onde a pessoa veio (anúncio, campanha) junto da conta.
+  const origin = parseOrigin((await cookies()).get(ORIGIN_COOKIE)?.value);
+  if (origin && data.user) {
+    try {
+      await createAdminClient().from('profiles').update({ origem: origin }).eq('id', data.user.id);
+    } catch (err) {
+      console.error('[cadastro origem]', err);
+    }
+  }
+
   // Se a confirmação de e-mail estiver ligada no Supabase, ainda não há sessão.
   if (!data.session) {
     return { note: `Enviamos um link de confirmação para ${email}. Abra o e-mail para continuar para o pagamento.` };
   }
 
-  redirect(`/checkout?plano=${plan}`);
+  redirect(`/pagamento?plano=${plan}`);
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {

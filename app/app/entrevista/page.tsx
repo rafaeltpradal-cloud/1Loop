@@ -2,11 +2,13 @@ import { getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeAnswers } from '@/lib/interview';
 import { Interview } from '@/components/Interview';
+import { TrackOnce } from '@/components/Tracking';
+import { PLANS } from '@/lib/plans';
 
 export const metadata = { title: 'Entrevista · 1loop creators' };
 
-export default async function EntrevistaPage({ searchParams }: { searchParams: Promise<{ bemvindo?: string }> }) {
-  const { bemvindo } = await searchParams;
+export default async function EntrevistaPage({ searchParams }: { searchParams: Promise<{ bemvindo?: string; assinou?: string }> }) {
+  const { bemvindo, assinou } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
   // No Multi, a entrevista é da marca em uso.
@@ -15,6 +17,14 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
 
   return (
     <div className="page">
+      {bemvindo && assinou === '1' && (
+        <TrackOnce
+          id={`trial-${ctx.userId}`}
+          ga="start_trial"
+          meta="StartTrial"
+          params={{ plan: ctx.plan, value: PLANS[ctx.plan].priceFounders ?? PLANS[ctx.plan].priceFull, currency: 'BRL' }}
+        />
+      )}
       {bemvindo && (
         <div className="formNote rise" role="status">
           Pronto, {ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.

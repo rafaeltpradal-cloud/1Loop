@@ -23,5 +23,5 @@ export async function GET(request: Request) {
       console.error('[bem-vindo]', err);
     }
   }
-  return NextResponse.redirect(`${siteUrl()}/app/entrevista?bemvindo=1`, { status: 303 });
+  return NextResponse.redirect(`${siteUrl()}/app/entrevista?bemvindo=1&assinou=${sessionId ? '1' : '0'}`, { status: 303 });
 }

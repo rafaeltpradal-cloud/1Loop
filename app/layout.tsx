@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
 import { LoopDefs } from '@/components/Logo';
 import { THEME_SCRIPT } from '@/lib/theme';
+import { Tracking } from '@/components/Tracking';
 import './globals.css';
 
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope', display: 'swap' });
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <LoopDefs />
         {children}
+        <Tracking />
       </body>
     </html>
   );
