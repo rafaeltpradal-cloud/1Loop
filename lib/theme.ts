@@ -12,7 +12,7 @@ export const THEME_SCRIPT = `(function(){
   function apply(pref){
     pref=pref||read();
     // A landing (página inicial) foi desenhada só no claro: lá o tema escuro não vale.
-    var landing=location.pathname==='/';
+    var landing=location.pathname==='/'||location.pathname==='/vendedores';
     var dark=!landing&&(pref==='dark'||(pref==='system'&&!!mq&&mq.matches));
     var el=document.documentElement;
     el.setAttribute('data-theme',dark?'dark':'light');
