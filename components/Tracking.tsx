@@ -45,8 +45,17 @@ function countVisit(path: string) {
     if (path.startsWith('/app') || path.startsWith('/painel')) return;
     const q = new URLSearchParams(location.search);
     const ext = document.referrer && !document.referrer.startsWith(location.origin) ? new URL(document.referrer).hostname : '';
-    const source = q.get('utm_source') || (q.get('fbclid') ? 'meta' : '') || ext || 'direto';
-    const medium = q.get('utm_medium') || (ext ? 'referral' : '');
+    // Páginas seguintes da mesma visita (ex.: /cadastro) herdam a origem guardada no primeiro acesso.
+    let saved: Record<string, string> = {};
+    try {
+      const c = document.cookie.split('; ').find((x) => x.startsWith(`${ORIGIN_COOKIE}=`));
+      if (c) saved = JSON.parse(decodeURIComponent(c.slice(ORIGIN_COOKIE.length + 1)));
+    } catch {
+      saved = {};
+    }
+    const savedRef = saved.referrer ? (() => { try { return new URL(saved.referrer).hostname; } catch { return ''; } })() : '';
+    const source = q.get('utm_source') || (q.get('fbclid') ? 'meta' : '') || ext || saved.utm_source || (saved.fbclid ? 'meta' : '') || savedRef || 'direto';
+    const medium = q.get('utm_medium') || (ext ? 'referral' : '') || saved.utm_medium || '';
     fetch('/api/visita', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, source, medium }) }).catch(() => {});
   } catch {
     // ignora
