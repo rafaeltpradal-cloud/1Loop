@@ -11,6 +11,9 @@ export const TRACKING = {
   // Conjunto de dados "1Loop Creators" do portfólio empresarial (necessário para a API de Conversões).
   // O Pixel antigo (1149958317988275) ficou preso na conta de anúncios pessoal e não gera token.
   metaPixel: pixelId(process.env.NEXT_PUBLIC_META_DATASET_ID) || '2014888835840490',
+  // Pixel antigo, da conta de anúncios pessoal (1103166142546499), onde está o saldo atual.
+  // Enquanto a campanha rodar nessa conta, o site manda os eventos do navegador para os dois.
+  metaPixelLegacy: '1149958317988275',
   linkedin: pick(process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID, /\d{4,12}/),
 };
 
