@@ -235,6 +235,8 @@ export function PostEditor({
 
   const caption = captionWithTags(c);
   const autoOk = auto.available && canAutoPublish(post.rede, post.formato);
+  // Com a rede conectada e o post pronto, aprovar e agendar é um botão só.
+  const canSchedule = autoOk && auto.connected && !autoBlocker(post.rede, post.formato, c);
   const edited = specs.some((s) => c.canvas?.[s.key]);
 
   function applyCanvas(canvas: Record<string, Scene>) {
@@ -534,7 +536,12 @@ export function PostEditor({
             </span>
           </div>
           <div className="pageActions" style={{ width: 'auto' }}>
-            {status === 'rascunho' && <button type="button" className="btn3d btnSm" onClick={() => changeStatus('aprovado')} disabled={pending}>Aprovar post</button>}
+            {status === 'rascunho' &&
+              (canSchedule ? (
+                <button type="button" className="linkBtn" onClick={() => changeStatus('aprovado')} disabled={pending} title="Aprova sem agendar, para publicar você mesmo">Só aprovar</button>
+              ) : (
+                <button type="button" className="btn3d btnSm" onClick={() => changeStatus('aprovado')} disabled={pending}>Aprovar post</button>
+              ))}
             {status === 'aprovado' && <button type="button" className="btn3d btnSm" onClick={() => changeStatus('publicado')} disabled={pending}>Marcar como publicado</button>}
             {status !== 'rascunho' && status !== 'publicando' && <button type="button" className="btnGhost btnSm" onClick={() => changeStatus('rascunho')} disabled={pending}>Voltar para revisão</button>}
           </div>
@@ -549,6 +556,13 @@ export function PostEditor({
             state={{ status, ...pub }}
             prepareAssets={prepareAssets}
             blocker={autoBlocker(post.rede, post.formato, c)}
+            beforeSchedule={async () => {
+              if (!dirty) return null;
+              const r = await savePost(post.id, toPayload(c));
+              if (!r.ok) return r.error;
+              setSaved(JSON.stringify(c));
+              return null;
+            }}
             onChange={(next) => {
               setStatus(next.status);
               setPub({ scheduledAt: next.scheduledAt, externalUrl: next.externalUrl, publishError: next.publishError });
