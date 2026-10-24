@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
+import { PREVIEW_LOCKED_MSG } from '@/lib/access';
 import { currentBrandId } from '@/lib/brands';
 import { sanitizeAnswers } from '@/lib/interview';
 import { applyModelo, reviseStrategy, type Strategy } from '@/lib/strategy';
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
     admin.from('strategies').select('id, plan, data').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     admin.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
+  if (!subs?.[0]) return NextResponse.json({ error: PREVIEW_LOCKED_MSG, paywall: true }, { status: 402 });
   if (!subs?.[0] || !ACTIVE_STATUSES.includes(subs[0].status)) return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
   if (!row) return NextResponse.json({ error: 'Gere a estratégia antes de pedir ajustes.' }, { status: 400 });
   const MAX_STRATEGY_ADJUSTS = PLANS[isPlanId(subs[0].plan) ? subs[0].plan : 'pro'].strategyAdjusts;

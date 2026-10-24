@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
@@ -8,6 +8,7 @@ import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 import { ContentTabs } from '@/components/content/ContentTabs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getUsage } from '@/lib/usage';
+import { PREVIEW, previewUsage } from '@/lib/access';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -53,6 +54,8 @@ export default async function ConteudosPage() {
   }));
 
   const usage = await usageP;
+  // Na prévia a cota é de 3 posts no total.
+  const pv = ctx.preview ? await previewUsage(ctx.userId) : null;
   const total = items.length;
   const done = items.filter((i) => i.post).length;
 
@@ -70,7 +73,11 @@ export default async function ConteudosPage() {
         items={items}
         today={isoInBrazil()}
         planStart={start}
-        quota={{ used: usage.posts.used, max: usage.posts.max, extras: usage.extras.available, month: usage.month, nextMonth: usage.nextMonth }}
+        quota={
+          pv
+            ? { used: pv.posts, max: PREVIEW.posts, extras: 0, month: usage.month, nextMonth: usage.nextMonth, preview: true }
+            : { used: usage.posts.used, max: usage.posts.max, extras: usage.extras.available, month: usage.month, nextMonth: usage.nextMonth }
+        }
       />
     </div>
   );

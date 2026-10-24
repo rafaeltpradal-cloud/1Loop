@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
 import { autoNetworkId, kindOf, MEDIA_COLUMNS, POST_COLUMNS, type MediaItem, type PostRow, serieNumberFor } from '@/lib/contentTypes';
@@ -14,8 +14,9 @@ import { instagramConfigured } from '@/lib/instagram';
 
 export const metadata = { title: 'Conteúdo · 1loop creators' };
 
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ primeiro?: string }> }) {
   const { id } = await params;
+  const { primeiro } = await searchParams;
   const postId = Number(id);
   if (!Number.isInteger(postId)) notFound();
 
@@ -86,12 +87,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
       post={post}
       brand={{ name: ctx.brands.length > 1 ? ctx.brandName : ctx.name, handle, serie: strategy?.serie.nome ?? '' }}
       serieNumero={serieNumero}
-      versionsLeft={Math.max(0, maxVersions(ctx.plan) - post.versions)}
-      adjustMax={PLANS[ctx.plan].postAdjusts}
+      versionsLeft={ctx.preview ? 0 : Math.max(0, maxVersions(ctx.plan) - post.versions)}
+      adjustMax={ctx.preview ? 0 : PLANS[ctx.plan].postAdjusts}
       media={(media ?? []) as unknown as MediaItem[]}
       canCanvas={PLANS[ctx.plan].canvas}
       auto={auto}
       defaultTime={strategy?.ritmo.horario ?? '07:30'}
+      preview={ctx.preview}
+      first={primeiro === '1'}
     />
   );
 }

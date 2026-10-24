@@ -3,8 +3,9 @@ import { Brand, LoopMark, Wordmark } from '@/components/Logo';
 import { AppNav } from '@/components/AppNav';
 import { Avatar } from '@/components/Avatar';
 import { BrandSwitcher } from '@/components/BrandSwitcher';
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { PLANS } from '@/lib/plans';
+import { PreviewBar } from '@/components/PreviewBar';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAppContext();
@@ -22,9 +23,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
         {multi && switcher(true)}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Link href="/app/plano" className="mobilePlan">
-            <span className="dot" style={{ background: ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
-            {plan.name}
+          <Link href={ctx.preview ? '/app/assinar' : '/app/plano'} className="mobilePlan">
+            <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
+            {ctx.preview ? 'Prévia' : plan.name}
           </Link>
           <Link href="/app/configuracoes" className="mobileIconBtn" aria-label="Configurações">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -44,15 +45,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppNav group="main" />
         <div className="sidebarFoot">
           <AppNav group="account" />
-          <Link href="/app/plano" className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
+          <Link href={ctx.preview ? '/app/assinar' : '/app/plano'} className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14 }}>
-              <span className="dot" style={{ background: ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
-              Plano {plan.name}
+              <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
+              {ctx.preview ? 'Prévia grátis' : `Plano ${plan.name}`}
               <span className="planCardGo" aria-hidden="true">›</span>
             </span>
             <span className="muted" style={{ fontSize: 12 }}>
-              {ctx.trialDaysLeft !== null ? `Teste: ${ctx.trialDaysLeft} ${ctx.trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}` : plan.rhythm}
-              {ctx.plan !== 'multi' ? ' · fazer upgrade' : ''}
+              {ctx.preview
+                ? 'Começar 7 dias grátis'
+                : ctx.trialDaysLeft !== null
+                  ? `Teste: ${ctx.trialDaysLeft} ${ctx.trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}`
+                  : plan.rhythm}
+              {!ctx.preview && ctx.plan !== 'multi' ? ' · fazer upgrade' : ''}
             </span>
           </Link>
           <div className="footExtra" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -69,7 +74,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </aside>
-      <main className="content">{children}</main>
+      <main className="content">
+        {ctx.preview && <PreviewBar userId={ctx.userId} plan={ctx.plan} />}
+        {children}
+      </main>
       <AppNav group="tabs" />
     </div>
   );

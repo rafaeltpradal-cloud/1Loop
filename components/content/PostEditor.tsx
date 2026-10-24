@@ -65,6 +65,8 @@ export function PostEditor({
   auto,
   defaultTime,
   perf = null,
+  preview = false,
+  first = false,
 }: {
   post: PostRow;
   brand: Brand;
@@ -76,6 +78,10 @@ export function PostEditor({
   auto: AutoInfo;
   defaultTime: string;
   perf?: PostPerf;
+  /** Conta na prévia (sem cartão): sem refazer nem ajustar com a IA. */
+  preview?: boolean;
+  /** Acabou de sair da entrevista: mostra a comemoração do primeiro post. */
+  first?: boolean;
 }) {
   const router = useRouter();
   const [c, setC] = useState<PostContent>(post.content);
@@ -293,7 +299,28 @@ export function PostEditor({
         </div>
       </div>
 
-      {status !== 'publicado' && status !== 'publicando' && (
+      {first && (
+        <div className="firstPost rise" role="status">
+          <span className="firstPostEmoji" aria-hidden="true">🎉</span>
+          <div>
+            <b>Seu primeiro post está pronto.</b>
+            <span>
+              {preview
+                ? ' Feito a partir da sua entrevista e da sua estratégia. Gostou? Começando os 7 dias grátis você publica direto no LinkedIn e libera o mês inteiro.'
+                : ' Feito a partir da sua entrevista e da sua estratégia. Revise, ajuste com a IA se quiser e publique hoje.'}
+            </span>
+          </div>
+          {preview ? <a className="btn3d btnSm" href="/app/assinar">Começar 7 dias grátis</a> : <a className="btnGhost btnSm" href="/app/conteudos">Ver a semana</a>}
+        </div>
+      )}
+      {preview && status !== 'publicado' && (
+        <div className="card previewLock">
+          <b>Peça à IA e refazer</b>
+          <span className="muted">Ajustar o post com a IA e refazer liberam no teste de 7 dias. Na prévia, você pode editar o texto à mão.</span>
+          <a className="linkBtn" href="/app/assinar">Liberar agora →</a>
+        </div>
+      )}
+      {!preview && status !== 'publicado' && status !== 'publicando' && (
         <AiAsk
           title="Peça à IA"
           hint="Diga o que quer mudar neste post. A IA ajusta e você revisa antes de salvar."
@@ -519,7 +546,7 @@ export function PostEditor({
               </span>
             ) : (
               <button type="button" className="btnGhost btnSm" onClick={() => setConfirmRedo(true)} disabled={redoing || left === 0}>
-                {redoing ? 'Refazendo…' : left === 0 ? 'Sem refações' : `Refazer com IA (${left})`}
+                {redoing ? 'Refazendo…' : preview ? 'Refazer: no teste' : left === 0 ? 'Sem refações' : `Refazer com IA (${left})`}
               </button>
             )}
           </div>

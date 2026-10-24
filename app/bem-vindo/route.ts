@@ -4,7 +4,7 @@ import { stripe, siteUrl } from '@/lib/stripe';
 import { syncSubscription } from '@/lib/billing';
 
 // Retorno do checkout. Garante que a assinatura já está salva (mesmo se o webhook atrasar)
-// e leva o usuário direto para o primeiro passo: a entrevista.
+// e leva o usuário ao próximo passo.
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get('session_id');
   const supabase = await createClient();
@@ -23,5 +23,8 @@ export async function GET(request: Request) {
       console.error('[bem-vindo]', err);
     }
   }
-  return NextResponse.redirect(`${siteUrl()}/app/entrevista?bemvindo=1&assinou=${sessionId ? '1' : '0'}`, { status: 303 });
+  // Quem já viu a prévia (tem estratégia) volta para o início com o teste ativo; quem não, começa pela entrevista.
+  const { count } = await supabase.from('strategies').select('id', { count: 'exact', head: true }).eq('user_id', user.id);
+  const dest = (count ?? 0) > 0 ? `/app?assinou=${sessionId ? '1' : '0'}` : `/app/entrevista?bemvindo=1&assinou=${sessionId ? '1' : '0'}`;
+  return NextResponse.redirect(`${siteUrl()}${dest}`, { status: 303 });
 }

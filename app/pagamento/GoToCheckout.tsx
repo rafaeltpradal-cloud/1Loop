@@ -6,7 +6,6 @@ import { track } from '@/components/Tracking';
 export function GoToCheckout({ plan, value }: { plan: string; value: number }) {
   useEffect(() => {
     const params = { plan, value, currency: 'BRL' };
-    track({ ga: 'sign_up', meta: 'CompleteRegistration', params });
     track({ ga: 'begin_checkout', meta: 'InitiateCheckout', params });
     // Dá tempo de os eventos saírem antes de ir para o Stripe.
     const t = setTimeout(() => window.location.replace(`/checkout?plano=${encodeURIComponent(plan)}`), 700);

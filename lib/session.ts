@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { ACTIVE_STATUSES } from '@/lib/billing';
+import { accessFor } from '@/lib/access';
 import { PLANS, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { listBrands, pickBrand, type BrandRow } from '@/lib/brands';
@@ -22,11 +22,13 @@ export type AppContext = {
   /** Todas as marcas; as que passam do limite do plano ficam bloqueadas. */
   brands: { id: number; name: string; locked: boolean }[];
   brandLimit: number;
+  /** Conta nova sem cartão: entrevista, estratégia e até 3 posts (ver lib/access.ts). */
+  preview: boolean;
 };
 
 // Carrega usuário, perfil e assinatura uma vez por requisição.
-// Sem login → /entrar. Sem assinatura ativa ou em teste → /planos.
-export const getAppContext = cache(async (): Promise<AppContext> => {
+// Sem login → /entrar. Assinatura encerrada → /planos. Conta nova sem cartão → prévia.
+const loadContext = cache(async (): Promise<AppContext> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -35,15 +37,15 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
 
   // Tudo que dá para buscar ao mesmo tempo vai junto (cada ida ao banco custa tempo).
   const admin = createAdminClient();
-  const [{ data: profile }, { data: subs }, { data: brandRows }] = await Promise.all([
+  const [{ data: profile }, access, { data: brandRows }] = await Promise.all([
     supabase.from('profiles').select('name, avatar_url').eq('id', user.id).maybeSingle(),
-    supabase.from('subscriptions').select('plan, status, trial_end').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+    accessFor(user),
     admin.from('brands').select('id, name, created_at').eq('user_id', user.id).order('created_at').order('id'),
   ]);
 
-  const sub = subs?.[0];
-  if (!sub || !ACTIVE_STATUSES.includes(sub.status)) redirect('/planos?assinatura=pendente');
-  const plan: PlanId = (sub.plan as PlanId) in PLANS ? (sub.plan as PlanId) : 'pro';
+  if (access.mode === 'blocked') redirect('/planos?assinatura=pendente');
+  const plan: PlanId = access.plan in PLANS ? access.plan : 'pro';
+  const sub = { status: access.status, trial_end: access.trialEnd };
 
   const brands = brandRows?.length ? (brandRows as BrandRow[]) : await listBrands(admin, user.id, (profile?.name as string | undefined) || '');
   const brand = await pickBrand(brands, plan);
@@ -68,5 +70,18 @@ export const getAppContext = cache(async (): Promise<AppContext> => {
     brandName: brand.name,
     brands: brands.map((b, i) => ({ id: b.id, name: b.name, locked: i >= limit })),
     brandLimit: limit,
+    preview: access.mode === 'preview',
   };
 });
+
+/** Páginas que a prévia mostra: início, entrevista, estratégia e conteúdos. */
+export async function getPreviewContext(): Promise<AppContext> {
+  return loadContext();
+}
+
+/** Demais páginas: na prévia, levam para a tela de começar o teste. */
+export async function getAppContext(): Promise<AppContext> {
+  const ctx = await loadContext();
+  if (ctx.preview) redirect('/app/assinar');
+  return ctx;
+}

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { ACTIVE_STATUSES } from '@/lib/billing';
+import { accessFor, PREVIEW, previewUsage } from '@/lib/access';
 import { currentBrandId } from '@/lib/brands';
 import { getUsage } from '@/lib/usage';
-import { PLANS, isPlanId, maxVersions } from '@/lib/plans';
+import { PLANS, maxVersions } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
@@ -36,12 +36,12 @@ export async function POST(req: Request) {
   if (!Number.isInteger(index) || index < 0) return NextResponse.json({ error: 'Post inválido.' }, { status: 400 });
 
   const brandId = await currentBrandId(user.id);
-  const [{ data: subs }, { data: strategyRow }, { data: interview }] = await Promise.all([
-    supabase.from('subscriptions').select('plan, status').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
+  const [access, { data: strategyRow }, { data: interview }] = await Promise.all([
+    accessFor(user),
     supabase.from('strategies').select('id, data, created_at').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     supabase.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
   ]);
-  if (!subs?.[0] || !ACTIVE_STATUSES.includes(subs[0].status)) return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
+  if (access.mode === 'blocked') return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
   if (!strategyRow) return NextResponse.json({ error: 'Gere sua estratégia antes dos conteúdos.' }, { status: 400 });
 
   const strategy = strategyRow.data as Strategy;
@@ -56,7 +56,14 @@ export async function POST(req: Request) {
     .eq('item_index', index)
     .eq('user_id', user.id)
     .maybeSingle();
-  const plan = isPlanId(subs[0].plan) ? subs[0].plan : 'pro';
+  const plan = access.plan;
+  // Prévia (sem cartão): até 3 posts novos, sem refazer.
+  if (access.mode === 'preview') {
+    if (existing)
+      return NextResponse.json({ error: 'Na prévia não dá para refazer posts. Comece seus 7 dias grátis para refazer e ajustar com a IA.', limit: true, paywall: true }, { status: 429 });
+    if ((await previewUsage(user.id)).posts >= PREVIEW.posts)
+      return NextResponse.json({ error: `Você já viu os ${PREVIEW.posts} posts da prévia. Comece seus 7 dias grátis para gerar o mês inteiro.`, limit: true, paywall: true }, { status: 429 });
+  }
   if (existing && existing.versions >= maxVersions(plan))
     return NextResponse.json(
       { error: `Este post já foi refeito ${PLANS[plan].refacoes} vezes, o máximo do seu plano. Use "Peça à IA" ou edite o texto direto na tela.`, limit: true },
@@ -65,7 +72,7 @@ export async function POST(req: Request) {
 
   // Post novo: entra na cota do mês da marca; passou dela, usa um post extra de pacote.
   let extra = false;
-  if (!existing) {
+  if (!existing && access.mode === 'paid') {
     const usage = await getUsage(admin, user.id, brandId, plan);
     if (usage.posts.used >= usage.posts.max) {
       if (usage.extras.available <= 0)

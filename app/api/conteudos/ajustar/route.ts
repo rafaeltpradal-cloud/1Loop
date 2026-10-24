@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
+import { PREVIEW_LOCKED_MSG } from '@/lib/access';
 import { currentBrandId } from '@/lib/brands';
 import { PLANS, isPlanId } from '@/lib/plans';
 import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     admin.from('posts').select('id, strategy_id, item_index, date, status, content').eq('id', postId).eq('user_id', user.id).eq('brand_id', brandId).maybeSingle(),
     admin.from('interviews').select('answers').eq('brand_id', brandId).eq('user_id', user.id).maybeSingle(),
   ]);
+  if (!subs?.[0]) return NextResponse.json({ error: PREVIEW_LOCKED_MSG, paywall: true }, { status: 402 });
   if (!subs?.[0] || !ACTIVE_STATUSES.includes(subs[0].status)) return NextResponse.json({ error: 'Sua assinatura não está ativa.' }, { status: 402 });
   if (!post) return NextResponse.json({ error: 'Post não encontrado.' }, { status: 404 });
   if (post.status === 'publicando' || post.status === 'publicado') return NextResponse.json({ error: 'Este post já foi publicado.' }, { status: 400 });

@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { PLANS, PLAN_ORDER, brl, type PlanId } from '@/lib/plans';
 import { changePlan } from './actions';
+import { priceNow } from '@/lib/founders';
 
 export function PlanCards({ current, trialing }: { current: PlanId; trialing: boolean }) {
   const router = useRouter();
@@ -30,7 +31,8 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
           const p = PLANS[id];
           const isCurrent = id === current;
           const upgrade = i > curIdx;
-          const price = p.priceFounders ?? p.priceFull;
+          const price = priceNow(id);
+          const founders = price !== p.priceFull;
           return (
             <div
               key={id}
@@ -50,7 +52,7 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
               </div>
               <div className="muted" style={{ fontSize: 13 }}>{p.tagline}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                {p.priceFounders && <s style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted-2)' }}>{brl(p.priceFull)}</s>}
+                {founders && <s style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted-2)' }}>{brl(p.priceFull)}</s>}
                 <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>{brl(price)}</span>
                 <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>/mês</span>
               </div>

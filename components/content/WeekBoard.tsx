@@ -34,7 +34,7 @@ export function StatusPill({ status }: { status: PostRow['status'] }) {
   return <span className={`statusPill ${status}`}>{STATUS_LABEL[status]}</span>;
 }
 
-export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string };
+export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string; preview?: boolean };
 
 export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem[]; today: string; planStart: string; quota: Quota }) {
   const router = useRouter();
@@ -111,7 +111,11 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
           <span><b>{counts.publicado}</b> {counts.publicado === 1 ? 'publicado' : 'publicados'}</span>
         </div>
         {missing.length > 0 && left <= 0 ? (
-          <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
+          quota.preview ? (
+            <Link className="btn3d btnSm" href="/app/assinar">Liberar o mês inteiro · 7 dias grátis</Link>
+          ) : (
+            <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
+          )
         ) : missing.length > 0 ? (
           <button type="button" className="btn3d weekGenerate" onClick={generateWeek} disabled={busy}>
             {queue
@@ -124,6 +128,17 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
       </div>
 
       <div className="quotaLine" role="status">
+        {quota.preview ? (
+          <>
+            <span>Posts da prévia: <b>{baseUsed}</b> de {quota.max}</span>
+            {left <= 0 ? (
+              <span>Gostou? <Link href="/app/assinar">Comece seus 7 dias grátis</Link> e gere o mês inteiro.</span>
+            ) : (
+              <span>Gere {left === 1 ? 'mais 1 post' : `mais ${left} posts`} grátis, sem cartão.</span>
+            )}
+          </>
+        ) : (
+        <>
         <span>
           Posts novos em {quota.month}: <b>{baseUsed}</b> de {quota.max}
           {quota.extras > 0 && ` · ${extrasLeft} ${extrasLeft === 1 ? 'extra' : 'extras'} de pacote`}
@@ -135,6 +150,8 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
         ) : missing.length > left ? (
           <span>Dá para gerar mais {left} {left === 1 ? 'post' : 'posts'} este mês.</span>
         ) : null}
+        </>
+        )}
       </div>
 
       {queue && (

@@ -1,9 +1,9 @@
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeAnswers } from '@/lib/interview';
 import { Interview } from '@/components/Interview';
 import { TrackOnce } from '@/components/Tracking';
-import { PLANS } from '@/lib/plans';
+import { priceNow } from '@/lib/founders';
 
 export const metadata = { title: 'Entrevista · 1loop creators' };
 
@@ -22,12 +22,17 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
           id={`trial-${ctx.userId}`}
           ga="start_trial"
           meta="StartTrial"
-          params={{ plan: ctx.plan, value: PLANS[ctx.plan].priceFounders ?? PLANS[ctx.plan].priceFull, currency: 'BRL' }}
+          params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }}
         />
+      )}
+      {bemvindo && ctx.preview && (
+        <TrackOnce id={`signup-${ctx.userId}`} ga="sign_up" meta="CompleteRegistration" params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }} />
       )}
       {bemvindo && (
         <div className="formNote rise" role="status">
-          Pronto, {ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.
+          {ctx.preview
+            ? `Conta criada, ${ctx.firstName}! Responda a entrevista e veja sua estratégia de 30 dias e seu primeiro post, sem cartão.`
+            : `Pronto, ${ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.`}
         </div>
       )}
       <div className="pageHead">
@@ -37,7 +42,7 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
         </h1>
         <p className="pageSub">{brandMode ? 'Responda pensando nesta marca. Tudo fica salvo.' : 'Leva uns 10 minutos. Tudo fica salvo a cada passo.'}</p>
       </div>
-      <Interview initial={sanitizeAnswers(data?.answers)} hasStrategy={ctx.hasStrategy} />
+      <Interview initial={sanitizeAnswers(data?.answers)} hasStrategy={ctx.hasStrategy} preview={ctx.preview} firstName={ctx.firstName} />
     </div>
   );
 }

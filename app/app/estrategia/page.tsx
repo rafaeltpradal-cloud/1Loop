@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { StrategyView } from '@/components/StrategyView';
 import { RegenerateButton } from '@/components/RegenerateButton';
@@ -57,20 +57,22 @@ export default async function EstrategiaPage() {
         </div>
         <div className="pageActions">
           <Link className="btnGhost btnSm" href="/app/entrevista">Ajustar respostas</Link>
-          <RegenerateButton left={usage.strategies.max - usage.strategies.used} max={usage.strategies.max} month={usage.month} nextMonth={usage.nextMonth} />
-          <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
+          {!ctx.preview && <RegenerateButton left={usage.strategies.max - usage.strategies.used} max={usage.strategies.max} month={usage.month} nextMonth={usage.nextMonth} />}
+          <Link className="btn3d btnSm" href={ctx.preview ? '/app/conteudos' : '/app/redes'}>{ctx.preview ? 'Ver meus posts →' : 'Avançar →'}</Link>
         </div>
       </div>
-      <StrategyAi
-        key={Number(data.id)}
-        left={PLANS[ctx.plan].strategyAdjusts - ((data.data as Strategy).ajustes ?? 0)}
-        max={PLANS[ctx.plan].strategyAdjusts}
-        canUndo={!!(data.data as Strategy).anterior}
-      />
+      {!ctx.preview && (
+        <StrategyAi
+          key={Number(data.id)}
+          left={PLANS[ctx.plan].strategyAdjusts - ((data.data as Strategy).ajustes ?? 0)}
+          max={PLANS[ctx.plan].strategyAdjusts}
+          canUndo={!!(data.data as Strategy).anterior}
+        />
+      )}
       <StrategyView s={{ ...(data.data as Strategy), anterior: undefined }} strategyId={Number(data.id)} start={start} today={today} />
       <div className="nextRow">
-        <span>Próximo passo: <b>conectar as redes</b></span>
-        <Link className="btn3d btnSm" href="/app/redes">Avançar →</Link>
+        <span>Próximo passo: <b>{ctx.preview ? 'ver seus primeiros posts' : 'conectar as redes'}</b></span>
+        <Link className="btn3d btnSm" href={ctx.preview ? '/app/conteudos' : '/app/redes'}>Avançar →</Link>
       </div>
     </div>
   );

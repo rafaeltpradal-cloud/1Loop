@@ -93,7 +93,11 @@ export function stripePriceId(plan: PlanId): string | undefined {
   return map[plan];
 }
 
+/** Fim do preço Founders (Brasília). Quem assinou antes mantém o desconto. */
+export const FOUNDERS_ENDS_AT = new Date('2026-10-31T23:59:59-03:00');
+
 export function foundersCoupon(plan: PlanId): string | undefined {
+  if (Date.now() > FOUNDERS_ENDS_AT.getTime()) return undefined;
   if (plan === 'basic') return process.env.STRIPE_COUPON_FOUNDERS_BASIC || undefined;
   if (plan === 'pro') return process.env.STRIPE_COUPON_FOUNDERS_PRO || undefined;
   return undefined;

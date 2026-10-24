@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { PublicShell, Steps } from '@/components/PublicShell';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
+import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 
 export const metadata = { title: 'Planos · 1loop creators' };
 
@@ -17,8 +18,11 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
           <h1 style={{ fontSize: 'clamp(30px, 4vw, 46px)', lineHeight: 1.08, letterSpacing: '-1.2px' }}>
             <span className="graphite">Teste 7 dias.</span> <span className="grad">Cancele quando quiser.</span>
           </h1>
-          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. O cartão é pedido agora, mas a primeira cobrança só acontece depois do teste.</p>
+          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. Você cria a conta, responde a entrevista e vê sua estratégia e seus primeiros posts antes de colocar o cartão.</p>
         </div>
+        {foundersOpen() && (
+          <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Preço Founders até {FOUNDERS_ENDS_LABEL}, {foundersCountdown()}. Quem entra agora mantém o preço enquanto for assinante.</div>
+        )}
         {assinatura === 'pendente' && (
           <div className="formNote" role="status">Sua conta está criada, mas a assinatura ainda não foi ativada. Escolha um plano para começar o teste.</div>
         )}
@@ -33,8 +37,8 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
                   <div className="muted" style={{ fontSize: 14 }}>{p.tagline}</div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                  {p.priceFounders && <s style={{ fontSize: 17, fontWeight: 600, color: 'var(--muted-2)' }}>{brl(p.priceFull)}</s>}
-                  <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-1px' }}>{brl(p.priceFounders ?? p.priceFull)}</span>
+                  {priceNow(id) !== p.priceFull && <s style={{ fontSize: 17, fontWeight: 600, color: 'var(--muted-2)' }}>{brl(p.priceFull)}</s>}
+                  <span style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-1px' }}>{brl(priceNow(id))}</span>
                   <span className="muted" style={{ fontSize: 15, fontWeight: 600 }}>/mês</span>
                 </div>
                 <div className="panel" style={{ padding: '14px 16px', fontWeight: 700, fontSize: 14 }}>{p.rhythm}</div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { LANDING_CSS, LANDING_HTML } from './_landing/content';
 import { LandingInteractions } from './_landing/LandingInteractions';
+import { landingWithFounders } from '@/lib/founders';
 
 export const metadata: Metadata = {
   title: '1loop creators · Conteúdo com estratégia. LinkedIn com resultado.',
@@ -31,7 +32,7 @@ export default async function LandingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div dangerouslySetInnerHTML={{ __html: landingWithFounders(html) }} />
       <LandingInteractions />
     </>
   );

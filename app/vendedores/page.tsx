@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import { LANDING_CSS, LANDING_HTML } from '../_landing/content';
 import { LandingInteractions } from '../_landing/LandingInteractions';
+import { landingWithFounders } from '@/lib/founders';
 
 // Página da campanha para vendedores e profissionais comerciais (anúncios da Meta).
 // Usa a mesma landing da home, trocando a promessa do topo e somando uma seção sobre por que vendedor precisa do LinkedIn.
@@ -72,7 +73,7 @@ export default async function SalesLandingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: LANDING_CSS }} />
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div dangerouslySetInnerHTML={{ __html: landingWithFounders(html) }} />
       <LandingInteractions />
     </>
   );

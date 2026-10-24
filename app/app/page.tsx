@@ -1,12 +1,16 @@
 import Link from 'next/link';
-import { getAppContext } from '@/lib/session';
+import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { LoopMark } from '@/components/Logo';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { TrackOnce } from '@/components/Tracking';
+import { priceNow } from '@/lib/founders';
+import { PREVIEW } from '@/lib/access';
 
 export const metadata = { title: 'Início · 1loop creators' };
 
-export default async function AppHome() {
+export default async function AppHome({ searchParams }: { searchParams: Promise<{ assinou?: string }> }) {
+  const { assinou } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
   const [{ data: interview }, { count: networks }, { count: posts }] = await Promise.all([
@@ -17,16 +21,29 @@ export default async function AppHome() {
   ]);
   const answered = interview?.answers ? Object.keys(interview.answers as object).length : 0;
 
-  const steps = [
+  const steps = ctx.preview
+    ? [
+        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: !!interview?.completed_at, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista', soon: false },
+        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia', soon: false },
+        { n: 3, title: 'Seus primeiros posts', desc: `Até ${PREVIEW.posts} posts prontos, grátis e sem cartão.`, done: (posts ?? 0) >= PREVIEW.posts, href: '/app/conteudos', cta: (posts ?? 0) > 0 ? 'Ver meus posts' : 'Gerar meus posts', soon: false },
+        { n: 4, title: 'Começar 7 dias grátis', desc: 'Publicação automática e o mês inteiro de posts.', done: false, href: '/app/assinar', cta: 'Começar 7 dias grátis', soon: false },
+      ]
+    : [
     { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: !!interview?.completed_at, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista', soon: false },
     { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: '/app/estrategia', cta: 'Ver estratégia', soon: false },
     { n: 3, title: 'Conectar redes', desc: 'Conecte LinkedIn ou Instagram para publicar sozinho.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar redes', soon: false },
     { n: 4, title: 'Conteúdos da semana', desc: 'Lotes prontos para aprovar e publicar.', done: (posts ?? 0) > 0, href: '/app/conteudos', cta: 'Gerar conteúdos', soon: false },
-  ];
+      ];
   const nextStep = steps.find((s) => !s.done) ?? steps[0];
 
   return (
     <div className="page">
+      {assinou === '1' && !ctx.preview && (
+        <>
+          <TrackOnce id={`trial-${ctx.userId}`} ga="start_trial" meta="StartTrial" params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }} />
+          <div className="formNote rise" role="status">Pronto, {ctx.firstName}! Seu teste de 7 dias começou. Conecte o LinkedIn e o primeiro post já pode sair hoje.</div>
+        </>
+      )}
       <div className="pageHead rise">
         <div className="eyebrow">Início</div>
         <h1 className="pageTitle">

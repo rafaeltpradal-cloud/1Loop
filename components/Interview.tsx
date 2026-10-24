@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { OTHER, QUESTIONS, displayValue, isAnswered, optionsOf, otherKey, type Answers } from '@/lib/interview';
 import { VoiceButton } from '@/components/VoiceButton';
@@ -14,13 +14,31 @@ const GENERATING_MSGS = [
   'Distribuindo 30 dias no calendário…',
   'Escrevendo o plano de ação…',
 ];
+const POST_MSGS = ['Escolhendo o primeiro tema…', 'Escrevendo o gancho…', 'Montando o visual…', 'Revisando na sua voz…'];
 
-export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrategy: boolean }) {
+// Frases curtas entre as perguntas: dá ritmo e mostra quanto falta.
+function cheer(done: number, total: number) {
+  const left = total - done;
+  if (left === 1) return 'Última pergunta!';
+  if (done === Math.ceil(total / 2)) return 'Metade do caminho!';
+  if (left <= 3) return `Só mais ${left}!`;
+  return '';
+}
+
+export function Interview({ initial, hasStrategy, preview = false, firstName = '' }: { initial: Answers; hasStrategy: boolean; preview?: boolean; firstName?: string }) {
   const router = useRouter();
   const firstOpen = Math.max(0, QUESTIONS.findIndex((q) => !isAnswered(q, initial[q.id], initial)));
   const [answers, setAnswers] = useState<Answers>(initial);
   const [idx, setIdx] = useState(firstOpen === -1 ? 0 : firstOpen);
-  const [phase, setPhase] = useState<'asking' | 'generating' | 'error'>('asking');
+  const [phase, setPhase] = useState<'asking' | 'generating' | 'post' | 'error'>('asking');
+  const [dir, setDir] = useState<'fwd' | 'back'>('fwd');
+  const [toast, setToast] = useState<{ title: string; sub: string } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    if (autoTimer.current) clearTimeout(autoTimer.current);
+  }, []);
   const [limitMsg, setLimitMsg] = useState('');
   const [msg, setMsg] = useState(0);
   const [, startTransition] = useTransition();
@@ -39,30 +57,64 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
     setAnswers((a) => ({ ...a, [q.id]: v }));
   }
 
+  function go(to: number) {
+    setDir(to < idx ? 'back' : 'fwd');
+    setIdx(to);
+  }
+
+  function showToast(t: { title: string; sub: string }) {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(t);
+    toastTimer.current = setTimeout(() => setToast(null), 1600);
+  }
+
   function setOther(v: string) {
     setAnswers((a) => ({ ...a, [otherKey(q.id)]: v }));
   }
 
   function toggle(option: string) {
-    if (q.kind === 'single') return setValue(option);
+    if (q.kind === 'single') {
+      setValue(option);
+      // Escolha única: passa sozinho para a próxima, como num jogo.
+      if (!(q.allowOther && option === OTHER) && !isLast) {
+        if (autoTimer.current) clearTimeout(autoTimer.current);
+        const nextAnswers = { ...answers, [q.id]: option };
+        autoTimer.current = setTimeout(() => advance(nextAnswers), 320);
+      }
+      return;
+    }
     const cur = Array.isArray(value) ? value : [];
     if (cur.includes(option)) setValue(cur.filter((x) => x !== option));
     else if (cur.length < (q.max ?? 10)) setValue([...cur, option]);
   }
 
-  function next() {
+  function advance(current: Answers) {
     startTransition(() => {
-      void saveAnswers(answers);
+      void saveAnswers(current);
     });
-    if (!isLast) setIdx(idx + 1);
-    else void generate();
+    if (isLast) return void generate(current);
+    const nq = QUESTIONS[idx + 1];
+    const done = idx + 1;
+    if (nq.block !== q.block) {
+      const left = QUESTIONS.length - done;
+      showToast({ title: `${q.block} ✓`, sub: `Bloco concluído · faltam ${left} ${left === 1 ? 'pergunta' : 'perguntas'}` });
+    } else {
+      const c = cheer(done, QUESTIONS.length);
+      if (c) showToast({ title: c, sub: `${done} de ${QUESTIONS.length} respondidas` });
+    }
+    go(idx + 1);
   }
 
-  async function generate() {
+  function next() {
+    advance(answers);
+  }
+
+  async function generate(current: Answers = answers) {
     setPhase('generating');
-    const timer = setInterval(() => setMsg((m) => (m + 1) % GENERATING_MSGS.length), 2200);
+    setMsg(0);
+    const timer = setInterval(() => setMsg((m) => m + 1), 2200);
     try {
-      await saveAnswers(answers, true);
+      await saveAnswers(current, true);
       setLimitMsg('');
       const res = await fetch('/api/estrategia', { method: 'POST' });
       if (res.status === 429) {
@@ -72,6 +124,23 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
         return;
       }
       if (!res.ok) throw new Error(await res.text());
+      const json = (await res.json().catch(() => ({}))) as { firstIndex?: number | null };
+      // Primeira estratégia: já escreve o primeiro post para a pessoa ver o resultado na hora.
+      if (!hasStrategy && typeof json.firstIndex === 'number') {
+        setPhase('post');
+        setMsg(0);
+        try {
+          const pr = await fetch('/api/conteudos/gerar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: json.firstIndex }) });
+          const pj = (await pr.json().catch(() => ({}))) as { post?: { id: number } };
+          if (pr.ok && pj.post?.id) {
+            router.push(`/app/conteudos/${pj.post.id}?primeiro=1`);
+            router.refresh();
+            return;
+          }
+        } catch (err) {
+          console.error('[primeiro post]', err);
+        }
+      }
       router.push('/app/estrategia');
       router.refresh();
     } catch (err) {
@@ -86,10 +155,19 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
     return (
       <div className="card rise" style={{ padding: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, textAlign: 'center' }}>
         <LoopMark size={96} stroke={1.6} />
-        {phase === 'generating' ? (
+        {phase === 'generating' || phase === 'post' ? (
           <>
-            <h2 style={{ fontSize: 26, letterSpacing: '-0.5px' }}><span className="graphite">Montando sua estratégia de 30 dias</span></h2>
-            <p className="muted" role="status" aria-live="polite" style={{ fontSize: 16 }}>{GENERATING_MSGS[msg]}</p>
+            <ol className="genSteps" aria-label="Etapas">
+              <li className={phase === 'generating' ? 'on' : 'done'}>{phase === 'post' ? '✓' : '1'} Estratégia de 30 dias</li>
+              {!hasStrategy && <li className={phase === 'post' ? 'on' : ''}>2 Seu primeiro post</li>}
+            </ol>
+            <h2 style={{ fontSize: 26, letterSpacing: '-0.5px' }}>
+              <span className="graphite">{phase === 'post' ? `Escrevendo seu primeiro post${firstName ? `, ${firstName}` : ''}` : 'Montando sua estratégia de 30 dias'}</span>
+            </h2>
+            <p className="muted" role="status" aria-live="polite" style={{ fontSize: 16 }}>
+              {phase === 'post' ? POST_MSGS[Math.min(msg, POST_MSGS.length - 1)] : GENERATING_MSGS[Math.min(msg, GENERATING_MSGS.length - 1)]}
+            </p>
+            <p className="muted" style={{ fontSize: 13 }}>{phase === 'post' ? 'Leva uns 30 segundos.' : 'Leva cerca de 1 minuto. Não feche esta tela.'}</p>
           </>
         ) : (
           <>
@@ -113,23 +191,42 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
   }
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'flex-start' }}>
-      <div className="card" style={{ flex: '999 1 560px', minWidth: 0, padding: 32, display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div className="ivWrap">
+      <div className="card ivCard">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
             <span>Pergunta {idx + 1} de {QUESTIONS.length}</span>
             <span>{q.block}</span>
           </div>
-          <div className="progress" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
+          <div className="ivSegs" aria-hidden="true">
+            {blocks.map((b) => {
+              const qs = QUESTIONS.filter((x) => x.block === b);
+              const first = QUESTIONS.indexOf(qs[0]);
+              const fill = Math.max(0, Math.min(1, (idx + (ok ? 1 : 0) - first) / qs.length));
+              return (
+                <span key={b} className={fill >= 1 ? 'full' : ''} style={{ flex: qs.length }}>
+                  <i style={{ width: `${fill * 100}%` }} />
+                </span>
+              );
+            })}
+          </div>
+          <span className="sr-only" style={{ position: 'absolute', left: -9999 }}>{pct}% concluído</span>
         </div>
 
-        <div key={q.id} className="rise" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {toast && (
+          <div className="ivToast" role="status" aria-live="polite">
+            <b>{toast.title}</b>
+            <span>{toast.sub}</span>
+          </div>
+        )}
+
+        <div key={q.id} className={`ivQ ${dir}`} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <h2 id={`q-${q.id}`} style={{ fontSize: 26, lineHeight: 1.25, letterSpacing: '-0.5px' }}>{q.title}</h2>
           <p className="muted" style={{ fontSize: 15, lineHeight: 1.55 }}>{q.hint}</p>
         </div>
 
         {(q.kind === 'single' || q.kind === 'multi') && (
-          <div role="group" aria-labelledby={`q-${q.id}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          <div key={`opts-${q.id}`} role="group" aria-labelledby={`q-${q.id}`} className={`ivOpts ${dir}`}>
             {optionsOf(q).map((o) => {
               const pressed = q.kind === 'single' ? value === o : Array.isArray(value) && value.includes(o);
               return (
@@ -163,20 +260,20 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <button className="btnGhost" type="button" onClick={() => setIdx(Math.max(0, idx - 1))} disabled={idx === 0}>Voltar</button>
+        <div className="ivActions">
+          <button className="btnGhost" type="button" onClick={() => go(Math.max(0, idx - 1))} disabled={idx === 0}>Voltar</button>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
             {q.optional && !isLast && (
               <button className="linkBtn" type="button" onClick={next}>Pular</button>
             )}
             <button className="btn3d" type="button" onClick={next} disabled={!ok}>
-              {isLast ? (hasStrategy ? 'Gerar nova estratégia' : 'Gerar minha estratégia') : 'Próxima'}
+              {isLast ? (hasStrategy ? 'Gerar nova estratégia' : preview ? 'Ver minha estratégia e meu post' : 'Gerar minha estratégia') : 'Próxima'}
             </button>
           </div>
         </div>
       </div>
 
-      <aside className="card" style={{ flex: '1 1 280px', minWidth: 0, padding: 24, display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'none' }}>
+      <aside className="card ivAside">
         <div className="eyebrow">Seu perfil de estilo</div>
         {blocks.map((b) => (
           <div key={b} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -185,7 +282,7 @@ export function Interview({ initial, hasStrategy }: { initial: Answers; hasStrat
               const i = QUESTIONS.indexOf(x);
               const txt = displayValue(x, answers);
               return (
-                <button key={x.id} type="button" onClick={() => setIdx(i)} style={{ textAlign: 'left', background: i === idx ? 'var(--hover)' : 'transparent', border: 0, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit' }}>
+                <button key={x.id} type="button" onClick={() => go(i)} style={{ textAlign: 'left', background: i === idx ? 'var(--hover)' : 'transparent', border: 0, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink-2)' }}>{x.title}</div>
                   <div style={{ fontSize: 13, color: txt ? 'var(--ink)' : 'var(--muted-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{txt || (x.optional ? 'Opcional' : 'Ainda não respondido')}</div>
                 </button>

@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { autoBlocker, autoNetworkId, canAutoPublish, type PostAsset, type PostContent } from '@/lib/contentTypes';
 import { getConnection, publishOne } from '@/lib/publish';
+import { accessFor } from '@/lib/access';
 
 export type PublishResult = { ok: true; url?: string; asset?: PostAsset } | { ok: false; error: string };
 
@@ -41,6 +42,8 @@ export async function uploadPostAsset(postId: number, formData: FormData): Promi
 export async function schedulePost(postId: number, when: string, assets: PostAsset[]): Promise<PublishResult> {
   const { user } = await currentUser();
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
+  // Publicar faz parte do teste: na prévia (sem cartão) não agenda nem publica.
+  if ((await accessFor(user)).mode !== 'paid') return { ok: false, error: 'Para publicar, comece seus 7 dias grátis.' };
   const at = new Date(when);
   if (!Number.isInteger(postId) || Number.isNaN(at.getTime())) return { ok: false, error: 'Data inválida.' };
   if (at.getTime() < Date.now() - 5 * 60 * 1000) return { ok: false, error: 'Escolha um horário no futuro.' };

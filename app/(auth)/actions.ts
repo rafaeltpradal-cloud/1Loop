@@ -33,7 +33,7 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     password,
     options: {
       data: { name, phone, plan },
-      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(`/pagamento?plano=${plan}`)}`,
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent('/app/entrevista?bemvindo=1')}`,
     },
   });
 
@@ -54,10 +54,11 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 
   // Se a confirmação de e-mail estiver ligada no Supabase, ainda não há sessão.
   if (!data.session) {
-    return { note: `Enviamos um link de confirmação para ${email}. Abra o e-mail para continuar para o pagamento.` };
+    return { note: `Enviamos um link de confirmação para ${email}. Abra o e-mail para começar a entrevista.` };
   }
 
-  redirect(`/pagamento?plano=${plan}`);
+  // Sem cartão agora: a pessoa vê a estratégia e os primeiros posts antes de começar o teste.
+  redirect('/app/entrevista?bemvindo=1');
 }
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
