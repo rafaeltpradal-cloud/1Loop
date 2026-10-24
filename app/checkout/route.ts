@@ -29,6 +29,15 @@ export async function GET(request: Request) {
 
   // Um cliente do Stripe por usuário.
   let customerId = profile?.stripe_customer_id as string | undefined;
+  // Cliente criado no ambiente de teste não existe no modo real: cria outro.
+  if (customerId) {
+    try {
+      const c = await stripe().customers.retrieve(customerId);
+      if ((c as { deleted?: boolean }).deleted) customerId = undefined;
+    } catch {
+      customerId = undefined;
+    }
+  }
   if (!customerId) {
     const customer = await stripe().customers.create({
       email: user.email,
