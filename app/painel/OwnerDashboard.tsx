@@ -262,6 +262,35 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
         </section>
 
         <div className="ownGrid2">
+          <section className="card ownSection" aria-labelledby="h-visitas">
+            <div className="ownSectionHead"><h2 id="h-visitas">Visitas ao site</h2><span className="muted">visitantes únicos por dia · 30 dias</span></div>
+            <div className="glowGreen"><LineChart points={data.visits.daily.map((d) => ({ day: d.day, value: d.visitors }))} label="Visitantes" color="var(--own-green)" /></div>
+          </section>
+          <section className="card ownSection" aria-labelledby="h-origem">
+            <div className="ownSectionHead"><h2 id="h-origem">De onde vêm</h2><span className="muted">30 dias</span></div>
+            <div className="ownMini">
+              <div><span className="muted">Hoje</span><b>{data.visits.today}</b></div>
+              <div><span className="muted">Visitantes</span><b>{data.visits.visitors30}</b></div>
+              <div><span className="muted">Páginas vistas</span><b>{data.visits.views30}</b></div>
+              <div><span className="muted">Visita → cadastro</span><b>{data.visits.visitors30 ? `${Math.round((data.app.usersMonth / data.visits.visitors30) * 1000) / 10}%` : '—'}</b></div>
+            </div>
+            {data.visits.sources.length === 0 ? (
+              <p className="muted" style={{ fontSize: 13 }}>A contagem começou agora. As visitas aparecem aqui conforme as pessoas entram no site.</p>
+            ) : (
+              <ul className="ownSources">
+                {data.visits.sources.map((s) => (
+                  <li key={s.source}>
+                    <span>{s.source}</span>
+                    <span className="ownSourceBar" style={{ width: `${Math.max(6, (s.visitors / (data.visits.sources[0]?.visitors || 1)) * 100)}%` }} />
+                    <b>{s.visitors}</b>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <div className="ownGrid2">
           <section className="card ownSection" aria-labelledby="h-receita">
             <div className="ownSectionHead"><h2 id="h-receita">Receita por dia</h2><span className="muted">últimos 30 dias</span></div>
             <RevenueBars data={data.revenueDaily} />

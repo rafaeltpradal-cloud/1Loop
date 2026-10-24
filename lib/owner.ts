@@ -45,6 +45,7 @@ export type OwnerData = {
   costsMonth: number;
   aiCostMonth: number | null; // da API de custos da Anthropic, em R$
   usdBrl: number;
+  visits: { daily: { day: string; visitors: number; views: number }[]; visitors30: number; views30: number; today: number; sources: { source: string; visitors: number }[] };
 };
 
 async function all<T>(list: (params: { starting_after?: string }) => Promise<Stripe.ApiList<T & { id: string }>>, max = 1000): Promise<T[]> {
@@ -146,6 +147,34 @@ export async function ownerData(): Promise<OwnerData> {
     aiCallsMonth,
   };
 
+  // ---------- Visitas ao site (tabela site_visits) ----------
+  const from30 = isoDay(Math.floor((now - 29 * DAY) / 1000));
+  const visitRows = (((await admin.from('site_visits').select('day, visitor, source').gte('day', from30).limit(50000)).data ?? []) as { day: string; visitor: string; source: string | null }[]);
+  const perDay = new Map<string, { v: Set<string>; n: number }>();
+  const perSource = new Map<string, Set<string>>();
+  for (const r of visitRows) {
+    const d = perDay.get(r.day) ?? { v: new Set<string>(), n: 0 };
+    d.v.add(r.visitor);
+    d.n += 1;
+    perDay.set(r.day, d);
+    const src = (r.source || 'direto').toLowerCase();
+    const set = perSource.get(src) ?? new Set<string>();
+    set.add(r.visitor);
+    perSource.set(src, set);
+  }
+  const daily = Array.from({ length: 30 }, (_, i) => {
+    const day = isoDay(Math.floor((now - (29 - i) * DAY) / 1000));
+    const d = perDay.get(day);
+    return { day, visitors: d ? d.v.size : 0, views: d ? d.n : 0 };
+  });
+  const visits = {
+    daily,
+    visitors30: new Set(visitRows.map((r) => r.visitor)).size,
+    views30: visitRows.length,
+    today: daily.at(-1)?.visitors ?? 0,
+    sources: [...perSource.entries()].map(([source, set]) => ({ source, visitors: set.size })).sort((a, b) => b.visitors - a.visitors).slice(0, 6),
+  };
+
   const empty: OwnerData = {
     live: false,
     updatedAt: new Date().toISOString(),
@@ -167,6 +196,7 @@ export async function ownerData(): Promise<OwnerData> {
     costsMonth,
     aiCostMonth: null,
     usdBrl,
+    visits,
   };
 
   // ---------- Custo da IA (API de custos da Anthropic, se a chave de admin existir) ----------

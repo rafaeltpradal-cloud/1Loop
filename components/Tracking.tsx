@@ -39,11 +39,26 @@ function rememberOrigin() {
   }
 }
 
+/** Conta a visita no banco do 1loop (gráfico de visitas do /painel). Só páginas públicas. */
+function countVisit(path: string) {
+  try {
+    if (path.startsWith('/app') || path.startsWith('/painel')) return;
+    const q = new URLSearchParams(location.search);
+    const ext = document.referrer && !document.referrer.startsWith(location.origin) ? new URL(document.referrer).hostname : '';
+    const source = q.get('utm_source') || (q.get('fbclid') ? 'meta' : '') || ext || 'direto';
+    const medium = q.get('utm_medium') || (ext ? 'referral' : '');
+    fetch('/api/visita', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, source, medium }) }).catch(() => {});
+  } catch {
+    // ignora
+  }
+}
+
 function PageViews() {
   const path = usePathname();
   const search = useSearchParams();
   useEffect(() => {
     rememberOrigin();
+    countVisit(path);
     const w = window as W;
     // A primeira visualização já vai no carregamento dos scripts; aqui contam as trocas de página.
     if (!(w as unknown as { __trkFirst?: boolean }).__trkFirst) {
