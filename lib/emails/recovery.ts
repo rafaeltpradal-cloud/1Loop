@@ -28,16 +28,16 @@ export function recoveryEmail(p: RecoveryInput) {
   // Frase sobre onde a pessoa parou.
   const where = !p.stage.interviewDone
     ? p.stage.answered > 0
-      ? `Você parou na pergunta <b>${p.stage.answered + 1} de ${p.stage.total}</b> da entrevista. Faltam uns 5 minutos para a sua estratégia de 30 dias ficar pronta.`
-      : 'Sua conta está criada, mas a entrevista ainda não começou. São uns 10 minutos e dela sai a sua estratégia de 30 dias, feita para você.'
+      ? `Você parou na pergunta <b>${p.stage.answered + 1} de ${p.stage.total}</b> da entrevista. Faltam uns 5 minutos para a sua estratégia de autoridade de 30 dias ficar pronta.`
+      : 'Sua conta está criada, mas a entrevista ainda não começou. São uns 10 minutos e dela sai a sua estratégia de 30 dias para virar referência no que você faz.'
     : p.stage.posts > 0
-      ? `Sua estratégia de 30 dias e ${p.stage.posts === 1 ? 'seu primeiro post estão prontos' : `seus ${p.stage.posts} primeiros posts estão prontos`}. Escritos na sua voz, a partir da sua entrevista. Só falta você.`
-      : 'Sua estratégia de 30 dias está pronta. Com um clique sai o primeiro post, escrito na sua voz.';
+      ? `Sua estratégia de 30 dias e ${p.stage.posts === 1 ? 'seu primeiro post estão prontos' : `seus ${p.stage.posts} primeiros posts estão prontos`}. Escritos na sua voz, com o que você sabe de verdade. Só falta você aparecer.`
+      : 'Sua estratégia de 30 dias está pronta. Com um clique sai o primeiro post, escrito na sua voz, com o que você sabe de verdade.';
 
   const foundersLine = founders
     ? `E tem um detalhe: o preço Founders acaba <b>${deadline}</b>. Entrando agora, o ${esc(p.plan.name)} sai por <b>${brl(p.plan.now)}/mês</b> em vez de ${brl(p.plan.full)}, travado enquanto você for assinante. São ${brl(save * 12)} a menos por ano.`
     : '';
-  const trialLine = 'Começando agora você tem <b>7 dias grátis</b>: nada é cobrado antes do fim do teste e dá para cancelar em 1 clique.';
+  const trialLine = 'Começando agora você tem <b>7 dias grátis</b> para ver seu perfil ganhar ritmo: nada é cobrado antes do fim do teste e dá para cancelar em 1 clique.';
 
   let subject = '';
   let title = '';
@@ -52,10 +52,11 @@ export function recoveryEmail(p: RecoveryInput) {
       cta = { label: !p.stage.interviewDone ? 'Continuar de onde parei' : 'Ver meu post', href: continueUrl };
       break;
     case 'pv2':
-      subject = founders ? `Você quase concluiu, ${p.firstName}: o preço Founders acaba ${p.founders.daysLeft <= 1 ? deadline : `em ${p.founders.daysLeft} dias`}` : `${p.firstName}, falta 1 passo para o seu LinkedIn andar sozinho`;
-      title = founders ? `Garanta ${brl(p.plan.now)}/mês para sempre` : 'Falta 1 passo';
+      subject = founders ? `Você quase concluiu, ${p.firstName}: o preço Founders acaba ${p.founders.daysLeft <= 1 ? deadline : `em ${p.founders.daysLeft} dias`}` : `${p.firstName}, falta 1 passo para virar referência no LinkedIn`;
+      title = 'O cliente pesquisa você antes de responder';
       paragraphs = [
-        `${n}, quem vende bem e não aparece no LinkedIn deixa venda na mesa todo dia. O 1loop resolve a parte chata: estratégia, texto, imagem e publicação no horário.`,
+        `${n}, antes de aceitar uma reunião, o cliente abre o seu LinkedIn. Se ele encontra um perfil parado, você é só mais um vendedor. Se encontra alguém que ensina, opina e mostra bastidor, você já chega com credibilidade, e a venda fica mais fácil.`,
+        'O 1loop cuida da parte difícil: a estratégia, o texto na sua voz, a imagem e a publicação no horário. Você só aprova.',
         where,
         founders ? foundersLine : '',
         trialLine,
@@ -63,11 +64,11 @@ export function recoveryEmail(p: RecoveryInput) {
       cta = founders ? { label: 'Garantir meu preço Founders', href: startUrl } : { label: 'Começar meus 7 dias grátis', href: startUrl };
       break;
     case 'pv3':
-      subject = `${p.firstName}, seu LinkedIn não vai se escrever sozinho. Ou vai?`;
-      title = 'Vai, sim. Se você deixar.';
+      subject = `${p.firstName}, autoridade não se constrói em um post. Se constrói toda semana.`;
+      title = 'Quem aparece com constância vira a referência';
       paragraphs = [
-        `${n}, a ideia do 1loop é simples: você responde uma entrevista uma vez e recebe todo mês uma estratégia e posts prontos na sua voz, publicados no LinkedIn no melhor horário.`,
-        'Sem ficar olhando para a tela em branco. Sem sumir por semanas e voltar do zero.',
+        `${n}, os vendedores que viram referência no LinkedIn não são os que postam mais bonito. São os que aparecem toda semana com o que sabem: o que aprenderam no campo, o que o cliente pergunta, o que funciona.`,
+        'O 1loop transforma a sua experiência nisso: você responde a entrevista uma vez e recebe todo mês a estratégia e os posts prontos, na sua voz, publicados no melhor horário. Sem tela em branco e sem sumir por semanas.',
         where,
         founders ? foundersLine : trialLine,
       ];
@@ -78,6 +79,7 @@ export function recoveryEmail(p: RecoveryInput) {
       title = 'O preço Founders acaba amanhã';
       paragraphs = [
         `${n}, um aviso rápido: amanhã, ${p.founders.label}, o preço Founders sai do ar.`,
+        'É o melhor momento para começar a construir a sua autoridade no LinkedIn, pagando o menor preço que o 1loop vai ter.',
         `Quem entra até lá paga <b>${brl(p.plan.now)}/mês</b> no ${esc(p.plan.name)}, travado para sempre. Depois, o mesmo plano custa ${brl(p.plan.full)}.`,
         where,
         trialLine,
@@ -89,6 +91,7 @@ export function recoveryEmail(p: RecoveryInput) {
       title = 'Acaba hoje às 23h59';
       paragraphs = [
         `${n}, é hoje. À meia-noite o preço Founders deixa de existir.`,
+        'Se você quer ser lembrado como referência no seu mercado (e vender mais por causa disso), este é o dia de começar pagando menos.',
         `<b>${brl(p.plan.now)}/mês</b> em vez de ${brl(p.plan.full)}, travado enquanto você for assinante. E os 7 dias de teste continuam grátis: você só paga se ficar.`,
         where,
       ];

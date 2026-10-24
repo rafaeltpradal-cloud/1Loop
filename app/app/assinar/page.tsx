@@ -33,7 +33,7 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
         <h1 className="pageTitle">
           <span className="graphite">Gostou, {ctx.firstName}?</span> <span className="grad">Libere o mês inteiro.</span>
         </h1>
-        <p className="pageSub">7 dias grátis. Nada é cobrado antes do fim do teste e você cancela em 1 clique.</p>
+        <p className="pageSub">7 dias grátis para o seu LinkedIn ganhar ritmo e credibilidade. Nada é cobrado antes do fim do teste e você cancela em 1 clique.</p>
       </div>
 
       <div className="assinarGrid">
