@@ -1,7 +1,7 @@
 // Envio de e-mails pela API do Resend (https://resend.com).
 // Sem RESEND_API_KEY configurada, nada é enviado e o app segue normalmente.
 
-export async function sendEmail({ to, subject, html, text }: { to: string; subject: string; html: string; text: string }) {
+export async function sendEmail({ to, subject, html, text, headers }: { to: string; subject: string; html: string; text: string; headers?: Record<string, string> }) {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.EMAIL_FROM || '1loop creators <contato@1loopcreators.com.br>';
   if (!key) {
@@ -11,7 +11,7 @@ export async function sendEmail({ to, subject, html, text }: { to: string; subje
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html, text, reply_to: process.env.EMAIL_REPLY_TO || undefined }),
+    body: JSON.stringify({ from, to: [to], subject, html, text, reply_to: process.env.EMAIL_REPLY_TO || undefined, ...(headers ? { headers } : {}) }),
   });
   if (!res.ok) {
     console.error('[email] falha ao enviar', res.status, await res.text());

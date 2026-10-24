@@ -3,9 +3,9 @@ import { brl } from '@/lib/plans';
 // E-mails do teste de 7 dias: lembrete para criar o primeiro conteúdo e aviso antes da cobrança.
 // Mesmo visual do e-mail de boas-vindas (HTML simples com estilos inline).
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-function frame(p: { appUrl: string; title: string; paragraphs: string[]; cta: { label: string; href: string }; footer: string }) {
+export function frame(p: { appUrl: string; title: string; paragraphs: string[]; cta: { label: string; href: string }; footer: string }) {
   return `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(p.title)}</title></head>
 <body style="margin:0;padding:0;background:#F4F5F7;font-family:Manrope,Segoe UI,Helvetica,Arial,sans-serif;color:#0E0F12">
@@ -32,7 +32,7 @@ ${p.paragraphs.map((t) => `<p style="margin:14px 0 0;font-size:15px;line-height:
 </body></html>`;
 }
 
-const strip = (html: string) => html.replace(/<[^>]+>/g, '');
+export const strip = (html: string) => html.replace(/<[^>]+>/g, '');
 
 /** Dia 3: ainda não gerou nenhum conteúdo. */
 export function nudgeEmail(p: { firstName: string; appUrl: string; step: 'entrevista' | 'estrategia' | 'conteudos' }) {
