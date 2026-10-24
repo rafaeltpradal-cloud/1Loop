@@ -35,7 +35,7 @@ function salesHtml(base: string) {
   return base
     .replace(
       'Para quem quer autoridade no LinkedIn<span class="late">, <span class="grad">e vender com ela.</span></span>',
-      'Para vendedores e profissionais comerciais<span class="late">, <span class="grad">que querem autoridade.</span></span>',
+      'Para quem vende<span class="late">, <span class="grad">e quer autoridade no LinkedIn.</span></span>',
     )
     .replace(
       '<span class="graphite">Conteúdo com estratégia.</span> <span class="grad">LinkedIn com resultado.</span>',
