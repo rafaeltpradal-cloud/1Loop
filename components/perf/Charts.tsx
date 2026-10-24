@@ -75,7 +75,7 @@ export function LineChart({ points, label, color = 'var(--c-li)', height = 200 }
   const max = Math.max(...points.map((p) => p.value));
   // Seguidores mudam pouco: a escala começa perto do menor valor; alcance começa do zero.
   const zoom = min > 0 && (max - min) / max < 0.25;
-  const { floor, top, ticks } = niceScale(zoom ? min : 0, max, zoom ? 3 : 4);
+  const { floor, top, ticks } = niceScale(zoom ? min : 0, Math.max(max, zoom ? max : 4), zoom ? 3 : 4);
   const x = (i: number) => PAD.l + (points.length <= 1 ? (W - PAD.l - PAD.r) / 2 : (i * (W - PAD.l - PAD.r)) / (points.length - 1));
   const y = (v: number) => PAD.t + (1 - (v - floor) / (top - floor)) * (H - PAD.t - PAD.b);
   const path = points.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');

@@ -49,7 +49,7 @@ function RevenueBars({ data }: { data: OwnerData['revenueDaily'] }) {
   const W = 720;
   const H = 220;
   const pad = { l: 52, r: 8, t: 12, b: 26 };
-  const max = Math.max(1, ...data.map((d) => d.gross));
+  const max = Math.max(100, ...data.map((d) => d.gross));
   const step = Math.pow(10, Math.floor(Math.log10(max)));
   const top = Math.ceil(max / step) * step;
   const ticks = [0, top / 2, top];
