@@ -8,7 +8,9 @@ const pixelId = (raw: string | undefined) => (raw ?? '').match(/fbq\(\s*['"]init
 
 export const TRACKING = {
   ga: pick(process.env.NEXT_PUBLIC_GA_ID, /G-[A-Z0-9]{4,16}/),
-  metaPixel: pixelId(process.env.NEXT_PUBLIC_META_PIXEL_ID),
+  // Conjunto de dados "1Loop Creators" do portfólio empresarial (necessário para a API de Conversões).
+  // O Pixel antigo (1149958317988275) ficou preso na conta de anúncios pessoal e não gera token.
+  metaPixel: pixelId(process.env.NEXT_PUBLIC_META_DATASET_ID) || '2014888835840490',
   linkedin: pick(process.env.NEXT_PUBLIC_LINKEDIN_PARTNER_ID, /\d{4,12}/),
 };
 
