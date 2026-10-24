@@ -56,9 +56,10 @@ export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Da
     if (today === dayBefore && !sent.fd1 && now.getTime() - last >= MIN_GAP) return 'fd1';
   }
   if (now.getTime() - last < MIN_GAP) return null;
+  // Sempre começa pelo "você quase concluiu"; os próximos respeitam o tempo de conta e o intervalo.
+  if (!sent.pv1) return 'pv1';
+  if (h >= 24 && !sent.pv2) return 'pv2';
   if (h >= 72 && !sent.pv3) return 'pv3';
-  if (h >= 24 && !sent.pv2 && !sent.pv3) return 'pv2';
-  if (!sent.pv1 && !sent.pv2 && !sent.pv3) return 'pv1';
   return null;
 }
 
@@ -128,11 +129,7 @@ export async function runRecovery({ dryRun = false, now = new Date() } = {}) {
       result.failed++;
       continue;
     }
-    // Ao mandar um e-mail mais adiantado, os anteriores da sequência não saem mais.
-    const stamp = now.toISOString();
-    const nextSent: Sent = { ...sent, [kind]: stamp };
-    if (kind === 'pv2' || kind === 'pv3') nextSent.pv1 ??= stamp;
-    if (kind === 'pv3') nextSent.pv2 ??= stamp;
+    const nextSent: Sent = { ...sent, [kind]: now.toISOString() };
     await admin.auth.admin.updateUserById(u.id, { app_metadata: { ...u.app_metadata, recovery: nextSent } });
     result.sent++;
   }
