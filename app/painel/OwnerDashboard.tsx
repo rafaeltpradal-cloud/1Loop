@@ -8,6 +8,8 @@ import { LineChart } from '@/components/perf/Charts';
 import { PLANS } from '@/lib/plans';
 import type { Cost, OwnerData } from '@/lib/owner';
 import { deleteCost, saveCost, saveUsdBrl } from './actions';
+import { Kpi } from './Kpi';
+import { Projections } from './Projections';
 
 const brl = (n: number, cents = true) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
 const pct = (n: number | null) => (n === null ? '—' : `${(n * 100).toFixed(1).replace('.', ',')}%`);
@@ -32,16 +34,6 @@ const FEED: Record<string, { icon: string; cls: string }> = {
   falhou: { icon: '!', cls: 'warn' },
   reembolso: { icon: '↺', cls: 'warn' },
 };
-
-function Kpi({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'cyan' | 'pink' | 'violet' | 'green' | 'amber' }) {
-  return (
-    <div className={`card ownKpi ${tone ?? ''}`}>
-      <span className="ownKpiLabel">{label}</span>
-      <b className="ownKpiValue">{value}</b>
-      {hint && <span className="ownKpiHint">{hint}</span>}
-    </div>
-  );
-}
 
 /** Barras de receita por dia: bruto (claro) e líquido (forte) lado a lado. */
 function RevenueBars({ data }: { data: OwnerData['revenueDaily'] }) {
@@ -189,6 +181,18 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [tab, setTab] = useState<'todos' | 'pagantes' | 'teste' | 'cancelados'>('todos');
+  // Aba do painel (Cockpit ou Rumo aos 1.000), lembrada no endereço: /painel?aba=rumo
+  const [view, setView] = useState<'agora' | 'rumo'>('agora');
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('aba') === 'rumo') setView('rumo');
+  }, []);
+  const goView = (v: 'agora' | 'rumo') => {
+    setView(v);
+    const url = new URL(window.location.href);
+    if (v === 'rumo') url.searchParams.set('aba', 'rumo');
+    else url.searchParams.delete('aba');
+    window.history.replaceState(null, '', url.toString());
+  };
 
   // Ao vivo: atualiza sozinho a cada minuto.
   useEffect(() => {
@@ -231,6 +235,19 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
       </header>
 
       <main className="ownMain">
+        <nav className="ownTabs" role="tablist" aria-label="Seções do painel">
+          <button type="button" role="tab" aria-selected={view === 'agora'} className={view === 'agora' ? 'ownTab on' : 'ownTab'} onClick={() => goView('agora')}>
+            <span className="ownTabDot cyan" aria-hidden="true" />Cockpit<span className="ownTabSub">o negócio hoje</span>
+          </button>
+          <button type="button" role="tab" aria-selected={view === 'rumo'} className={view === 'rumo' ? 'ownTab on' : 'ownTab'} onClick={() => goView('rumo')}>
+            <span className="ownTabDot violet" aria-hidden="true" />Rumo aos 1.000<span className="ownTabSub">projeções e próximos passos</span>
+          </button>
+        </nav>
+
+        {view === 'rumo' ? (
+          <Projections data={data} />
+        ) : (
+        <>
         {data.error && <div className="formError" role="alert">Stripe: {data.error}</div>}
 
         <section aria-labelledby="h-mes" className="ownBlock">
@@ -379,6 +396,8 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
           Só você vê esta página. Ela não tem link no site nem no app e atualiza sozinha a cada minuto.
           {data.aiCostMonth === null && ' Para o custo da API da Claude entrar sozinho, crie uma chave de admin na Anthropic e salve como ANTHROPIC_ADMIN_KEY na Vercel.'}
         </p>
+        </>
+        )}
       </main>
     </div>
   );
