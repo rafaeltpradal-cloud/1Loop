@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { isOwner } from '@/lib/owner';
 import { runRecovery, sampleRecovery } from '@/lib/recovery';
+import { sendEmail } from '@/lib/email';
 import type { RecoveryKind } from '@/lib/emails/recovery';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,11 @@ export async function GET(req: Request) {
     if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
     if (amostra && KINDS.includes(amostra)) {
       const mail = sampleRecovery(amostra, url.searchParams.get('etapa') === 'parou' ? 'parou' : 'pronto');
+      // &enviar=1 manda o exemplo para o e-mail do dono (para testar os botões na caixa de entrada).
+      if (url.searchParams.get('enviar') === '1' && user.email) {
+        const ok = await sendEmail({ to: user.email, ...mail, subject: `[Teste] ${mail.subject}` });
+        return NextResponse.json({ ok, para: user.email, assunto: mail.subject });
+      }
       return new NextResponse(`<!-- ${mail.subject} -->${mail.html.replace('<title>', `<title>${mail.subject} · `)}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     return NextResponse.json(await runRecovery({ dryRun: true }));
