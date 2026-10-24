@@ -115,3 +115,44 @@ async function sendGa(c: PaidConversion) {
   });
   if (!res.ok) console.error('[conversão ga]', res.status);
 }
+
+/** Teste do dono: manda um Purchase de teste para "Eventos de teste" da Meta e um evento de teste ao GA4. */
+export async function testConversions(testCode: string | null, userId: string, email?: string | null) {
+  const out: Record<string, unknown> = {
+    meta_token: !!process.env.META_CAPI_TOKEN?.trim(),
+    ga_secret: !!process.env.GA4_API_SECRET?.trim(),
+    pixel: TRACKING.metaPixel,
+    ga: TRACKING.ga,
+  };
+  const token = process.env.META_CAPI_TOKEN?.trim();
+  if (token && TRACKING.metaPixel) {
+    const body: Record<string, unknown> = {
+      data: [
+        {
+          event_name: 'Purchase',
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: `teste_${Date.now()}`,
+          action_source: 'website',
+          event_source_url: `${siteUrl()}/bem-vindo`,
+          user_data: { external_id: [sha(userId)], ...(email ? { em: [sha(email)] } : {}), country: [sha('br')] },
+          custom_data: { currency: 'BRL', value: 1, content_name: 'teste' },
+        },
+      ],
+    };
+    if (testCode) body.test_event_code = testCode;
+    const res = await fetch(`https://graph.facebook.com/v21.0/${TRACKING.metaPixel}/events?access_token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    out.meta = { status: res.status, body: (await res.text()).slice(0, 300) };
+  }
+  const secret = process.env.GA4_API_SECRET?.trim();
+  if (secret && TRACKING.ga) {
+    const payload = JSON.stringify({ client_id: `srv.${userId}`, events: [{ name: 'teste_servidor', params: { debug_mode: 1 } }] });
+    const dbg = await fetch(`https://www.google-analytics.com/debug/mp/collect?measurement_id=${TRACKING.ga}&api_secret=${encodeURIComponent(secret)}`, { method: 'POST', body: payload });
+    const res = await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${TRACKING.ga}&api_secret=${encodeURIComponent(secret)}`, { method: 'POST', body: payload });
+    out.ga = { status: res.status, validacao: (await dbg.text()).slice(0, 300) };
+  }
+  return out;
+}
