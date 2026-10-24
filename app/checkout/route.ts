@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe, siteUrl } from '@/lib/stripe';
 import { foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
+import { adContextFromRequest } from '@/lib/conversions';
 
 // GET /checkout?plano=pro → cria a sessão de pagamento do Stripe (com 7 dias de teste) e redireciona.
 // Os dados do cartão são digitados na página do Stripe, nunca passam pelo nosso servidor.
@@ -58,7 +59,8 @@ export async function GET(request: Request) {
     payment_method_collection: 'always',
     subscription_data: {
       trial_period_days: 7,
-      metadata: { user_id: user.id, plan },
+      // trk_*: ids de anúncio (cookies _fbp/_fbc/_ga, IP e navegador) para atribuir a cobrança ao anúncio.
+      metadata: { user_id: user.id, plan, ...adContextFromRequest(request) },
     },
     ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
     locale: 'pt-BR',
