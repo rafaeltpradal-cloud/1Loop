@@ -3,7 +3,8 @@ import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
-import { POST_COLUMNS, type PostRow } from '@/lib/contentTypes';
+import { POST_COLUMNS, kindOf, serieNumberFor, type PostRow } from '@/lib/contentTypes';
+import { NETWORKS } from '@/lib/networks';
 import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 import { ContentTabs } from '@/components/content/ContentTabs';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -53,6 +54,32 @@ export default async function ConteudosPage() {
     post: byIndex.get(index) ?? null,
   }));
 
+  // Para o "Aprovar todos": quem está conectado, @ de cada rede e número da série das imagens.
+  const admin = createAdminClient();
+  const [{ data: conns }, { data: accounts }] = await Promise.all([
+    admin.from('social_connections').select('network, expires_at').eq('brand_id', ctx.brandId),
+    supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+  ]);
+  const handles: Record<string, string> = {};
+  for (const a of accounts ?? []) {
+    const net = NETWORKS.find((n) => n.id === a.network);
+    if (net && a.handle) handles[net.id] = net.prefix === '@' ? `@${a.handle}` : `${net.prefix}${a.handle}`;
+  }
+  const serieNumbers: Record<number, number> = {};
+  strategy.calendario.forEach((it, i) => {
+    if (kindOf(it.formato) === 'imagem') serieNumbers[i] = serieNumberFor(strategy.calendario, i, strategy.serie?.inicio);
+  });
+  const approve = ctx.preview
+    ? undefined
+    : {
+        brandName: ctx.brands.length > 1 ? ctx.brandName : ctx.name,
+        handles,
+        serie: strategy.serie?.nome ?? '',
+        serieNumbers,
+        defaultTime: strategy.ritmo?.horario ?? '07:30',
+        connected: (conns ?? []).filter((c) => new Date(c.expires_at as string).getTime() > Date.now()).map((c) => c.network as string),
+      };
+
   const usage = await usageP;
   // Na prévia a cota é de 3 posts no total.
   const pv = ctx.preview ? await previewUsage(ctx.userId) : null;
@@ -72,6 +99,7 @@ export default async function ConteudosPage() {
       <WeekBoard
         items={items}
         today={isoInBrazil()}
+        approve={approve}
         planStart={start}
         quota={
           pv

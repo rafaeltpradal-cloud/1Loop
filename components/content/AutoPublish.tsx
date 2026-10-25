@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PostAsset, PostStatus } from '@/lib/contentTypes';
 import { cancelSchedule, publishNow, schedulePost } from '@/app/app/conteudos/publish';
+import { slotFor } from '@/lib/approve';
 
 export type AutoInfo = { available: boolean; connected: boolean; expiresAt?: string };
 export type PublishState = { status: PostStatus; scheduledAt: string | null; externalUrl: string | null; publishError: string | null };
@@ -49,7 +50,8 @@ export function AutoPublish({
   onChange: (s: PublishState) => void;
 }) {
   const router = useRouter();
-  const initial = state.scheduledAt ? partsInBrazil(state.scheduledAt) : { date, time: /^\d{2}:\d{2}$/.test(defaultTime) ? defaultTime : '07:30' };
+  // Sem agendamento ainda: dia do calendário no horário da estratégia (ou o próximo dia, se já passou).
+  const initial = partsInBrazil(state.scheduledAt ?? slotFor(date, defaultTime).toISOString());
   const [day, setDay] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
   const [busy, setBusy] = useState<'' | 'agendar' | 'agora' | 'cancelar'>('');
@@ -165,7 +167,7 @@ export function AutoPublish({
       ) : (
         <div>
           <b>{state.status === 'erro' ? 'Não deu para publicar' : `Publicar automaticamente no ${rede}`}</b>
-          <span className="muted">{state.status === 'erro' ? state.publishError : state.status === 'rascunho' ? 'Confira o dia e o horário e clique em Aprovar e agendar: o post sai sozinho.' : 'Escolha o dia e o horário.'}</span>
+          <span className="muted">{state.status === 'erro' ? state.publishError : state.status === 'rascunho' ? `Aprovou, agendou: o post sai sozinho no ${rede} no dia e horário abaixo.` : 'Escolha o dia e o horário.'}</span>
         </div>
       )}
 
@@ -180,7 +182,7 @@ export function AutoPublish({
             <input type="time" value={time} onChange={(e) => setTime(e.target.value)} step={300} />
           </label>
           <button type="button" className="btn3d btnSm" onClick={() => doSchedule(false)} disabled={!!busy || !day || !time}>
-            {busy === 'agendar' ? 'Preparando…' : state.status === 'agendado' ? 'Salvar novo horário' : state.status === 'rascunho' ? 'Aprovar e agendar' : 'Agendar publicação'}
+            {busy === 'agendar' ? 'Agendando…' : state.status === 'agendado' ? 'Salvar novo horário' : state.status === 'rascunho' ? 'Aprovar' : state.status === 'erro' ? 'Agendar de novo' : 'Agendar'}
           </button>
           {state.status === 'agendado' && (
             <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => setEditing(false)}>Voltar</button>

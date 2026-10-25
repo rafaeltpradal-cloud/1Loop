@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 import { NetworkIcon } from '@/components/NetworkIcon';
 import { networkByName } from '@/lib/networks';
 import { addDays, formatShort, fromISO } from '@/lib/dates';
-import type { PostRow } from '@/lib/contentTypes';
+import { autoNetworkId, type PostRow } from '@/lib/contentTypes';
+import { approveAndSchedule, canAutoSchedule, slotFor } from '@/lib/approve';
+import { setPostStatus } from '@/app/app/conteudos/actions';
+import type { Brand } from '@/lib/postImage';
 
 export type BoardItem = {
   index: number;
@@ -36,7 +39,10 @@ export function StatusPill({ status }: { status: PostRow['status'] }) {
 
 export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string; preview?: boolean };
 
-export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem[]; today: string; planStart: string; quota: Quota }) {
+/** O que o "Aprovar todos" precisa para desenhar e agendar cada post. */
+export type ApproveCtx = { brandName: string; handles: Record<string, string>; serie: string; serieNumbers: Record<number, number>; defaultTime: string; connected: string[] };
+
+export function WeekBoard({ items, today, planStart, quota, approve }: { items: BoardItem[]; today: string; planStart: string; quota: Quota; approve?: ApproveCtx }) {
   const router = useRouter();
   const [posts, setPosts] = useState<Record<number, PostRow | null>>(() => Object.fromEntries(items.map((i) => [i.index, i.post])));
   const [anchor, setAnchor] = useState(() => (today < planStart ? planStart : today));
@@ -80,6 +86,63 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
     }
   }
 
+  const toApprove = week.filter((i) => {
+    const p = posts[i.index];
+    return p && (p.status === 'rascunho' || p.status === 'aprovado' || p.status === 'erro');
+  });
+  const [approving, setApproving] = useState<{ done: number; total: number } | null>(null);
+  const [approveMsg, setApproveMsg] = useState('');
+
+  // Aprovar = agendar: cada post aprovado entra na fila e sai sozinho no horário da estratégia.
+  async function approveAll() {
+    if (!approve) return;
+    const connected = new Set(approve.connected);
+    // Dias já ocupados por rede (para não empilhar dois posts no mesmo dia quando o dia original já passou).
+    const taken: Record<string, Set<string>> = {};
+    for (const p of Object.values(posts)) {
+      const net = p ? autoNetworkId(p.rede) : null;
+      if (!p || !net || !p.scheduled_at || (p.status !== 'agendado' && p.status !== 'publicado')) continue;
+      (taken[net] ??= new Set()).add(new Date(p.scheduled_at).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
+    }
+    const list = [...toApprove];
+    let scheduled = 0;
+    let onlyApproved = 0;
+    setApproveMsg('');
+    setApproving({ done: 0, total: list.length });
+    for (let k = 0; k < list.length; k++) {
+      const i = list[k];
+      const p = posts[i.index]!;
+      setErrors((e) => ({ ...e, [i.index]: '' }));
+      try {
+        const net = autoNetworkId(p.rede);
+        if (net && canAutoSchedule(p.rede, p.formato, p.content, connected)) {
+          const when = slotFor(i.date, approve.defaultTime, taken[net]);
+          const handle = approve.handles[net];
+          await approveAndSchedule(p, { name: approve.brandName, handle, serie: approve.serie }, approve.serieNumbers[i.index], when);
+          (taken[net] ??= new Set()).add(when.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
+          setPosts((s) => ({ ...s, [i.index]: { ...p, status: 'agendado', scheduled_at: when.toISOString(), publish_error: null } }));
+          scheduled++;
+        } else if (p.status !== 'aprovado') {
+          const r = await setPostStatus(p.id, 'aprovado');
+          if (!r.ok) throw new Error(r.error);
+          setPosts((s) => ({ ...s, [i.index]: { ...p, status: 'aprovado' } }));
+          onlyApproved++;
+        } else onlyApproved++;
+      } catch (err) {
+        setErrors((e) => ({ ...e, [i.index]: err instanceof Error ? err.message : 'Não deu para aprovar.' }));
+      }
+      setApproving({ done: k + 1, total: list.length });
+    }
+    setApproving(null);
+    setApproveMsg(
+      [scheduled ? `${scheduled} ${scheduled === 1 ? 'post aprovado e agendado' : 'posts aprovados e agendados'}: saem sozinhos no horário.` : '',
+       onlyApproved ? `${onlyApproved} ${onlyApproved === 1 ? 'aprovado' : 'aprovados'} sem agendar (rede não conectada ou formato que você publica à mão).` : '']
+        .filter(Boolean)
+        .join(' '),
+    );
+    router.refresh();
+  }
+
   async function generateWeek() {
     const list = missing.map((i) => i.index).slice(0, Math.max(0, left));
     setQueue({ done: 0, total: list.length });
@@ -91,7 +154,7 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
     router.refresh();
   }
 
-  const busy = running !== null;
+  const busy = running !== null || approving !== null;
   const label = `${formatShort(anchor)} a ${formatShort(end)}`;
 
   return (
@@ -110,6 +173,12 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
           {counts.agendado > 0 && <span><b>{counts.agendado}</b> {counts.agendado === 1 ? 'agendado' : 'agendados'}</span>}
           <span><b>{counts.publicado}</b> {counts.publicado === 1 ? 'publicado' : 'publicados'}</span>
         </div>
+        <div className="weekActions">
+        {approve && toApprove.length > 0 && (
+          <button type="button" className={missing.length > 0 ? 'btnGhost btnSm' : 'btn3d btnSm weekGenerate'} onClick={approveAll} disabled={busy}>
+            {approving ? `Aprovando ${Math.min(approving.done + 1, approving.total)} de ${approving.total}…` : `Aprovar todos (${toApprove.length})`}
+          </button>
+        )}
         {missing.length > 0 && left <= 0 ? (
           quota.preview ? (
             <Link className="btn3d btnSm" href="/app/assinar">Liberar o mês inteiro · 7 dias grátis</Link>
@@ -123,8 +192,9 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
               : `Gerar ${Math.min(missing.length, left)} ${Math.min(missing.length, left) === 1 ? 'conteúdo' : 'conteúdos'} da semana`}
           </button>
         ) : (
-          week.length > 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>Semana com todos os conteúdos prontos.</span>
+          week.length > 0 && toApprove.length === 0 && <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>Semana com todos os conteúdos prontos.</span>
         )}
+        </div>
       </div>
 
       <div className="quotaLine" role="status">
@@ -154,9 +224,10 @@ export function WeekBoard({ items, today, planStart, quota }: { items: BoardItem
         )}
       </div>
 
-      {queue && (
+      {approveMsg && <div className="formOk" role="status">{approveMsg}</div>}
+      {(queue || approving) && (
         <div className="progress" aria-hidden="true">
-          <span style={{ width: `${Math.max(6, (queue.done / Math.max(queue.total, 1)) * 100)}%` }} />
+          <span style={{ width: `${Math.max(6, (((queue ?? approving)!.done) / Math.max((queue ?? approving)!.total, 1)) * 100)}%` }} />
         </div>
       )}
 

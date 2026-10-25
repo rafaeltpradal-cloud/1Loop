@@ -1070,3 +1070,5 @@ html[data-theme="dark"] .owner .prjBar { filter: drop-shadow(0 0 6px color-mix(i
 .firstPost > div { flex: 1 1 260px; font-size: 14px; line-height: 1.5; }
 .firstPostEmoji { font-size: 28px; }
 .previewLock { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; box-shadow: none; font-size: 14px; }
+.weekActions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+@media (max-width: 760px) { .weekActions { justify-content: stretch; } .weekActions > * { flex: 1; } }

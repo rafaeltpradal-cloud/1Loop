@@ -563,12 +563,10 @@ export function PostEditor({
             </span>
           </div>
           <div className="pageActions" style={{ width: 'auto' }}>
-            {status === 'rascunho' &&
-              (canSchedule ? (
-                <button type="button" className="linkBtn" onClick={() => changeStatus('aprovado')} disabled={pending} title="Aprova sem agendar, para publicar você mesmo">Só aprovar</button>
-              ) : (
-                <button type="button" className="btn3d btnSm" onClick={() => changeStatus('aprovado')} disabled={pending}>Aprovar post</button>
-              ))}
+            {/* Com a rede conectada, aprovar é no quadro abaixo: aprovou, agendou. */}
+            {status === 'rascunho' && !canSchedule && (
+              <button type="button" className="btn3d btnSm" onClick={() => changeStatus('aprovado')} disabled={pending}>Aprovar post</button>
+            )}
             {status === 'aprovado' && <button type="button" className="btn3d btnSm" onClick={() => changeStatus('publicado')} disabled={pending}>Marcar como publicado</button>}
             {status !== 'rascunho' && status !== 'publicando' && <button type="button" className="btnGhost btnSm" onClick={() => changeStatus('rascunho')} disabled={pending}>Voltar para revisão</button>}
           </div>

@@ -6,6 +6,7 @@ import { encrypt } from '@/lib/crypto';
 import { exchangeCode, me } from '@/lib/instagram';
 import { siteUrl } from '@/lib/stripe';
 import { currentBrandId } from '@/lib/brands';
+import { requeueAfterReconnect } from '@/lib/publish';
 
 export const runtime = 'nodejs';
 
@@ -65,6 +66,7 @@ export async function GET(req: Request) {
     if (account) await admin.from('social_accounts').update({ status: 'connected', handle, updated_at: now.toISOString() }).eq('id', account.id);
     else await admin.from('social_accounts').insert({ user_id: user.id, brand_id: brandId, network: 'instagram', handle, status: 'connected' });
 
+    await requeueAfterReconnect(admin, brandId, 'Instagram').catch((err) => console.error('[requeue instagram]', err));
     return back('conectado');
   } catch (err) {
     console.error('[instagram callback]', err);

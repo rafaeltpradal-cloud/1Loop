@@ -6,6 +6,7 @@ import { encrypt } from '@/lib/crypto';
 import { exchangeCode, LINKEDIN_SCOPES, userInfo } from '@/lib/linkedin';
 import { siteUrl } from '@/lib/stripe';
 import { currentBrandId } from '@/lib/brands';
+import { requeueAfterReconnect } from '@/lib/publish';
 
 export const runtime = 'nodejs';
 
@@ -59,6 +60,8 @@ export async function GET(req: Request) {
     if (account) await admin.from('social_accounts').update({ status: 'connected', updated_at: now.toISOString() }).eq('id', account.id);
     else await admin.from('social_accounts').insert({ user_id: user.id, brand_id: brandId, network: 'linkedin', handle: me.name ?? 'perfil', status: 'connected' });
 
+    // Posts que travaram esperando a reconexão voltam para a fila.
+    await requeueAfterReconnect(admin, brandId, 'LinkedIn').catch((err) => console.error('[requeue linkedin]', err));
     return back('conectado');
   } catch (err) {
     console.error('[linkedin callback]', err);

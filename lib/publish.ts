@@ -7,6 +7,8 @@ import { createPost, LinkedInError, uploadDocument, uploadImage, type LinkedInMe
 import { jpegsToPdf } from '@/lib/pdf';
 import { encrypt } from '@/lib/crypto';
 import * as ig from '@/lib/instagram';
+import { sendEmail } from '@/lib/email';
+import { siteUrl } from '@/lib/stripe';
 import { publicMediaUrl } from '@/lib/publicMedia';
 import { autoBlocker, captionWithTags, kindOf, type PostAsset, type PostContent } from '@/lib/contentTypes';
 
@@ -147,6 +149,47 @@ function friendly(err: unknown) {
   return err instanceof Error ? err.message : 'Erro desconhecido ao publicar.';
 }
 
+/** Erro de acesso (conexão vencida ou autorização revogada): o post espera a reconexão em vez de se perder. */
+function isAuthError(err: unknown) {
+  if (err instanceof LinkedInError) return err.status === 401 || err.status === 403;
+  if (err instanceof ig.InstagramError) return err.status === 401 || err.code === 190;
+  return err instanceof Error && /não está conectado|expirou/.test(err.message);
+}
+
+/** Depois de reconectar: os posts que travaram por falta de acesso voltam para a fila (saem em seguida, se já passou da hora). */
+export async function requeueAfterReconnect(admin: Admin, brandId: number, rede: 'LinkedIn' | 'Instagram') {
+  const { data } = await admin.from('posts').select('id, scheduled_at').eq('brand_id', brandId).eq('rede', rede).eq('status', 'erro').eq('platform_ref', 'auth');
+  const soon = Date.now() + 2 * 60 * 1000;
+  for (const p of data ?? []) {
+    const at = p.scheduled_at ? Math.max(new Date(p.scheduled_at as string).getTime(), soon) : soon;
+    await admin.from('posts').update({ status: 'agendado', scheduled_at: new Date(at).toISOString(), publish_error: null, platform_ref: null }).eq('id', p.id);
+  }
+  return data?.length ?? 0;
+}
+
+/** Avisa por e-mail (no máximo 1 vez a cada 12 h por marca) que é preciso reconectar a rede. */
+async function warnReconnect(admin: Admin, post: PostForPublish) {
+  try {
+    const since = new Date(Date.now() - 12 * 3600 * 1000).toISOString();
+    const { count } = await admin.from('posts').select('id', { count: 'exact', head: true }).eq('brand_id', post.brand_id).eq('platform_ref', 'auth').gte('updated_at', since).neq('id', post.id);
+    if (count) return;
+    const { data } = await admin.auth.admin.getUserById(post.user_id);
+    const email = data?.user?.email;
+    if (!email) return;
+    const url = `${siteUrl()}/app/redes`;
+    const title = `Seu post não saiu: reconecte o ${post.rede}`;
+    const body = `O ${post.rede} pediu uma nova autorização e o post agendado ficou esperando. Reconecte em Redes (leva 10 segundos): os posts que ficaram para trás saem logo em seguida.`;
+    await sendEmail({
+      to: email,
+      subject: title,
+      html: `<div style="font-family:Segoe UI,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0E0F12"><h2 style="margin:0 0 10px">${title}</h2><p style="font-size:15px;line-height:1.6;color:#2A2D33">${body}</p><p><a href="${url}" style="display:inline-block;background:#2A2D33;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:12px">Reconectar o ${post.rede}</a></p></div>`,
+      text: `${title}\n\n${body}\n\n${url}`,
+    });
+  } catch (err) {
+    console.error('[aviso reconectar]', err);
+  }
+}
+
 /** Publica um post agendado. Só segue se conseguir "pegar" o post (evita publicar duas vezes). */
 export async function publishOne(admin: Admin, postId: number, userId?: string) {
   let claim = admin
@@ -180,8 +223,10 @@ export async function publishOne(admin: Admin, postId: number, userId?: string) 
     return { ok: true as const, url: outcome.url };
   } catch (err) {
     console.error('[publicar]', post.id, err);
-    const message = friendly(err);
-    await admin.from('posts').update({ status: 'erro', publish_error: message, platform_ref: null, updated_at: new Date().toISOString() }).eq('id', post.id);
+    const auth = isAuthError(err);
+    const message = auth ? `O ${post.rede} pediu uma nova autorização. Reconecte em Redes: o post sai logo em seguida, sem precisar agendar de novo.` : friendly(err);
+    await admin.from('posts').update({ status: 'erro', publish_error: message, platform_ref: auth ? 'auth' : null, updated_at: new Date().toISOString() }).eq('id', post.id);
+    if (auth) await warnReconnect(admin, post);
     return { ok: false as const, error: message };
   }
 }
