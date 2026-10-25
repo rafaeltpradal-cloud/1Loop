@@ -1072,3 +1072,8 @@ html[data-theme="dark"] .owner .prjBar { filter: drop-shadow(0 0 6px color-mix(i
 .previewLock { padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; box-shadow: none; font-size: 14px; }
 .weekActions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
 @media (max-width: 760px) { .weekActions { justify-content: stretch; } .weekActions > * { flex: 1; } }
+.liPages { padding: 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: none; }
+.liTargets { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.liTarget { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
+.liTarget span { font-size: 12.5px; }
+.liTarget.on { border-color: #0A66C2; box-shadow: 0 0 0 1px #0A66C2; }

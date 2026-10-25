@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { autoBlocker, autoNetworkId, canAutoPublish, type PostAsset, type PostContent } from '@/lib/contentTypes';
-import { getConnection, publishOne } from '@/lib/publish';
+import { getConnection, linkedinTarget, publishOne } from '@/lib/publish';
 import { accessFor } from '@/lib/access';
 
 export type PublishResult = { ok: true; url?: string; asset?: PostAsset } | { ok: false; error: string };
@@ -62,7 +62,8 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
   const blocker = autoBlocker(post.rede, post.formato, (post.content ?? {}) as PostContent);
   if (blocker) return { ok: false, error: blocker };
   const network = autoNetworkId(post.rede)!;
-  const conn = await getConnection(admin, post.brand_id as number, network);
+  // No LinkedIn, vale o perfil ou a página escolhida em Redes.
+  const conn = network === 'linkedin' ? await linkedinTarget(admin, post.brand_id as number) : await getConnection(admin, post.brand_id as number, network);
   if (!conn) return { ok: false, error: `Conecte o ${post.rede} em Redes para agendar.` };
   // O LinkedIn não renova sozinho; o Instagram renova, então só precisa estar válido agora.
   const limit = network === 'linkedin' ? at.getTime() : Date.now();

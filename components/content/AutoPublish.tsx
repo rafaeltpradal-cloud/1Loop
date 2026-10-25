@@ -7,7 +7,7 @@ import type { PostAsset, PostStatus } from '@/lib/contentTypes';
 import { cancelSchedule, publishNow, schedulePost } from '@/app/app/conteudos/publish';
 import { slotFor } from '@/lib/approve';
 
-export type AutoInfo = { available: boolean; connected: boolean; expiresAt?: string };
+export type AutoInfo = { available: boolean; connected: boolean; expiresAt?: string; /** Nome da página do LinkedIn, quando publica na página em vez do perfil. */ target?: string };
 export type PublishState = { status: PostStatus; scheduledAt: string | null; externalUrl: string | null; publishError: string | null };
 
 const BR = 'America/Sao_Paulo';
@@ -167,7 +167,7 @@ export function AutoPublish({
       ) : (
         <div>
           <b>{state.status === 'erro' ? 'Não deu para publicar' : `Publicar automaticamente no ${rede}`}</b>
-          <span className="muted">{state.status === 'erro' ? state.publishError : state.status === 'rascunho' ? `Aprovou, agendou: o post sai sozinho no ${rede} no dia e horário abaixo.` : 'Escolha o dia e o horário.'}</span>
+          <span className="muted">{state.status === 'erro' ? state.publishError : state.status === 'rascunho' ? `Aprovou, agendou: o post sai sozinho ${auto.target ? `na página ${auto.target}` : `no ${rede}`} no dia e horário abaixo.` : 'Escolha o dia e o horário.'}</span>
         </div>
       )}
 
@@ -193,7 +193,7 @@ export function AutoPublish({
       {showForm &&
         (confirmNow ? (
           <span className="redoConfirm">
-            <span className="muted" style={{ fontSize: 13 }}>Publica agora no seu perfil do {rede}.</span>
+            <span className="muted" style={{ fontSize: 13 }}>Publica agora {auto.target ? `na página ${auto.target}` : `no seu perfil do ${rede}`}.</span>
             <button type="button" className="btnGhost btnSm" onClick={() => doSchedule(true)} disabled={!!busy}>{busy === 'agora' ? 'Publicando…' : 'Confirmar'}</button>
             <button type="button" className="linkBtn" style={{ fontSize: 13 }} onClick={() => setConfirmNow(false)}>Cancelar</button>
           </span>

@@ -9,6 +9,7 @@ import type { PostPerf } from '@/components/perf/PostPerformance';
 import { NETWORKS } from '@/lib/networks';
 import { PostEditor } from '@/components/content/PostEditor';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getConnection, linkedinTarget } from '@/lib/publish';
 import { linkedinConfigured } from '@/lib/linkedin';
 import { instagramConfigured } from '@/lib/instagram';
 
@@ -44,17 +45,14 @@ export default async function PostPage({ params, searchParams }: { params: Promi
   const handle = account && net ? (net.prefix === '@' ? `@${account.handle}` : `${net.prefix}${account.handle}`) : undefined;
 
   // Publicação automática (LinkedIn e Instagram).
-  let auto: { available: boolean; connected: boolean; expiresAt?: string } = { available: false, connected: false };
+  let auto: { available: boolean; connected: boolean; expiresAt?: string; target?: string } = { available: false, connected: false };
   const network = autoNetworkId(post.rede);
   const configured = network === 'linkedin' ? linkedinConfigured() : network === 'instagram' ? instagramConfigured() : false;
   if (network && configured) {
-    const { data: conn } = await createAdminClient()
-      .from('social_connections')
-      .select('expires_at')
-      .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId)
-      .eq('network', network)
-      .maybeSingle();
-    auto = { available: true, connected: !!conn && new Date(conn.expires_at as string).getTime() > Date.now(), expiresAt: (conn?.expires_at as string) ?? undefined };
+    const admin = createAdminClient();
+    // No LinkedIn: perfil ou página (a página com renovação automática não "vence").
+    const conn = network === 'linkedin' ? await linkedinTarget(admin, ctx.brandId) : await getConnection(admin, ctx.brandId, network);
+    auto = { available: true, connected: !!conn && new Date(conn.expiresAt).getTime() > Date.now(), expiresAt: conn?.expiresAt, target: conn && 'kind' in conn && conn.kind === 'page' ? conn.name : undefined };
   }
 
   // Desempenho do post publicado.

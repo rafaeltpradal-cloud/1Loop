@@ -136,5 +136,5 @@ export async function createPost(token: string, author: string, text: string, me
   const res = await fetch(`${API}/rest/posts`, { method: 'POST', headers: restHeaders(token), body: JSON.stringify(body) });
   if (!res.ok) await fail(res, 'Publicação no LinkedIn');
   const urn = res.headers.get('x-restli-id') ?? res.headers.get('x-linkedin-id') ?? '';
-  return { urn, url: urn ? `https://www.linkedin.com/feed/update/${urn}/` : 'https://www.linkedin.com/in/me/recent-activity/all/' };
+  return { urn, url: urn ? `https://www.linkedin.com/feed/update/${urn}/` : author.includes(':organization:') ? `https://www.linkedin.com/company/${author.split(':').pop()}/` : 'https://www.linkedin.com/in/me/recent-activity/all/' };
 }

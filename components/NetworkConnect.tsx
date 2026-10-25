@@ -46,6 +46,8 @@ const FLASH: Record<string, (n: string) => { ok: boolean; text: string }> = {
   cancelado: (n) => ({ ok: false, text: `Você cancelou a autorização no ${n}. Pode tentar de novo quando quiser.` }),
   erro: (n) => ({ ok: false, text: `Não deu para conectar o ${n}. Tente de novo.` }),
   indisponivel: (n) => ({ ok: false, text: `A conexão com o ${n} ainda está sendo configurada.` }),
+  pagina: () => ({ ok: true, text: 'Página conectada. Escolha abaixo se os posts do LinkedIn saem no seu perfil ou na página.' }),
+  sempagina: () => ({ ok: false, text: 'Não achamos nenhuma página em que você seja administrador. Peça acesso de administrador da página e conecte de novo.' }),
   pessoal: () => ({ ok: false, text: 'Essa conta do Instagram é pessoal. Mude para conta profissional (passo 1) e conecte de novo.' }),
 };
 

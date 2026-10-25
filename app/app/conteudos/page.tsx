@@ -5,6 +5,7 @@ import type { Strategy } from '@/lib/strategy';
 import { isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
 import { POST_COLUMNS, kindOf, serieNumberFor, type PostRow } from '@/lib/contentTypes';
 import { NETWORKS } from '@/lib/networks';
+import { connectedNetworks } from '@/lib/publish';
 import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 import { ContentTabs } from '@/components/content/ContentTabs';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -56,8 +57,8 @@ export default async function ConteudosPage() {
 
   // Para o "Aprovar todos": quem está conectado, @ de cada rede e número da série das imagens.
   const admin = createAdminClient();
-  const [{ data: conns }, { data: accounts }] = await Promise.all([
-    admin.from('social_connections').select('network, expires_at').eq('brand_id', ctx.brandId),
+  const [conns, { data: accounts }] = await Promise.all([
+    connectedNetworks(admin, ctx.brandId),
     supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
   ]);
   const handles: Record<string, string> = {};
@@ -77,7 +78,7 @@ export default async function ConteudosPage() {
         serie: strategy.serie?.nome ?? '',
         serieNumbers,
         defaultTime: strategy.ritmo?.horario ?? '07:30',
-        connected: (conns ?? []).filter((c) => new Date(c.expires_at as string).getTime() > Date.now()).map((c) => c.network as string),
+        connected: [...conns],
       };
 
   const usage = await usageP;

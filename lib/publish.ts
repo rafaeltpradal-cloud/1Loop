@@ -8,6 +8,7 @@ import { jpegsToPdf } from '@/lib/pdf';
 import { encrypt } from '@/lib/crypto';
 import * as ig from '@/lib/instagram';
 import { sendEmail } from '@/lib/email';
+import { refreshPagesToken, type PagesMeta } from '@/lib/linkedinPages';
 import { siteUrl } from '@/lib/stripe';
 import { publicMediaUrl } from '@/lib/publicMedia';
 import { autoBlocker, captionWithTags, kindOf, type PostAsset, type PostContent } from '@/lib/contentTypes';
@@ -33,6 +34,49 @@ export async function getConnection(admin: Admin, brandId: number, network: stri
   };
 }
 
+/** Token da página, renovado pelo refresh token quando está para vencer (sem pedir login de novo). */
+async function pageToken(admin: Admin, brandId: number, conn: NonNullable<Awaited<ReturnType<typeof getConnection>>>) {
+  const meta = conn.meta as PagesMeta;
+  const soon = Date.now() + 5 * 86400000;
+  if (new Date(conn.expiresAt).getTime() > soon || !meta.refresh) return conn.token();
+  const r = await refreshPagesToken(decrypt(meta.refresh));
+  const now = Date.now();
+  await admin
+    .from('social_connections')
+    .update({
+      access_token: encrypt(r.access_token),
+      expires_at: new Date(now + (r.expires_in || 5184000) * 1000).toISOString(),
+      meta: { ...meta, ...(r.refresh_token ? { refresh: encrypt(r.refresh_token), refreshExpiresAt: new Date(now + (r.refresh_token_expires_in || 31536000) * 1000).toISOString() } : {}) },
+      updated_at: new Date(now).toISOString(),
+    })
+    .eq('brand_id', brandId)
+    .eq('network', 'linkedin_page');
+  return r.access_token;
+}
+
+/** Para onde vão os posts do LinkedIn desta marca: a página escolhida (se ativa) ou o perfil pessoal. */
+export async function linkedinTarget(admin: Admin, brandId: number) {
+  const page = await getConnection(admin, brandId, 'linkedin_page');
+  const meta = (page?.meta ?? {}) as PagesMeta;
+  if (page && meta.active !== false) {
+    const refreshable = !!meta.refresh && (!meta.refreshExpiresAt || new Date(meta.refreshExpiresAt).getTime() > Date.now());
+    return { kind: 'page' as const, name: page.name, expiresAt: refreshable ? new Date(Date.now() + 365 * 86400000).toISOString() : page.expiresAt, author: `urn:li:organization:${page.externalId}`, token: () => pageToken(admin, brandId, page) };
+  }
+  const person = await getConnection(admin, brandId, 'linkedin');
+  if (!person) return null;
+  return { kind: 'person' as const, name: person.name, expiresAt: person.expiresAt, author: `urn:li:person:${person.externalId}`, token: async () => person.token() };
+}
+
+/** Redes com publicação automática válida nesta marca (LinkedIn conta se o perfil ou a página ativa estiver ok). */
+export async function connectedNetworks(admin: Admin, brandId: number) {
+  const out = new Set<string>();
+  const li = await linkedinTarget(admin, brandId);
+  if (li && new Date(li.expiresAt).getTime() > Date.now()) out.add('linkedin');
+  const igc = await getConnection(admin, brandId, 'instagram');
+  if (igc && new Date(igc.expiresAt).getTime() > Date.now()) out.add('instagram');
+  return out;
+}
+
 function postText(formato: string, c: PostContent) {
   if (kindOf(formato) === 'thread' && c.partes?.length) return c.partes.join('\n\n');
   return captionWithTags(c);
@@ -46,11 +90,11 @@ async function download(admin: Admin, path: string) {
 
 /** Publica um post que está como "publicando". Devolve o link do post publicado. */
 async function publishLinkedIn(admin: Admin, post: PostForPublish) {
-  const conn = await getConnection(admin, post.brand_id, 'linkedin');
-  if (!conn) throw new Error('O LinkedIn não está conectado. Conecte em Redes e agende de novo.');
-  if (new Date(conn.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o LinkedIn expirou. Reconecte em Redes e agende de novo.');
-  const token = conn.token();
-  const author = `urn:li:person:${conn.externalId}`;
+  const target = await linkedinTarget(admin, post.brand_id);
+  if (!target) throw new Error('O LinkedIn não está conectado. Conecte em Redes e agende de novo.');
+  if (new Date(target.expiresAt).getTime() < Date.now()) throw new Error('A conexão com o LinkedIn expirou. Reconecte em Redes e agende de novo.');
+  const token = await target.token();
+  const author = target.author;
 
   const assets = post.assets ?? [];
   let media: LinkedInMedia = null;

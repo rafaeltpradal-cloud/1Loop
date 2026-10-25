@@ -101,3 +101,42 @@ export async function requestInstagramInvite(raw: string): Promise<{ ok: boolean
   revalidatePath('/app/redes');
   return { ok: true };
 }
+
+/** Onde saem os posts do LinkedIn desta marca: 'perfil' ou o id de uma página conectada. */
+export async function setLinkedInTarget(target: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
+  const admin = createAdminClient();
+  const brandId = await currentBrandId(user.id, admin);
+  const { data: row } = await admin.from('social_connections').select('meta').eq('brand_id', brandId).eq('network', 'linkedin_page').maybeSingle();
+  if (!row) return { ok: false, error: 'Conecte uma página primeiro.' };
+  const meta = (row.meta ?? {}) as { orgs?: { id: string; name: string }[]; active?: boolean };
+  let patch: Record<string, unknown>;
+  if (target === 'perfil') patch = { meta: { ...meta, active: false } };
+  else {
+    const org = (meta.orgs ?? []).find((o) => o.id === target);
+    if (!org) return { ok: false, error: 'Página não encontrada. Reconecte as páginas.' };
+    patch = { external_id: org.id, name: org.name, meta: { ...meta, active: true } };
+  }
+  const { error } = await admin.from('social_connections').update({ ...patch, updated_at: new Date().toISOString() }).eq('brand_id', brandId).eq('network', 'linkedin_page');
+  if (error) return { ok: false, error: 'Não deu para salvar. Tente de novo.' };
+  revalidatePath('/app', 'layout');
+  return { ok: true };
+}
+
+/** Desconecta as páginas do LinkedIn (os posts voltam a sair no perfil). */
+export async function disconnectLinkedInPages(): Promise<{ ok: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false };
+  const admin = createAdminClient();
+  const brandId = await currentBrandId(user.id, admin);
+  const { error } = await admin.from('social_connections').delete().eq('brand_id', brandId).eq('network', 'linkedin_page').eq('user_id', user.id);
+  revalidatePath('/app', 'layout');
+  return { ok: !error };
+}

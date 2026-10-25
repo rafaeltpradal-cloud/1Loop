@@ -6,6 +6,8 @@ import { NetworksBoard } from './NetworksBoard';
 import { NetworkConnect, type ConnectState } from '@/components/NetworkConnect';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { linkedinConfigured } from '@/lib/linkedin';
+import { pagesConfigured, type PagesMeta } from '@/lib/linkedinPages';
+import { LinkedInPages, type PagesState } from '@/components/LinkedInPages';
 import { hasInsightsScope, instagramConfigured, instagramInviteOnly } from '@/lib/instagram';
 
 export const metadata = { title: 'Redes · 1loop creators' };
@@ -32,7 +34,7 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   // Conexões oficiais (o token não sai do servidor).
   const { data: conns } = await createAdminClient()
     .from('social_connections')
-    .select('network, name, picture, expires_at, meta, scopes')
+    .select('network, external_id, name, picture, expires_at, meta, scopes')
     .eq('user_id', ctx.userId).eq('brand_id', ctx.brandId);
   const stateOf = (network: 'linkedin' | 'instagram', configured: boolean): ConnectState => {
     if (!configured) return { kind: 'indisponivel' };
@@ -46,6 +48,19 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
   };
   const li = stateOf('linkedin', linkedinConfigured());
   const ig = stateOf('instagram', instagramConfigured());
+  const pageRow = (conns ?? []).find((x) => x.network === 'linkedin_page');
+  const personName = li.kind === 'conectado' ? li.name : undefined;
+  const pages: PagesState = !pagesConfigured()
+    ? { kind: 'indisponivel' }
+    : !pageRow
+      ? { kind: 'desconectado', personName }
+      : {
+          kind: 'conectado',
+          orgs: ((pageRow.meta as PagesMeta | null)?.orgs ?? []),
+          selected: String((pageRow as { external_id?: string }).external_id ?? ''),
+          active: (pageRow.meta as PagesMeta | null)?.active !== false,
+          personName,
+        };
 
   return (
     <div className="page">
@@ -61,6 +76,8 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
         <NetworkConnect network="linkedin" state={li} flash={liFlash} />
         <NetworkConnect network="instagram" state={ig} flash={igFlash} inviteOnly={instagramInviteOnly()} savedHandle={saved.instagram?.handle} />
       </div>
+
+      <LinkedInPages state={pages} />
 
       <NetworksBoard chosen={chosen} saved={saved} />
 
