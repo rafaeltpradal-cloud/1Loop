@@ -45,7 +45,7 @@ export type OwnerData = {
   costsMonth: number;
   aiCostMonth: number | null; // da API de custos da Anthropic, em R$
   usdBrl: number;
-  visits: { daily: { day: string; visitors: number; views: number }[]; visitors30: number; views30: number; today: number; sources: { source: string; visitors: number }[] };
+  visits: { daily: { day: string; visitors: number; views: number }[]; visitors30: number; views30: number; today: number; sources: { source: string; visitors: number }[]; funnel: { landing: number; scroll50: number; cta: number; cadastro: number; since: string | null } };
 };
 
 async function all<T>(list: (params: { starting_after?: string }) => Promise<Stripe.ApiList<T & { id: string }>>, max = 1000): Promise<T[]> {
@@ -149,7 +149,7 @@ export async function ownerData(): Promise<OwnerData> {
 
   // ---------- Visitas ao site (tabela site_visits) ----------
   const from30 = isoDay(Math.floor((now - 29 * DAY) / 1000));
-  const visitRows = (((await admin.from('site_visits').select('day, visitor, source').gte('day', from30).limit(50000)).data ?? []) as { day: string; visitor: string; source: string | null }[]);
+  const visitRows = (((await admin.from('site_visits').select('day, visitor, source, path').gte('day', from30).limit(50000)).data ?? []) as { day: string; visitor: string; source: string | null; path: string }[]);
   const perDay = new Map<string, { v: Set<string>; n: number }>();
   const perSource = new Map<string, Set<string>>();
   for (const r of visitRows) {
@@ -167,7 +167,20 @@ export async function ownerData(): Promise<OwnerData> {
     const d = perDay.get(day);
     return { day, visitors: d ? d.v.size : 0, views: d ? d.n : 0 };
   });
+  // Funil da landing: só a partir do 1º evento registrado (a medição de cliques começou depois das visitas).
+  const eventRows = (((await admin.from('site_events').select('day, visitor, event, created_at').gte('day', from30).order('created_at').limit(50000)).data ?? []) as { day: string; visitor: string; event: string; created_at: string }[]);
+  const since = eventRows[0]?.day ?? null;
+  const uniq = (rows: { visitor: string }[]) => new Set(rows.map((r) => r.visitor)).size;
+  const fromSince = since ? visitRows.filter((r) => r.day >= since) : [];
+  const funnel = {
+    landing: uniq(fromSince.filter((r) => r.path === '/' || r.path === '/vendedores')),
+    scroll50: uniq(eventRows.filter((r) => r.event === 'scroll50')),
+    cta: uniq(eventRows.filter((r) => r.event === 'cta' || r.event === 'plano')),
+    cadastro: uniq(fromSince.filter((r) => r.path === '/cadastro')),
+    since,
+  };
   const visits = {
+    funnel,
     daily,
     visitors30: new Set(visitRows.map((r) => r.visitor)).size,
     views30: visitRows.length,

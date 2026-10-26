@@ -291,6 +291,22 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
               <div><span className="muted">Páginas vistas</span><b>{data.visits.views30}</b></div>
               <div><span className="muted">Visita → cadastro</span><b>{data.visits.visitors30 ? `${Math.round((data.app.usersMonth / data.visits.visitors30) * 1000) / 10}%` : '—'}</b></div>
             </div>
+            {data.visits.funnel.since && (
+              <div className="ownFunnel" aria-label="Funil da landing">
+                {[
+                  ['Viram a landing', data.visits.funnel.landing],
+                  ['Rolaram metade', data.visits.funnel.scroll50],
+                  ['Clicaram para cadastrar', data.visits.funnel.cta],
+                  ['Abriram o cadastro', data.visits.funnel.cadastro],
+                ].map(([label, n], i) => (
+                  <div key={label as string}>
+                    <span className="muted">{label}</span>
+                    <b>{n as number}</b>
+                    {i > 0 && <span className="muted">{data.visits.funnel.landing ? `${Math.round(((n as number) / data.visits.funnel.landing) * 100)}%` : '—'}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
             {data.visits.sources.length === 0 ? (
               <p className="muted" style={{ fontSize: 13 }}>A contagem começou agora. As visitas aparecem aqui conforme as pessoas entram no site.</p>
             ) : (

@@ -1077,3 +1077,7 @@ html[data-theme="dark"] .owner .prjBar { filter: drop-shadow(0 0 6px color-mix(i
 .liTarget { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font: inherit; color: inherit; cursor: pointer; }
 .liTarget span { font-size: 12.5px; }
 .liTarget.on { border-color: #0A66C2; box-shadow: 0 0 0 1px #0A66C2; }
+.ownFunnel { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.ownFunnel > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--hover); font-size: 12px; }
+.ownFunnel b { font-size: 18px; }
+@media (max-width: 640px) { .ownFunnel { grid-template-columns: 1fr 1fr; } }

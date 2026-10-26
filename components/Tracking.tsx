@@ -39,6 +39,34 @@ function rememberOrigin() {
   }
 }
 
+/** De onde a pessoa veio (UTM, clique de anúncio, site externo ou a origem guardada no 1º acesso). */
+export function visitSource() {
+  try {
+    const q = new URLSearchParams(location.search);
+    const ext = document.referrer && !document.referrer.startsWith(location.origin) ? new URL(document.referrer).hostname : '';
+    let saved: Record<string, string> = {};
+    try {
+      const c = document.cookie.split('; ').find((x) => x.startsWith(`${ORIGIN_COOKIE}=`));
+      if (c) saved = JSON.parse(decodeURIComponent(c.slice(ORIGIN_COOKIE.length + 1)));
+    } catch {
+      saved = {};
+    }
+    const savedRef = saved.referrer ? (() => { try { return new URL(saved.referrer).hostname; } catch { return ''; } })() : '';
+    return q.get('utm_source') || (q.get('fbclid') ? 'meta' : '') || ext || saved.utm_source || (saved.fbclid ? 'meta' : '') || savedRef || 'direto';
+  } catch {
+    return 'direto';
+  }
+}
+
+/** Evento da landing (clique em botão, rolagem) para o funil do /painel. */
+export function trackEvent(event: 'cta' | 'scroll50' | 'scroll90' | 'plano', detail?: string) {
+  try {
+    fetch('/api/evento', { method: 'POST', keepalive: true, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ event, detail, path: location.pathname, source: visitSource() }) }).catch(() => {});
+  } catch {
+    // ignora
+  }
+}
+
 /** Conta a visita no banco do 1loop (gráfico de visitas do /painel). Só páginas públicas. */
 function countVisit(path: string) {
   try {
