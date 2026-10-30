@@ -23,7 +23,8 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
 
   if (name.length < 2) return { error: 'Informe seu nome.' };
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: 'Informe um e-mail válido.' };
-  if (phone.length < 10 || phone.length > 13) return { error: 'Informe um telefone com DDD.' };
+  // WhatsApp é opcional; se vier, precisa ter DDD.
+  if (phone && (phone.length < 10 || phone.length > 13)) return { error: 'O WhatsApp precisa ter DDD (ou deixe em branco).' };
   if (password.length < 8) return { error: 'A senha precisa ter pelo menos 8 caracteres.' };
   if (!accepted) return { error: 'Para continuar, aceite os termos de uso e a política de privacidade.' };
 

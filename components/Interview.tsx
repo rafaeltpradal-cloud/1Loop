@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { OTHER, QUESTIONS, displayValue, isAnswered, optionsOf, otherKey, type Answers } from '@/lib/interview';
+import { OTHER, QUESTIONS, displayValue, isAnswered, optionsOf, otherKey, type Answers, type Question } from '@/lib/interview';
 import { VoiceButton } from '@/components/VoiceButton';
 import { saveAnswers } from '@/app/app/entrevista/actions';
 import { LoopMark } from '@/components/Logo';
@@ -25,9 +25,26 @@ function cheer(done: number, total: number) {
   return '';
 }
 
-export function Interview({ initial, hasStrategy, preview = false, firstName = '' }: { initial: Answers; hasStrategy: boolean; preview?: boolean; firstName?: string }) {
+export function Interview({
+  initial,
+  hasStrategy,
+  preview = false,
+  firstName = '',
+  questions = QUESTIONS,
+  defaults = {},
+}: {
+  initial: Answers;
+  hasStrategy: boolean;
+  preview?: boolean;
+  firstName?: string;
+  /** Começo rápido: só as perguntas essenciais (o resto fica para depois). */
+  questions?: Question[];
+  /** Respostas padrão para o que não foi perguntado no começo rápido. */
+  defaults?: Answers;
+}) {
+  const QS = questions;
   const router = useRouter();
-  const firstOpen = Math.max(0, QUESTIONS.findIndex((q) => !isAnswered(q, initial[q.id], initial)));
+  const firstOpen = Math.max(0, QS.findIndex((q) => !isAnswered(q, initial[q.id], initial)));
   const [answers, setAnswers] = useState<Answers>(initial);
   const [idx, setIdx] = useState(firstOpen === -1 ? 0 : firstOpen);
   const [phase, setPhase] = useState<'asking' | 'generating' | 'post' | 'error'>('asking');
@@ -43,15 +60,15 @@ export function Interview({ initial, hasStrategy, preview = false, firstName = '
   const [msg, setMsg] = useState(0);
   const [, startTransition] = useTransition();
 
-  const q = QUESTIONS[idx];
+  const q = QS[idx];
   const value = answers[q.id];
   const ok = isAnswered(q, value, answers);
   const otherOn = !!q.allowOther && Array.isArray(value) && value.includes(OTHER);
   const otherText = typeof answers[otherKey(q.id)] === 'string' ? (answers[otherKey(q.id)] as string) : '';
-  const isLast = idx === QUESTIONS.length - 1;
-  const pct = Math.round(((idx + (ok ? 1 : 0)) / QUESTIONS.length) * 100);
+  const isLast = idx === QS.length - 1;
+  const pct = Math.round(((idx + (ok ? 1 : 0)) / QS.length) * 100);
 
-  const blocks = useMemo(() => Array.from(new Set(QUESTIONS.map((x) => x.block))), []);
+  const blocks = useMemo(() => Array.from(new Set(QS.map((x) => x.block))), [QS]);
 
   function setValue(v: string | string[]) {
     setAnswers((a) => ({ ...a, [q.id]: v }));
@@ -93,14 +110,14 @@ export function Interview({ initial, hasStrategy, preview = false, firstName = '
       void saveAnswers(current);
     });
     if (isLast) return void generate(current);
-    const nq = QUESTIONS[idx + 1];
+    const nq = QS[idx + 1];
     const done = idx + 1;
     if (nq.block !== q.block) {
-      const left = QUESTIONS.length - done;
+      const left = QS.length - done;
       showToast({ title: `${q.block} ✓`, sub: `Bloco concluído · faltam ${left} ${left === 1 ? 'pergunta' : 'perguntas'}` });
     } else {
-      const c = cheer(done, QUESTIONS.length);
-      if (c) showToast({ title: c, sub: `${done} de ${QUESTIONS.length} respondidas` });
+      const c = cheer(done, QS.length);
+      if (c) showToast({ title: c, sub: `${done} de ${QS.length} respondidas` });
     }
     go(idx + 1);
   }
@@ -109,7 +126,9 @@ export function Interview({ initial, hasStrategy, preview = false, firstName = '
     advance(answers);
   }
 
-  async function generate(current: Answers = answers) {
+  async function generate(given: Answers = answers) {
+    // O que não foi perguntado no começo rápido entra com um padrão (a pessoa ajusta depois).
+    const current: Answers = { ...defaults, ...given };
     setPhase('generating');
     setMsg(0);
     const timer = setInterval(() => setMsg((m) => m + 1), 2200);
@@ -195,13 +214,13 @@ export function Interview({ initial, hasStrategy, preview = false, firstName = '
       <div className="card ivCard">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
-            <span>Pergunta {idx + 1} de {QUESTIONS.length}</span>
+            <span>Pergunta {idx + 1} de {QS.length}</span>
             <span>{q.block}</span>
           </div>
           <div className="ivSegs" aria-hidden="true">
             {blocks.map((b) => {
-              const qs = QUESTIONS.filter((x) => x.block === b);
-              const first = QUESTIONS.indexOf(qs[0]);
+              const qs = QS.filter((x) => x.block === b);
+              const first = QS.indexOf(qs[0]);
               const fill = Math.max(0, Math.min(1, (idx + (ok ? 1 : 0) - first) / qs.length));
               return (
                 <span key={b} className={fill >= 1 ? 'full' : ''} style={{ flex: qs.length }}>
@@ -278,8 +297,8 @@ export function Interview({ initial, hasStrategy, preview = false, firstName = '
         {blocks.map((b) => (
           <div key={b} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--muted-2)', textTransform: 'uppercase', letterSpacing: 1.2 }}>{b}</div>
-            {QUESTIONS.filter((x) => x.block === b).map((x) => {
-              const i = QUESTIONS.indexOf(x);
+            {QS.filter((x) => x.block === b).map((x) => {
+              const i = QS.indexOf(x);
               const txt = displayValue(x, answers);
               return (
                 <button key={x.id} type="button" onClick={() => go(i)} style={{ textAlign: 'left', background: i === idx ? 'var(--hover)' : 'transparent', border: 0, borderRadius: 10, padding: '8px 10px', cursor: 'pointer', font: 'inherit' }}>

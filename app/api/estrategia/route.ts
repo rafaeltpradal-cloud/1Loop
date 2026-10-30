@@ -31,7 +31,7 @@ export async function POST() {
   // Prévia (sem cartão): uma estratégia. Depois, só começando o teste.
   if (access.mode === 'preview' && (await previewUsage(user.id)).strategies >= PREVIEW.strategies)
     return NextResponse.json(
-      { error: 'Na prévia dá para gerar uma estratégia. Para gerar outra versão, comece seus 7 dias grátis.', limit: true, paywall: true },
+      { error: 'Na prévia dá para gerar a estratégia e refazê-la uma vez. Para novas versões, comece seus 7 dias grátis.', limit: true, paywall: true },
       { status: 429 },
     );
   // Limite de estratégias novas por mês (no Multi, por marca).

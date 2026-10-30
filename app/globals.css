@@ -1081,3 +1081,14 @@ html[data-theme="dark"] .owner .prjBar { filter: drop-shadow(0 0 6px color-mix(i
 .ownFunnel > div { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--hover); font-size: 12px; }
 .ownFunnel b { font-size: 18px; }
 @media (max-width: 640px) { .ownFunnel { grid-template-columns: 1fr 1fr; } }
+.moreAnswers { display: flex; flex-direction: column; gap: 4px; padding: 14px 18px; text-decoration: none; color: inherit; box-shadow: none; font-size: 14px; }
+.moreAnswers:hover { border-color: var(--violet); }
+.optField summary { cursor: pointer; font-size: 13.5px; color: var(--muted); font-weight: 600; }
+.optField[open] summary { margin-bottom: 10px; }
+.signupWrap { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+.signupAside { flex: 1 1 280px; min-width: 0; padding: 24px; display: flex; flex-direction: column; gap: 14px; box-shadow: none; }
+.signupSteps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; counter-reset: s; }
+.signupSteps li { display: grid; grid-template-columns: 28px 1fr; column-gap: 10px; font-size: 14px; counter-increment: s; }
+.signupSteps li::before { content: counter(s); grid-row: span 2; width: 28px; height: 28px; border-radius: 9px; background: var(--hover); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; }
+.signupSteps li span { color: var(--muted); font-size: 13px; }
+@media (max-width: 720px) { .signupAside { order: 2; } }

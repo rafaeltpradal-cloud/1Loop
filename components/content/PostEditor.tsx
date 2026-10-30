@@ -313,6 +313,12 @@ export function PostEditor({
           {preview ? <a className="btn3d btnSm" href="/app/assinar">Começar 7 dias grátis</a> : <a className="btnGhost btnSm" href="/app/conteudos">Ver a semana</a>}
         </div>
       )}
+      {first && (
+        <a className="card moreAnswers" href="/app/entrevista?completa=1">
+          <b>Quer os próximos posts ainda mais a sua cara?</b>
+          <span className="muted">Responda mais 8 perguntas (uns 2 minutos): dores do seu cliente, temas e limites. A estratégia fica mais afiada. →</span>
+        </a>
+      )}
       {preview && status !== 'publicado' && (
         <div className="card previewLock">
           <b>Peça à IA e refazer</b>

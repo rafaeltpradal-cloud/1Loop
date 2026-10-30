@@ -101,6 +101,19 @@ export const QUESTIONS: Question[] = [
   },
 ];
 
+/** Começo rápido: 5 perguntas para sair a estratégia e o primeiro post em ~2 minutos. */
+export const QUICK_IDS = ['sobre', 'oferta', 'publico', 'redes', 'tom'];
+export const QUICK_QUESTIONS: Question[] = QUICK_IDS.map((id) => QUESTIONS.find((q) => q.id === id)!).map((q) =>
+  q.id === 'redes' ? { ...q, hint: 'Escolha até 3. Para autoridade de quem vende, LinkedIn é o principal.' } : q,
+);
+/** Padrões do começo rápido (ajustáveis respondendo a entrevista completa). */
+export const QUICK_DEFAULTS: Answers = {
+  momento: 'Posto, mas sem constância',
+  objetivo: 'Virar referência no meu mercado',
+  rosto: 'Às vezes',
+  tempo: '5 minutos (só aprovar)',
+};
+
 export function optionsOf(q: Question) {
   return q.allowOther ? [...(q.options ?? []), OTHER] : q.options ?? [];
 }

@@ -6,7 +6,8 @@ import { ACTIVE_STATUSES } from '@/lib/billing';
 import { isPlanId, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
 
-export const PREVIEW = { strategies: 1, posts: 3 };
+// 2 estratégias: a do começo rápido e a refeita depois da entrevista completa.
+export const PREVIEW = { strategies: 2, posts: 3 };
 
 export type Access =
   | { mode: 'paid'; plan: PlanId; status: string; trialEnd: string | null }

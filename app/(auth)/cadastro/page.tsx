@@ -1,46 +1,37 @@
 import Link from 'next/link';
-import { PublicShell, Steps } from '@/components/PublicShell';
-import { PLANS, brl, isPlanId } from '@/lib/plans';
+import { PublicShell } from '@/components/PublicShell';
+import { isPlanId, PLANS } from '@/lib/plans';
 import { SignUpForm } from './SignUpForm';
-import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 
-export const metadata = { title: 'Criar conta · 1loop creators' };
+export const metadata = { title: 'Criar conta grátis · 1loop creators' };
 
+// Cadastro sem cartão: a pessoa cria a conta, responde 5 perguntas e vê a estratégia e o primeiro post.
+// O plano só é escolhido no fim da prévia, então aqui não aparece preço.
 export default async function CadastroPage({ searchParams }: { searchParams: Promise<{ plano?: string }> }) {
   const { plano } = await searchParams;
   const plan = PLANS[isPlanId(plano) ? plano : 'pro'];
 
   return (
     <PublicShell right={<span className="muted" style={{ fontSize: 14 }}>Já tem conta? <Link href="/entrar">Entrar</Link></span>}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 32, alignItems: 'flex-start' }}>
-        <div style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 }}>
-          <Steps current={2} />
+      <div className="signupWrap">
+        <div style={{ flex: '999 1 460px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div className="rise" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
-              <span className="graphite">Crie sua conta.</span> <span className="grad">Leva 1 minuto.</span>
+              <span className="graphite">Seu primeiro post pronto</span> <span className="grad">em 2 minutos.</span>
             </h1>
-            <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Sem cartão agora: depois do cadastro você responde a entrevista e vê sua estratégia de 30 dias e seus primeiros posts. Gostou? Aí sim começa os 7 dias de teste.</p>
+            <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, margin: 0 }}>Grátis e sem cartão. Crie a conta, responda 5 perguntas e veja sua estratégia de 30 dias.</p>
           </div>
           <SignUpForm plan={plan.id} />
         </div>
 
-        <aside className="card" style={{ flex: '1 1 300px', minWidth: 0, padding: 26, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div className="eyebrow">Seu plano</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10 }}>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{plan.name}</div>
-            <div style={{ fontWeight: 700 }}>{brl(priceNow(plan.id))}<span className="muted" style={{ fontWeight: 600 }}>/mês</span></div>
-          </div>
-          <div className="panel" style={{ padding: '12px 14px', fontSize: 14, fontWeight: 700 }}>{plan.rhythm}</div>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
-            <li>✓ Estratégia e primeiros posts antes do cartão</li>
-            <li>✓ 7 dias para testar</li>
-            <li>✓ Nenhuma cobrança antes do fim do teste</li>
-            <li>✓ Cancele quando quiser</li>
-          </ul>
-          {foundersOpen() && priceNow(plan.id) !== plan.priceFull && (
-            <div className="muted" style={{ fontSize: 13, lineHeight: 1.5 }}>Preço Founders até {FOUNDERS_ENDS_LABEL} ({foundersCountdown()}). Depois, {brl(plan.priceFull)}/mês.</div>
-          )}
-          <Link className="linkBtn" href="/planos">Trocar de plano</Link>
+        <aside className="card signupAside">
+          <div className="eyebrow">O que você recebe agora, grátis</div>
+          <ol className="signupSteps">
+            <li><b>5 perguntas rápidas</b><span>O que você vende, para quem e o seu tom.</span></li>
+            <li><b>Estratégia de 30 dias</b><span>Pilares, calendário e o que postar em cada dia.</span></li>
+            <li><b>Seu primeiro post pronto</b><span>Texto e imagem na sua voz, para o LinkedIn.</span></li>
+          </ol>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>Gostou? Aí sim você escolhe um plano e testa 7 dias grátis com publicação automática.</p>
         </aside>
       </div>
     </PublicShell>
