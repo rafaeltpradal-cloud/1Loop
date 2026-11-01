@@ -3,7 +3,8 @@
 import { brl } from '@/lib/plans';
 import { esc, frame, strip } from '@/lib/emails/trial';
 
-export type RecoveryKind = 'pv1' | 'pv2' | 'pv3' | 'fd1' | 'fd2';
+// ext1: aviso de que o Founders foi prorrogado (para quem já tinha recebido o prazo antigo).
+export type RecoveryKind = 'pv1' | 'pv2' | 'pv3' | 'fd1' | 'fd2' | 'ext1';
 
 export type RecoveryInput = {
   kind: RecoveryKind;
@@ -77,6 +78,15 @@ export function recoveryEmail(p: RecoveryInput) {
       title = 'Acaba hoje às 23h59';
       paragraphs = [`${n}, à meia-noite o preço Founders deixa de existir: ${price}.`, 'Os 7 dias continuam grátis. Você só paga se ficar.'];
       cta = { label: `Garantir ${brl(p.plan.now)}/mês`, href: startUrl };
+      break;
+    case 'ext1':
+      subject = `${p.firstName}, prorrogamos o preço Founders até ${p.founders.label.replace(' às 23h59', '')}`;
+      title = `O preço Founders vale até ${p.founders.label}`;
+      paragraphs = [
+        `${n}, você chegou a ver que o preço Founders acabava em 31/10. Como você já começou no 1loop, quis te avisar pessoalmente: ele foi prorrogado até ${p.founders.label}.`,
+        `${where} ${price}. Os 7 dias de teste continuam grátis e você cancela em 1 clique.`,
+      ];
+      cta = { label: 'Garantir meu preço Founders', href: startUrl };
       break;
   }
 

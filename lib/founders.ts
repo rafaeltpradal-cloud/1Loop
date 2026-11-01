@@ -1,9 +1,9 @@
-// Preço Founders: vale para quem assinar até 31/10/2026 às 23h59 (Brasília) e fica travado
+// Preço Founders: vale para quem assinar até 30/11/2026 às 23h59 (Brasília; prorrogado, era 31/10) e fica travado
 // enquanto a assinatura durar. Depois disso o checkout cobra o preço cheio e o site para de mostrar a oferta.
 import { FOUNDERS_ENDS_AT, PLANS, type PlanId } from '@/lib/plans';
 
 export { FOUNDERS_ENDS_AT };
-export const FOUNDERS_ENDS_LABEL = '31/10 às 23h59';
+export const FOUNDERS_ENDS_LABEL = '30/11 às 23h59';
 
 export function foundersOpen(now = new Date()) {
   return now.getTime() <= FOUNDERS_ENDS_AT.getTime();

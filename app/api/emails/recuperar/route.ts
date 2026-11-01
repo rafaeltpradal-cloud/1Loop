@@ -9,7 +9,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
-const KINDS: RecoveryKind[] = ['pv1', 'pv2', 'pv3', 'fd1', 'fd2'];
+const KINDS: RecoveryKind[] = ['pv1', 'pv2', 'pv3', 'fd1', 'fd2', 'ext1'];
 
 // GET pelo cron da Vercel (1x por dia, 10h de Brasília) ou POST manual: envia os e-mails que vencem agora.
 // Dono logado: ?previa=1 lista quem receberia o quê (sem enviar); ?amostra=pv2[&etapa=parou] mostra o e-mail.
@@ -17,7 +17,8 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const amostra = url.searchParams.get('amostra') as RecoveryKind | null;
   const previa = url.searchParams.get('previa');
-  if (amostra || previa) {
+  const prorrogacao = url.searchParams.get('prorrogacao');
+  if (amostra || previa || prorrogacao) {
     const supabase = await createClient();
     const {
       data: { user },
@@ -32,6 +33,8 @@ export async function GET(req: Request) {
       }
       return new NextResponse(`<!-- ${mail.subject} -->${mail.html.replace('<title>', `<title>${mail.subject} · `)}`, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
+    // ?prorrogacao=1 lista quem recebe o aviso de prorrogação do Founders; com &enviar=1, envia.
+    if (prorrogacao) return NextResponse.json(await runRecovery({ ext: true, dryRun: url.searchParams.get('enviar') !== '1' }));
     return NextResponse.json(await runRecovery({ dryRun: true }));
   }
   if (!/vercel-cron/i.test(req.headers.get('user-agent') ?? '') && req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`)

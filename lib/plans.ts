@@ -94,7 +94,8 @@ export function stripePriceId(plan: PlanId): string | undefined {
 }
 
 /** Fim do preço Founders (Brasília). Quem assinou antes mantém o desconto. */
-export const FOUNDERS_ENDS_AT = new Date('2026-10-31T23:59:59-03:00');
+// Prorrogado em 01/11 (era 31/10): vale até 30/11 às 23h59.
+export const FOUNDERS_ENDS_AT = new Date('2026-11-30T23:59:59-03:00');
 
 export function foundersCoupon(plan: PlanId): string | undefined {
   if (Date.now() > FOUNDERS_ENDS_AT.getTime()) return undefined;

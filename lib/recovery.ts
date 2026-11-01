@@ -44,16 +44,20 @@ export async function optOut(userId: string, token: string) {
 type Sent = Partial<Record<RecoveryKind, string>>;
 
 /** Qual e-mail cabe agora (no máximo um). Os de prazo do Founders têm prioridade. */
-export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Date()): RecoveryKind | null {
+export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Date(), opts: { ext?: boolean } = {}): RecoveryKind | null {
   const h = (now.getTime() - new Date(user.created_at).getTime()) / HOUR;
   if (h < 2) return null;
   const last = Math.max(0, ...Object.values(sent).map((v) => (v ? Date.parse(v) : 0)));
   const today = isoInBrazil(now);
   const end = isoInBrazil(FOUNDERS_ENDS_AT);
   const dayBefore = isoInBrazil(new Date(FOUNDERS_ENDS_AT.getTime() - 24 * HOUR));
+  // Os avisos de prazo valem para o prazo atual: quem recebeu os de 31/10 recebe de novo perto de 30/11.
+  const forThisDeadline = (v?: string) => !!v && Date.parse(v) > FOUNDERS_ENDS_AT.getTime() - 7 * 24 * HOUR;
   if (foundersOpen(now)) {
-    if (today === end && !sent.fd2 && now.getTime() - last >= 10 * HOUR) return 'fd2';
-    if (today === dayBefore && !sent.fd1 && now.getTime() - last >= MIN_GAP) return 'fd1';
+    if (today === end && !forThisDeadline(sent.fd2) && now.getTime() - last >= 10 * HOUR) return 'fd2';
+    if (today === dayBefore && !forThisDeadline(sent.fd1) && now.getTime() - last >= MIN_GAP) return 'fd1';
+    // Aviso de prorrogação: só no disparo manual do dono, para quem já tinha recebido algum lembrete (viu o prazo antigo).
+    if (opts.ext && !sent.ext1 && Object.keys(sent).some((k) => k !== 'ext1')) return 'ext1';
   }
   if (now.getTime() - last < MIN_GAP) return null;
   // Sempre começa pelo "você quase concluiu"; os próximos respeitam o tempo de conta e o intervalo.
@@ -75,7 +79,7 @@ async function allUsers() {
   return out;
 }
 
-export async function runRecovery({ dryRun = false, now = new Date() } = {}) {
+export async function runRecovery({ dryRun = false, now = new Date(), ext = false } = {}) {
   const admin = createAdminClient();
   const [users, { data: subs }] = await Promise.all([allUsers(), admin.from('subscriptions').select('user_id')]);
   const subscribed = new Set((subs ?? []).map((s) => s.user_id as string));
@@ -86,7 +90,7 @@ export async function runRecovery({ dryRun = false, now = new Date() } = {}) {
     if (u.app_metadata?.email_optout) continue;
     // Conta criada antes da prévia existir também entra: agora ela pode ver a estratégia sem cartão.
     const sent = ((u.app_metadata?.recovery as Sent | undefined) ?? {}) as Sent;
-    const kind = dueKind(u, sent, now);
+    const kind = dueKind(u, sent, now, { ext });
     if (!kind) continue;
     result.candidates++;
 
