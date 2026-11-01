@@ -1,10 +1,11 @@
 // E-mails para quem criou a conta e ainda não começou o teste (prévia sem cartão).
 // Cada um sai uma vez por pessoa; o tom é direto, com uma chamada só.
-import { brl } from '@/lib/plans';
+import { brl, money } from '@/lib/plans';
 import { esc, frame, strip } from '@/lib/emails/trial';
 
 // ext1: aviso de que o Founders foi prorrogado (para quem já tinha recebido o prazo antigo).
-export type RecoveryKind = 'pv1' | 'pv2' | 'pv3' | 'fd1' | 'fd2' | 'ext1';
+// of1: quem chegou ao pagamento enquanto o Stripe estava suspenso (pedido de desculpas + 10% abaixo do Founders no 1º mês).
+export type RecoveryKind = 'pv1' | 'pv2' | 'pv3' | 'fd1' | 'fd2' | 'ext1' | 'of1';
 
 export type RecoveryInput = {
   kind: RecoveryKind;
@@ -15,6 +16,8 @@ export type RecoveryInput = {
   stage: { answered: number; total: number; interviewDone: boolean; hasStrategy: boolean; posts: number; firstPostId: number | null };
   plan: { name: string; full: number; now: number };
   founders: { open: boolean; daysLeft: number; label: string };
+  /** Condição especial (of1): preço do 1º mês e plano. */
+  offer?: { price: number; plan: string };
 };
 
 export function recoveryEmail(p: RecoveryInput) {
@@ -79,6 +82,18 @@ export function recoveryEmail(p: RecoveryInput) {
       paragraphs = [`${n}, à meia-noite o preço Founders deixa de existir: ${price}.`, 'Os 7 dias continuam grátis. Você só paga se ficar.'];
       cta = { label: `Garantir ${brl(p.plan.now)}/mês`, href: startUrl };
       break;
+    case 'of1': {
+      const op = p.offer?.price ?? p.plan.now;
+      subject = `${p.firstName}, tivemos um problema no pagamento (e uma condição para você)`;
+      title = `${money(op)} no primeiro mês, só para você`;
+      paragraphs = [
+        `${n}, você chegou à página de pagamento do 1loop nos últimos dias. Nosso processador de pagamentos ficou instável e quem tentou assinar pode não ter conseguido. O problema foi nosso e já está resolvido.`,
+        `Para compensar, liberei para você <b>${money(op)}</b> no primeiro mês do ${esc(p.plan.name)}, 10% abaixo do preço Founders. Depois segue no Founders, ${money(p.plan.now)}/mês, travado para sempre. Os 7 dias de teste continuam grátis.`,
+        `<span style="font-size:13px;color:#6E747D">Na tela de pagamento aparece o preço Founders; o desconto extra entra sozinho na primeira cobrança. Válido até ${esc(p.founders.label)}.</span>`,
+      ];
+      cta = { label: `Assinar por ${money(op)} no 1º mês`, href: `${startUrl}?plano=${encodeURIComponent(p.offer?.plan ?? 'pro')}` };
+      break;
+    }
     case 'ext1':
       subject = `${p.firstName}, prorrogamos o preço Founders até ${p.founders.label.replace(' às 23h59', '')}`;
       title = `O preço Founders vale até ${p.founders.label}`;

@@ -113,3 +113,6 @@ export function planFromPriceId(priceId: string | null | undefined): PlanId | nu
 }
 
 export const brl = (n: number) => `R$ ${n.toLocaleString('pt-BR')}`;
+/** Como brl, mas com centavos quando houver (R$ 132,30). */
+export const money = (n: number) =>
+  `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })}`;

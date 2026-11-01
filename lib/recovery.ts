@@ -14,6 +14,7 @@ import { QUESTIONS } from '@/lib/interview';
 import { isOwner } from '@/lib/owner';
 import { siteUrl } from '@/lib/stripe';
 import { isoInBrazil } from '@/lib/dates';
+import { activeOffer, offerPrice } from '@/lib/offers';
 
 const HOUR = 3600000;
 const MIN_GAP = 20 * HOUR;
@@ -44,7 +45,9 @@ export async function optOut(userId: string, token: string) {
 type Sent = Partial<Record<RecoveryKind, string>>;
 
 /** Qual e-mail cabe agora (no máximo um). Os de prazo do Founders têm prioridade. */
-export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Date(), opts: { ext?: boolean } = {}): RecoveryKind | null {
+export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Date(), opts: { ext?: boolean; offer?: boolean; hasOffer?: boolean } = {}): RecoveryKind | null {
+  // Disparo manual da condição especial: só quem tem a oferta na conta, uma vez.
+  if (opts.offer) return opts.hasOffer && !sent.of1 ? 'of1' : null;
   const h = (now.getTime() - new Date(user.created_at).getTime()) / HOUR;
   if (h < 2) return null;
   const last = Math.max(0, ...Object.values(sent).map((v) => (v ? Date.parse(v) : 0)));
@@ -57,7 +60,7 @@ export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Da
     if (today === end && !forThisDeadline(sent.fd2) && now.getTime() - last >= 10 * HOUR) return 'fd2';
     if (today === dayBefore && !forThisDeadline(sent.fd1) && now.getTime() - last >= MIN_GAP) return 'fd1';
     // Aviso de prorrogação: só no disparo manual do dono, para quem já tinha recebido algum lembrete (viu o prazo antigo).
-    if (opts.ext && !sent.ext1 && Object.keys(sent).some((k) => k !== 'ext1')) return 'ext1';
+    if (opts.ext && !opts.hasOffer && !sent.ext1 && Object.keys(sent).some((k) => k !== 'ext1')) return 'ext1';
   }
   if (now.getTime() - last < MIN_GAP) return null;
   // Sempre começa pelo "você quase concluiu"; os próximos respeitam o tempo de conta e o intervalo.
@@ -79,7 +82,7 @@ async function allUsers() {
   return out;
 }
 
-export async function runRecovery({ dryRun = false, now = new Date(), ext = false } = {}) {
+export async function runRecovery({ dryRun = false, now = new Date(), ext = false, offer = false } = {}) {
   const admin = createAdminClient();
   const [users, { data: subs }] = await Promise.all([allUsers(), admin.from('subscriptions').select('user_id')]);
   const subscribed = new Set((subs ?? []).map((s) => s.user_id as string));
@@ -90,7 +93,8 @@ export async function runRecovery({ dryRun = false, now = new Date(), ext = fals
     if (u.app_metadata?.email_optout) continue;
     // Conta criada antes da prévia existir também entra: agora ela pode ver a estratégia sem cartão.
     const sent = ((u.app_metadata?.recovery as Sent | undefined) ?? {}) as Sent;
-    const kind = dueKind(u, sent, now, { ext });
+    const hasOffer = !!activeOffer(u, now);
+    const kind = dueKind(u, sent, now, { ext, offer, hasOffer });
     if (!kind) continue;
     result.candidates++;
 
@@ -118,6 +122,7 @@ export async function runRecovery({ dryRun = false, now = new Date(), ext = fals
       },
       plan: { name: PLANS[plan].name, full: PLANS[plan].priceFull, now: priceNow(plan, now) },
       founders: { open: foundersOpen(now), daysLeft: foundersDaysLeft(now), label: FOUNDERS_ENDS_LABEL },
+      offer: hasOffer ? { price: offerPrice(plan, now), plan } : undefined,
     });
 
     if (dryRun) {
@@ -152,5 +157,6 @@ export function sampleRecovery(kind: RecoveryKind, stage: 'parou' | 'pronto' = '
       : { answered: QUESTIONS.length, total: QUESTIONS.length, interviewDone: true, hasStrategy: true, posts: 1, firstPostId: null },
     plan: { name: PLANS.pro.name, full: PLANS.pro.priceFull, now: priceNow('pro', now) },
     founders: { open: foundersOpen(now), daysLeft: foundersDaysLeft(now), label: FOUNDERS_ENDS_LABEL },
+    offer: kind === 'of1' ? { price: offerPrice('pro', now), plan: 'pro' } : undefined,
   });
 }

@@ -4,6 +4,8 @@ import { getPreviewContext } from '@/lib/session';
 import { PREVIEW, previewUsage } from '@/lib/access';
 import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
+import { createClient } from '@/lib/supabase/server';
+import { activeOffer, money, offerCoupon, offerPrice } from '@/lib/offers';
 
 export const metadata = { title: 'Começar o teste · 1loop creators' };
 
@@ -17,6 +19,9 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
   const chosen: PlanId = plano && plano in PLANS ? (plano as PlanId) : ctx.plan;
   const used = await previewUsage(ctx.userId);
   const founders = foundersOpen();
+  // Condição especial individual (10% abaixo do Founders no 1º mês), se a conta tiver.
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  const offer = activeOffer(user) && offerCoupon(chosen) ? offerPrice(chosen) : null;
 
   const unlocks = [
     `${PLANS[chosen].postsPerMonth} posts por mês, no ritmo do plano (${PLANS[chosen].rhythm.toLowerCase()})`,
@@ -77,9 +82,12 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
               );
             })}
           </div>
+          {offer !== null && (
+            <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Condição especial para você: <b>&nbsp;{money(offer)} no 1º mês</b>&nbsp;(10% abaixo do Founders). No pagamento aparece o preço Founders; o desconto extra entra sozinho na primeira cobrança.</div>
+          )}
           <a className="btn3d" href={`/pagamento?plano=${chosen}`} style={{ justifyContent: 'center' }}>Começar 7 dias grátis no {PLANS[chosen].name}</a>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            O cartão é pedido no Stripe, ambiente seguro. Primeira cobrança de {brl(priceNow(chosen))} só no fim dos 7 dias, e só se você não cancelar.
+            O cartão é pedido no Stripe, ambiente seguro. Primeira cobrança de {offer !== null ? money(offer) : brl(priceNow(chosen))} só no fim dos 7 dias, e só se você não cancelar.
           </p>
         </section>
       </div>

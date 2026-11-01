@@ -4,6 +4,7 @@ import { stripe } from '@/lib/stripe';
 import { recordExtraPack, sendWelcomeEmail, syncSubscription } from '@/lib/billing';
 import { sendPaidConversion } from '@/lib/conversions';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyOfferToSubscription } from '@/lib/offers';
 
 // Virou cliente pagante: teste acabou e a cobrança passou (trialing → active), ou assinou já pagando.
 async function reportPaid(sub: Stripe.Subscription, eventTime: number) {
@@ -55,7 +56,10 @@ export async function POST(request: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         if (session.mode === 'subscription' && session.subscription) {
-          const row = await syncSubscription(typeof session.subscription === 'string' ? session.subscription : session.subscription.id);
+          const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+          const row = await syncSubscription(subId);
+          // Condição especial (10% abaixo do Founders no 1º mês) para quem tem a oferta na conta.
+          if (session.client_reference_id) await applyOfferToSubscription(session.client_reference_id, subId);
           await sendWelcomeEmail(session, row);
         }
         if (session.mode === 'payment') await recordExtraPack(session);
