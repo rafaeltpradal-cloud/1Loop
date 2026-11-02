@@ -26,7 +26,7 @@ export default async function IndicarPage() {
         <p className="pageSub">Mande seu link para quem vende e precisa aparecer no LinkedIn. Quando a pessoa assinar e pagar a primeira mensalidade, seu próximo mês sai de graça. Sem limite de indicações.</p>
       </div>
       <ShareLink link={link} firstName={ctx.firstName} />
-      <div className="homeStats" style={{ gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
+      <div className="homeStats refStats">
         <div className="card"><span className="muted">Cadastros pelo seu link</span><b>{signups ?? 0}</b><span className="muted">contas criadas</span></div>
         <div className="card"><span className="muted">Meses grátis ganhos</span><b>{meta.rewarded ?? 0}</b><span className="muted">indicados que assinaram</span></div>
         <div className="card"><span className="muted">Guardados</span><b>{meta.pending ?? 0}</b><span className="muted">entram quando você assinar</span></div>

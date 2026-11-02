@@ -151,8 +151,8 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
             <Link className="btnGhost btnSm" href="/app/conteudos">Abrir conteúdos</Link>
           </div>
           <div className="homeStats">
-            <div className="card"><span className="muted">Posts na semana</span><b>{week.length}</b><span className="muted">{week.length - missing} prontos</span></div>
-            <div className="card"><span className="muted">Para revisar</span><b>{toReview}</b><span className="muted">{count('aprovado') + count('agendado')} aprovados</span></div>
+            <div className="card"><span className="muted">Posts na semana</span><b>{week.length}</b><span className="muted">{week.length - missing} {week.length - missing === 1 ? 'pronto' : 'prontos'}</span></div>
+            <div className="card"><span className="muted">Para revisar</span><b>{toReview}</b><span className="muted">{count('aprovado') + count('agendado')} {count('aprovado') + count('agendado') === 1 ? 'aprovado' : 'aprovados'}</span></div>
             <div className="card"><span className="muted">Publicados no mês</span><b>{publishedMonth}</b><span className="muted">{count('publicado')} nesta semana</span></div>
             <div className="card"><span className="muted">Sequência</span><b>{streak} {streak === 1 ? 'semana' : 'semanas'}</b><span className="muted">{streak ? 'publicando sem parar' : 'publique 1 post para começar'}</span></div>
           </div>

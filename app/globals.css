@@ -1255,3 +1255,6 @@ html[data-theme="dark"] .navBadge { color: #FFB020; }
 .refSteps li { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5; counter-increment: r; }
 .refSteps li::before { content: counter(r); width: 28px; height: 28px; border-radius: 9px; background: var(--hover); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; margin-bottom: 4px; }
 @media (max-width: 720px) { .refSteps { grid-template-columns: 1fr; } }
+
+.refStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .refStats { grid-template-columns: 1fr; } }

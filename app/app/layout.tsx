@@ -19,11 +19,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Primeiros passos e posts para revisar (contador no menu).
   const admin = createAdminClient();
   const [{ data: postRows }, { count: conns }] = await Promise.all([
-    admin.from('posts').select('status').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(1000),
+    admin.from('posts').select('status, date').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(1000),
     admin.from('social_connections').select('network', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
   ]);
   const statuses = (postRows ?? []).map((p) => p.status as string);
-  const drafts = statuses.filter((x) => x === 'rascunho').length;
+  // Contador do menu: rascunhos que ainda vão sair (de hoje em diante).
+  const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
+  const drafts = (postRows ?? []).filter((p) => p.status === 'rascunho' && (p.date as string) >= today).length;
   const firstSteps = [ctx.hasStrategy, statuses.length > 0, (conns ?? 0) > 0, statuses.includes('publicado')];
   const stepsDone = firstSteps.filter(Boolean).length;
   const switcher = (compact?: boolean) => <BrandSwitcher current={ctx.brandId} brands={ctx.brands} limit={ctx.brandLimit} compact={compact} />;
