@@ -77,9 +77,21 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
         <NetworkConnect network="instagram" state={ig} flash={igFlash} inviteOnly={instagramInviteOnly()} savedHandle={saved.instagram?.handle} />
       </div>
 
-      <LinkedInPages state={pages} />
+      {pages.kind !== 'indisponivel' && <LinkedInPages state={pages} />}
 
-      <NetworksBoard chosen={chosen} saved={saved} />
+      <section className="netMore" aria-labelledby="h-outras">
+        <div>
+          <h2 id="h-outras" className="netMoreTitle">Outras redes</h2>
+          <p className="muted netMoreSub">Cadastre o perfil para a estratégia e as imagens levarem o seu endereço. Nestas, você publica com o texto pronto do 1loop; a publicação automática chega aos poucos.</p>
+        </div>
+        <NetworksBoard chosen={chosen} saved={saved} only="outras" />
+      </section>
+
+      <details className="card netHandles">
+        <summary>Endereço do seu LinkedIn e Instagram nas imagens</summary>
+        <p className="muted" style={{ fontSize: 13, margin: '8px 0 14px' }}>É o que aparece na assinatura das imagens da série. Com a conta conectada acima, o Instagram já vem preenchido.</p>
+        <NetworksBoard chosen={chosen} saved={saved} only="principais" />
+      </details>
 
       <div className="nextRow">
         <span>Próximo passo: <b>conteúdos da semana</b></span>

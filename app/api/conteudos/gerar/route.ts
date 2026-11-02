@@ -31,8 +31,11 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Sua sessão expirou. Entre de novo.' }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { index?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { index?: unknown; historia?: unknown };
   const index = Number(body.index);
+  // "Contar uma história": a situação real vira a base do post (só em dia ainda sem post).
+  const historia = typeof body.historia === 'string' ? body.historia.trim().slice(0, 2500) : '';
+  if (typeof body.historia === 'string' && historia.length < 20) return NextResponse.json({ error: 'Conte um pouco mais: pelo menos uma ou duas frases.' }, { status: 400 });
   if (!Number.isInteger(index) || index < 0) return NextResponse.json({ error: 'Post inválido.' }, { status: 400 });
 
   const brandId = await currentBrandId(user.id);
@@ -56,6 +59,7 @@ export async function POST(req: Request) {
     .eq('item_index', index)
     .eq('user_id', user.id)
     .maybeSingle();
+  if (historia && existing) return NextResponse.json({ error: 'Este dia já tem post. Escolha um dia ainda vazio.' }, { status: 400 });
   const plan = access.plan;
   // Prévia (sem cartão): até 3 posts novos, sem refazer.
   if (access.mode === 'preview') {
@@ -99,7 +103,7 @@ export async function POST(req: Request) {
     const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
     const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
     const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
-    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x) });
+    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined });
     // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
     if (prev?.estilo) content.estilo = prev.estilo;
     else if (strategy.modelo?.estilo) content.estilo = strategy.modelo.estilo;
@@ -113,7 +117,7 @@ export async function POST(req: Request) {
       pilar: item.pilar,
       objetivo: item.objetivo,
       com_rosto: item.comRosto,
-      tema: item.tema,
+      tema: historia ? (content.gancho || item.tema).slice(0, 160) : item.tema,
       status: 'rascunho',
       content,
       source,

@@ -6,35 +6,99 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { TrackOnce } from '@/components/Tracking';
 import { priceNow } from '@/lib/founders';
 import { PREVIEW } from '@/lib/access';
+import type { Strategy } from '@/lib/strategy';
+import { addDays, fromISO, isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
+import { NetworkIcon } from '@/components/NetworkIcon';
+import { networkByName } from '@/lib/networks';
 
 export const metadata = { title: 'Início · 1loop creators' };
+
+type WeekPost = { id: number; item_index: number; status: string; date: string; tema: string; rede: string; scheduled_at: string | null; published_at: string | null };
+
+const STATUS: Record<string, { label: string; cls: string }> = {
+  falta: { label: 'Gerar', cls: 'todo' },
+  rascunho: { label: 'Revisar', cls: 'draft' },
+  aprovado: { label: 'Aprovado', cls: 'ok' },
+  agendado: { label: 'Agendado', cls: 'sched' },
+  publicando: { label: 'Publicando', cls: 'sched' },
+  publicado: { label: 'Publicado', cls: 'done' },
+  erro: { label: 'Erro', cls: 'err' },
+};
+
+const weekday = (iso: string) => fromISO(iso).toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+const dm = (iso: string) => `${Number(iso.slice(8))}/${Number(iso.slice(5, 7))}`;
+const when = (iso: string) =>
+  new Date(iso).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace('.', '');
+
+/** Semanas seguidas (até a atual) com pelo menos 1 post publicado. A semana atual sem post ainda não quebra a sequência. */
+function streakOf(published: string[], today: string) {
+  const monday = (iso: string) => addDays(iso, -((fromISO(iso).getDay() + 6) % 7));
+  const weeks = new Set(published.map((d) => monday(isoInBrazil(new Date(d)))));
+  let w = monday(today);
+  if (!weeks.has(w)) w = addDays(w, -7);
+  let n = 0;
+  while (weeks.has(w)) {
+    n++;
+    w = addDays(w, -7);
+  }
+  return n;
+}
 
 export default async function AppHome({ searchParams }: { searchParams: Promise<{ assinou?: string }> }) {
   const { assinou } = await searchParams;
   const ctx = await getAppContext();
   const supabase = await createClient();
-  const [{ data: interview }, { count: networks }, { count: posts }] = await Promise.all([
+  const admin = createAdminClient();
+  const [{ data: interview }, { count: networks }, { data: strategyRow }, { data: allPosts }] = await Promise.all([
     supabase.from('interviews').select('answers, completed_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).maybeSingle(),
     // Conta como feito só com a publicação automática conectada (LinkedIn ou Instagram).
-    createAdminClient().from('social_connections').select('network', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
-    supabase.from('posts').select('id', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    admin.from('social_connections').select('network', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    supabase.from('strategies').select('id, data, created_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    supabase.from('posts').select('id, strategy_id, item_index, status, date, tema, rede, scheduled_at, published_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(500),
   ]);
+  const posts = (allPosts ?? []) as (WeekPost & { strategy_id: number })[];
   const answered = interview?.answers ? Object.keys(interview.answers as object).length : 0;
+  // Quem já tem estratégia terminou a entrevista (mesmo que ela tenha ficado salva em outra versão).
+  const interviewDone = !!interview?.completed_at || ctx.hasStrategy;
 
   const steps = ctx.preview
     ? [
-        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: !!interview?.completed_at, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista', soon: false },
-        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia', soon: false },
-        { n: 3, title: 'Seus primeiros posts', desc: `Até ${PREVIEW.posts} posts prontos, grátis e sem cartão.`, done: (posts ?? 0) >= PREVIEW.posts, href: '/app/conteudos', cta: (posts ?? 0) > 0 ? 'Ver meus posts' : 'Gerar meus posts', soon: false },
-        { n: 4, title: 'Começar 7 dias grátis', desc: 'Publicação automática e o mês inteiro de posts.', done: false, href: '/app/assinar', cta: 'Começar 7 dias grátis', soon: false },
+        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
+        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
+        { n: 3, title: 'Seus primeiros posts', desc: `Até ${PREVIEW.posts} posts prontos, grátis e sem cartão.`, done: posts.length >= PREVIEW.posts, href: '/app/conteudos', cta: posts.length > 0 ? 'Ver meus posts' : 'Gerar meus posts' },
+        { n: 4, title: 'Começar 7 dias grátis', desc: 'Publicação automática e o mês inteiro de posts.', done: false, href: '/app/assinar', cta: 'Começar 7 dias grátis' },
       ]
     : [
-    { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: !!interview?.completed_at, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista', soon: false },
-    { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: '/app/estrategia', cta: 'Ver estratégia', soon: false },
-    { n: 3, title: 'Conectar redes', desc: 'Conecte LinkedIn ou Instagram para publicar sozinho.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar redes', soon: false },
-    { n: 4, title: 'Conteúdos da semana', desc: 'Lotes prontos para aprovar e publicar.', done: (posts ?? 0) > 0, href: '/app/conteudos', cta: 'Gerar conteúdos', soon: false },
+        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
+        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
+        { n: 3, title: 'Conectar redes', desc: 'Conecte LinkedIn ou Instagram para publicar sozinho.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar redes' },
+        { n: 4, title: 'Primeiro post publicado', desc: 'Aprove um post e ele sai no horário certo.', done: posts.some((p) => p.status === 'publicado'), href: '/app/conteudos', cta: posts.length ? 'Aprovar e agendar' : 'Gerar conteúdos' },
       ];
-  const nextStep = steps.find((s) => !s.done) ?? steps[0];
+  const doneCount = steps.filter((s) => s.done).length;
+  const nextStep = steps.find((s) => !s.done) ?? null;
+  const onboarding = ctx.preview || !!nextStep;
+
+  // ---------- Sua semana (segunda a domingo, horário de Brasília) ----------
+  const today = isoInBrazil();
+  const monday = addDays(today, -((fromISO(today).getDay() + 6) % 7));
+  const sunday = addDays(monday, 6);
+  const strategy = strategyRow?.data as Strategy | undefined;
+  const start = strategyRow ? planStartFrom(strategyRow.created_at as string) : today;
+  const byIndex = new Map(posts.filter((p) => p.strategy_id === strategyRow?.id).map((p) => [p.item_index, p]));
+  const week = (strategy?.calendario ?? [])
+    .map((it, index) => ({ it, index, date: itemDate(it, start), post: byIndex.get(index) ?? null }))
+    .filter((x) => x.date >= monday && x.date <= sunday)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const count = (st: string) => week.filter((w) => (w.post?.status ?? 'falta') === st).length;
+  const nowIso = new Date().toISOString();
+  const next = posts
+    .filter((p) => (p.status === 'agendado' || p.status === 'publicando') && p.scheduled_at && p.scheduled_at >= nowIso)
+    .sort((a, b) => (a.scheduled_at as string).localeCompare(b.scheduled_at as string))[0];
+  const monthStart = `${today.slice(0, 8)}01`;
+  const publishedMonth = posts.filter((p) => p.status === 'publicado' && p.published_at && isoInBrazil(new Date(p.published_at)) >= monthStart).length;
+  const streak = streakOf(posts.filter((p) => p.status === 'publicado' && p.published_at).map((p) => p.published_at as string), today);
+  const toReview = count('rascunho');
+  const missing = count('falta');
 
   return (
     <div className="page">
@@ -49,34 +113,100 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
         <h1 className="pageTitle">
           <span className="graphite">Olá,</span> <span className="grad">{ctx.firstName}.</span>
         </h1>
+        {!onboarding && (
+          <p className="pageSub">
+            {toReview ? `${toReview} ${toReview === 1 ? 'post espera' : 'posts esperam'} sua revisão esta semana.` : missing ? `Faltam ${missing} ${missing === 1 ? 'post' : 'posts'} desta semana.` : 'Sua semana está pronta.'}
+          </p>
+        )}
       </div>
 
-      <div className="card" style={{ padding: 28, display: 'flex', flexWrap: 'wrap', gap: 24, alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: 18, alignItems: 'center', flex: '999 1 420px', minWidth: 0 }}>
-          <LoopMark size={40} stroke={1.4} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div className="eyebrow">Próximo passo</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{nextStep.title}</div>
-            <div className="muted" style={{ fontSize: 15 }}>{nextStep.desc}</div>
+      {onboarding && nextStep && (
+        <section className="card homeNext" aria-labelledby="h-next">
+          <div className="homeNextMain">
+            <LoopMark size={40} stroke={1.4} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+              <div className="eyebrow">Próximo passo · {doneCount} de {steps.length}</div>
+              <div id="h-next" style={{ fontSize: 22, fontWeight: 700 }}>{nextStep.title}</div>
+              <div className="muted" style={{ fontSize: 15 }}>{nextStep.desc}</div>
+            </div>
           </div>
-        </div>
-        {!nextStep.soon && <Link className="btn3d" href={nextStep.href}>{nextStep.cta}</Link>}
-      </div>
+          <Link className="btn3d" href={nextStep.href}>{nextStep.cta}</Link>
+          <ol className="homeSteps">
+            {steps.map((s) => (
+              <li key={s.n} className={s.done ? 'done' : s === nextStep ? 'now' : ''}>
+                <Link href={s.href}>
+                  <span className="homeStepN" aria-hidden="true">{s.done ? '✓' : s.n}</span>
+                  <span>{s.title}</span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-        {steps.map((s) => (
-          <li key={s.n}>
-            <Link href={s.href} className="card" style={{ height: '100%', padding: 22, display: 'flex', flexDirection: 'column', gap: 10, boxShadow: 'none', opacity: s.soon ? 0.75 : 1, textDecoration: 'none', color: 'inherit' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ width: 32, height: 32, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, background: s.done ? 'var(--done-bg)' : 'var(--hover)', color: s.done ? 'var(--done-ink)' : 'var(--muted)' }}>{s.done ? '✓' : s.n}</span>
-                {s.soon && <span className="eyebrow" style={{ fontSize: 10 }}>Em breve</span>}
-              </div>
-              <div style={{ fontWeight: 700, fontSize: 16 }}>{s.title}</div>
-              <div className="muted" style={{ fontSize: 14, lineHeight: 1.5 }}>{s.desc}</div>
+      {strategy && (
+        <section className="homeWeek" aria-labelledby="h-semana">
+          <div className="homeWeekHead">
+            <h2 id="h-semana">Sua semana <span className="muted">{dm(monday)} a {dm(sunday)}</span></h2>
+            <Link className="btnGhost btnSm" href="/app/conteudos">Abrir conteúdos</Link>
+          </div>
+          <div className="homeStats">
+            <div className="card"><span className="muted">Posts na semana</span><b>{week.length}</b><span className="muted">{week.length - missing} prontos</span></div>
+            <div className="card"><span className="muted">Para revisar</span><b>{toReview}</b><span className="muted">{count('aprovado') + count('agendado')} aprovados</span></div>
+            <div className="card"><span className="muted">Publicados no mês</span><b>{publishedMonth}</b><span className="muted">{count('publicado')} nesta semana</span></div>
+            <div className="card"><span className="muted">Sequência</span><b>{streak} {streak === 1 ? 'semana' : 'semanas'}</b><span className="muted">{streak ? 'publicando sem parar' : 'publique 1 post para começar'}</span></div>
+          </div>
+          {next && (
+            <Link href={`/app/conteudos/${next.id}`} className="card homeUpNext">
+              <span className="eyebrow">Próxima publicação</span>
+              <span className="homeUpNextRow">
+                <NetworkIcon id={networkByName(next.rede)?.id ?? 'linkedin'} size={32} />
+                <span style={{ minWidth: 0 }}>
+                  <b>{when(next.scheduled_at as string)}</b>
+                  <span className="muted homeEllipsis">{next.tema}</span>
+                </span>
+              </span>
             </Link>
-          </li>
-        ))}
-      </ol>
+          )}
+          {week.length === 0 ? (
+            <p className="muted" style={{ fontSize: 14 }}>Nenhum post desta semana no calendário. Veja os próximos em Conteúdos.</p>
+          ) : (
+            <ol className="homeDays">
+              {week.map(({ it, index, date, post }) => {
+                const st = STATUS[post?.status ?? 'falta'] ?? STATUS.falta;
+                const net = networkByName(it.rede)?.id;
+                return (
+                  <li key={index} className={date === today ? 'today' : date < today ? 'past' : ''}>
+                    <Link href={post ? `/app/conteudos/${post.id}` : '/app/conteudos'}>
+                      <span className="homeDay"><span>{weekday(date)}</span><b>{Number(date.slice(8))}</b></span>
+                      <span className="homeDayText">
+                        <span className="muted homeDayMeta">{net && <NetworkIcon id={net} size={16} />}{it.rede} · {it.formato}</span>
+                        <span className="homeEllipsis">{post?.tema || it.tema}</span>
+                      </span>
+                      <span className={`homeChip ${st.cls}`}>{st.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      )}
+
+      <section aria-label="Atalhos" className="homeQuick">
+        <Link href="/app/conteudos/novo" className="card">
+          <b>Contar uma história</b>
+          <span className="muted">Fale 1 minuto sobre algo do seu dia. O 1loop transforma em post.</span>
+        </Link>
+        <Link href="/app/comentarios" className="card">
+          <b>Comentar em posts</b>
+          <span className="muted">Cole o post de um cliente e receba 3 comentários na sua voz.</span>
+        </Link>
+        <Link href="/app/estrategia" className="card">
+          <b>Sua estratégia</b>
+          <span className="muted">Pilares, série e calendário do mês.</span>
+        </Link>
+      </section>
     </div>
   );
 }

@@ -51,7 +51,7 @@ function NetworkCard({ id, chosen, saved }: { id: NetworkId; chosen: boolean; sa
             <span style={{ fontSize: 15, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.prefix}{saved.handle}</span>
             <span className="status" style={{ color: 'var(--done-ink)' }}><span className="dot" style={{ background: 'var(--teal)' }} />Perfil cadastrado</span>
             <span className="muted" style={{ fontSize: 12 }}>
-              {id === 'linkedin' || id === 'instagram' ? (saved.status === 'connected' ? 'Publicação automática: conectada' : 'Publicação automática: conecte acima') : 'Publicação automática: em breve'}
+              {id === 'linkedin' || id === 'instagram' ? (saved.status === 'connected' ? 'Publicação automática: conectada' : 'Publicação automática: conecte acima') : 'Você publica com o texto pronto'}
             </span>
           </div>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -84,8 +84,11 @@ function NetworkCard({ id, chosen, saved }: { id: NetworkId; chosen: boolean; sa
   );
 }
 
-export function NetworksBoard({ chosen, saved }: { chosen: NetworkId[]; saved: Saved }) {
-  const order = [...chosen, ...NETWORKS.map((n) => n.id).filter((id) => !chosen.includes(id))];
+const MAIN_NETS: NetworkId[] = ['linkedin', 'instagram'];
+
+export function NetworksBoard({ chosen, saved, only }: { chosen: NetworkId[]; saved: Saved; only?: 'principais' | 'outras' }) {
+  const keep = (id: NetworkId) => (only === 'principais' ? MAIN_NETS.includes(id) : only === 'outras' ? !MAIN_NETS.includes(id) : true);
+  const order = [...chosen, ...NETWORKS.map((n) => n.id).filter((id) => !chosen.includes(id))].filter(keep);
   return (
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
       {order.map((id) => (

@@ -44,7 +44,7 @@ Princípios:
 - Venda sem empurrar: a oferta aparece quando o objetivo é venda; nos outros, a chamada é para salvar, comentar, compartilhar ou seguir.
 Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.`;
 
-function interviewText(answers: Answers) {
+export function interviewText(answers: Answers) {
   return QUESTIONS.map((q) => {
     const v = answers[q.id];
     const txt = Array.isArray(v) ? v.join(', ') : v;
@@ -64,6 +64,7 @@ export type GenerateInput = {
   serieNumero?: number;
   foto?: InputImage; // foto escolhida para o post
   referencias?: InputImage[]; // imagens de referência de estilo
+  historia?: string; // situação real contada (ou ditada) pela pessoa: vira a base do post
 };
 
 function promptFor(input: GenerateInput) {
@@ -89,7 +90,12 @@ Conteúdo a escrever:
 - Rede: ${rede}
 - Formato: ${item.formato}
 - ${item.comRosto ? 'Com rosto: a pessoa aparece e fala para a câmera.' : 'Sem rosto: nada de a pessoa aparecer; use texto na tela, imagens ou narração.'}
-- Tema: ${item.tema}
+- Tema: ${item.tema}${input.historia ? `
+
+História real que o cliente contou (ditada ou escrita). ELA é a base deste post: o tema acima vira só referência de pilar e objetivo. Conte a situação com as palavras e o jeito dele, tire a lição para o público e não invente fatos, números ou nomes que ele não disse:
+<<<
+${input.historia}
+>>>` : ''}
 
 ${input.foto ? 'Foto do post: a PRIMEIRA imagem anexada vai publicada junto com este conteúdo. Escreva em cima dela: aproveite o que aparece (cenário, momento, expressão), sem inventar fatos que a foto não mostra.\n' : ''}${input.referencias?.length ? `Referências: ${input.foto ? 'as outras imagens anexadas' : 'as imagens anexadas'} são posts que o cliente admira. Use como inspiração de estrutura, ritmo e tom; não copie frases nem marcas.\n` : ''}
 Regras da rede: ${NETWORK_RULES[rede]}
