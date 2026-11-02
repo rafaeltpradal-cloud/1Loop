@@ -6,11 +6,26 @@ import { BrandSwitcher } from '@/components/BrandSwitcher';
 import { getPreviewContext as getAppContext } from '@/lib/session';
 import { PLANS } from '@/lib/plans';
 import { PreviewBar } from '@/components/PreviewBar';
+import { createAdminClient } from '@/lib/supabase/admin';
+
+// Contato do "Falar com a gente": WhatsApp se o número estiver configurado na Vercel, senão e-mail.
+const SUPPORT = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? '').replace(/\D/g, '');
+const supportHref = SUPPORT.length >= 10 ? `https://wa.me/${SUPPORT}?text=${encodeURIComponent('Oi! Uso o 1loop creators e tenho uma dúvida.')}` : 'mailto:contato@1loopcreators.com.br?subject=D%C3%BAvida%20no%201loop';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await getAppContext();
   const plan = PLANS[ctx.plan];
   const multi = ctx.brandLimit > 1 || ctx.brands.length > 1;
+  // Primeiros passos e posts para revisar (contador no menu).
+  const admin = createAdminClient();
+  const [{ data: postRows }, { count: conns }] = await Promise.all([
+    admin.from('posts').select('status').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(1000),
+    admin.from('social_connections').select('network', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+  ]);
+  const statuses = (postRows ?? []).map((p) => p.status as string);
+  const drafts = statuses.filter((x) => x === 'rascunho').length;
+  const firstSteps = [ctx.hasStrategy, statuses.length > 0, (conns ?? 0) > 0, statuses.includes('publicado')];
+  const stepsDone = firstSteps.filter(Boolean).length;
   const switcher = (compact?: boolean) => <BrandSwitcher current={ctx.brandId} brands={ctx.brands} limit={ctx.brandLimit} compact={compact} />;
 
   return (
@@ -42,7 +57,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <aside className="sidebar">
         <Brand href="/app" />
         {multi && switcher()}
-        <AppNav group="main" />
+        {stepsDone < firstSteps.length && (
+          <Link href="/app" className="navProgress">
+            <span className="navProgressHead"><b>Primeiros passos</b><span>{stepsDone} de {firstSteps.length}</span></span>
+            <span className="navProgressBar" aria-hidden="true"><span style={{ width: `${(stepsDone / firstSteps.length) * 100}%` }} /></span>
+          </Link>
+        )}
+        <AppNav group="main" counts={{ drafts }} />
         <div className="sidebarFoot">
           <AppNav group="account" />
           <Link href={ctx.preview ? '/app/assinar' : '/app/plano'} className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
@@ -59,7 +80,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   : plan.rhythm}
               {!ctx.preview && ctx.plan !== 'multi' ? ' · fazer upgrade' : ''}
             </span>
+            {ctx.trialDaysLeft !== null && (
+              <span className="navProgressBar" aria-hidden="true"><span style={{ width: `${Math.max(4, ((7 - Math.min(7, ctx.trialDaysLeft)) / 7) * 100)}%` }} /></span>
+            )}
           </Link>
+          <a href={supportHref} target="_blank" rel="noreferrer" className="navHelp footExtra">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a8.5 8.5 0 0 1-12.4 7.6L3 21l1.4-5.4A8.5 8.5 0 1 1 21 12Z" /></svg>
+            Falar com a gente
+          </a>
           <div className="footExtra" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
             <Link href="/app/perfil" style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, textDecoration: 'none' }}>
               <Avatar name={ctx.name} url={ctx.avatarUrl} />
@@ -78,7 +106,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {ctx.preview && <PreviewBar userId={ctx.userId} plan={ctx.plan} />}
         {children}
       </main>
-      <AppNav group="tabs" />
+      <AppNav group="tabs" counts={{ drafts }} />
     </div>
   );
 }
