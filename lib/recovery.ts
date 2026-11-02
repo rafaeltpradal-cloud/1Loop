@@ -18,6 +18,8 @@ import { activeOffer, offerPrice } from '@/lib/offers';
 
 const HOUR = 3600000;
 const MIN_GAP = 20 * HOUR;
+// Prazo antigo do Founders: o aviso de prorrogação só vai para quem se cadastrou antes dele.
+const OLD_DEADLINE = Date.parse('2026-10-31T23:59:59-03:00');
 
 function secret() {
   const s = process.env.TOKEN_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -60,7 +62,7 @@ export function dueKind(user: Pick<User, 'created_at'>, sent: Sent, now = new Da
     if (today === end && !forThisDeadline(sent.fd2) && now.getTime() - last >= 10 * HOUR) return 'fd2';
     if (today === dayBefore && !forThisDeadline(sent.fd1) && now.getTime() - last >= MIN_GAP) return 'fd1';
     // Aviso de prorrogação: só no disparo manual do dono, para quem já tinha recebido algum lembrete (viu o prazo antigo).
-    if (opts.ext && !opts.hasOffer && !sent.ext1 && Object.keys(sent).some((k) => k !== 'ext1')) return 'ext1';
+    if (opts.ext && !opts.hasOffer && !sent.ext1 && Date.parse(user.created_at) < OLD_DEADLINE && Object.keys(sent).some((k) => k !== 'ext1')) return 'ext1';
   }
   if (now.getTime() - last < MIN_GAP) return null;
   // Sempre começa pelo "você quase concluiu"; os próximos respeitam o tempo de conta e o intervalo.
