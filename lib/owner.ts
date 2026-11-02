@@ -5,6 +5,7 @@ import type Stripe from 'stripe';
 import { stripe } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { planFromPriceId, PLANS, type PlanId } from '@/lib/plans';
+import { applyStripe, isActive, loadOwnerUsers, type OwnerUser } from '@/lib/ownerUsers';
 
 export const isOwner = (email?: string | null) =>
   !!email &&
@@ -40,7 +41,10 @@ export type OwnerData = {
   payingDaily: DayPoint[];
   feed: FeedItem[];
   customers: Customer[];
-  app: { users: number; usersMonth: number; noSubscription: number; strategies: number; postsMonth: number; postsTotal: number; published: number; brands: number; aiCallsMonth: number };
+  /** Uso da ferramenta, só de clientes (sem as contas da equipe). */
+  app: { users: number; users30: number; usersMonth: number; active7: number; withPost: number; checkout: number; postsMonth: number; postsTotal: number; published: number; networks: number; aiCallsMonth: number };
+  /** Todas as contas, com etapa e uso (aba Usuários). */
+  users: OwnerUser[];
   costs: Cost[];
   costsMonth: number;
   aiCostMonth: number | null; // da API de custos da Anthropic, em R$
@@ -99,19 +103,13 @@ export async function ownerData(): Promise<OwnerData> {
 
   // ---------- Banco do 1loop ----------
   const monthIso = new Date(monthStart * 1000).toISOString();
-  const [profiles, subsDb, strategies, postsMonth, postsTotal, published, brands, costsRows, settings] = await Promise.all([
+  const [profiles, postsMonth, costsRows, settings] = await Promise.all([
     admin.from('profiles').select('id, name, stripe_customer_id, created_at, origem'),
-    admin.from('subscriptions').select('user_id'),
-    admin.from('strategies').select('id', { count: 'exact', head: true }),
     admin.from('posts').select('versions, content').gte('created_at', monthIso),
-    admin.from('posts').select('id', { count: 'exact', head: true }),
-    admin.from('posts').select('id', { count: 'exact', head: true }).eq('status', 'publicado'),
-    admin.from('brands').select('id', { count: 'exact', head: true }),
     admin.from('owner_costs').select('*').order('start_date', { ascending: false }),
     admin.from('owner_settings').select('usd_brl').eq('id', 1).maybeSingle(),
   ]);
   const profs = (profiles.data ?? []) as { id: string; name: string | null; stripe_customer_id: string | null; created_at: string; origem: Record<string, string> | null }[];
-  const withSub = new Set(((subsDb.data ?? []) as { user_id: string }[]).map((s) => s.user_id));
   const byCustomer = new Map(profs.filter((p) => p.stripe_customer_id).map((p) => [p.stripe_customer_id as string, p]));
   const strategiesMonth = await admin.from('strategies').select('id', { count: 'exact', head: true }).gte('created_at', monthIso);
   const postRows = (postsMonth.data ?? []) as { versions: number | null; content: { ajustes?: number } | null }[];
@@ -135,17 +133,33 @@ export async function ownerData(): Promise<OwnerData> {
   }, 0);
   const usdBrl = Number((settings.data as { usd_brl?: number } | null)?.usd_brl) || 5.4;
 
-  const app = {
-    users: profs.length,
-    usersMonth: profs.filter((p) => p.created_at >= monthIso).length,
-    noSubscription: profs.filter((p) => !withSub.has(p.id)).length,
-    strategies: strategies.count ?? 0,
-    postsMonth: postRows.length,
-    postsTotal: postsTotal.count ?? 0,
-    published: published.count ?? 0,
-    brands: brands.count ?? 0,
-    aiCallsMonth,
+  // Contas: etapa, uso e equipe separada (a assinatura do Stripe entra mais abaixo).
+  let users: OwnerUser[] = [];
+  try {
+    users = await loadOwnerUsers(admin, (e) => isOwner(e));
+  } catch (e) {
+    console.error('[painel] usuários', e);
+  }
+  const clients = () => users.filter((u) => !u.internal);
+  const cut30Iso = new Date(now - 30 * DAY).toISOString();
+  const appStats = () => {
+    const c = clients();
+    return {
+      users: c.length,
+      users30: c.filter((u) => u.createdAt >= cut30Iso).length,
+      usersMonth: c.filter((u) => u.createdAt >= monthIso).length,
+      active7: c.filter((u) => isActive(u, now)).length,
+      withPost: c.filter((u) => u.posts.total > 0).length,
+      checkout: c.filter((u) => u.reachedCheckout || (!!u.sub && !u.sub.status.startsWith('banco:'))).length,
+      postsMonth: postRows.length,
+      postsTotal: c.reduce((n, u) => n + u.posts.total, 0),
+      published: c.reduce((n, u) => n + u.posts.published, 0),
+      networks: c.filter((u) => u.networks.some((x) => !x.expired)).length,
+      aiCallsMonth,
+    };
   };
+  const app = appStats();
+
 
   // ---------- Visitas ao site (tabela site_visits) ----------
   const from30 = isoDay(Math.floor((now - 29 * DAY) / 1000));
@@ -205,6 +219,7 @@ export async function ownerData(): Promise<OwnerData> {
     feed: [],
     customers: [],
     app,
+    users,
     costs,
     costsMonth,
     aiCostMonth: null,
@@ -325,6 +340,21 @@ export async function ownerData(): Promise<OwnerData> {
       });
     }
     customers.sort((a, b) => b.since.localeCompare(a.since));
+
+    // Situação real de cada conta no Stripe (a assinatura mais relevante de cada pessoa).
+    const rank = (st: string) => (['active', 'past_due', 'trialing', 'unpaid'].includes(st) ? 2 : st === 'canceled' ? 1 : 0);
+    const byUser = new Map<string, { status: string; plan: PlanId | null; trialEnd: string | null; mrr: number; created: number }>();
+    for (const sub of subs) {
+      const custId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
+      const uid = byCustomer.get(custId)?.id ?? (sub.metadata?.user_id as string | undefined);
+      if (!uid || rank(sub.status) === 0) continue;
+      const cur = byUser.get(uid);
+      if (cur && (rank(cur.status) > rank(sub.status) || (rank(cur.status) === rank(sub.status) && cur.created > sub.created))) continue;
+      byUser.set(uid, { status: sub.status, plan: planOf(sub), trialEnd: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null, mrr: monthlyValue(sub), created: sub.created });
+    }
+    // Assinatura só no banco (modo de teste ou liberada à mão) não conta como cliente pagante.
+    for (const u of users) if (u.sub?.source === 'banco' && !byUser.has(u.id) && live) u.sub = { ...u.sub, status: `banco:${u.sub.status}` };
+    applyStripe(users, byUser);
     const activeStart = counts.active + counts.canceled30 - subs.filter((x) => x.status === 'active' && x.created >= cut30).length;
     const churn30 = activeStart > 0 ? counts.canceled30 / activeStart : null;
     const trialConversion = trialsEnded > 0 ? trialsConverted / trialsEnded : null;
@@ -391,6 +421,8 @@ export async function ownerData(): Promise<OwnerData> {
       payingDaily,
       feed: feed.slice(0, 20),
       customers: customers.slice(0, 200),
+      app: appStats(),
+      users,
       aiCostMonth,
     };
   } catch (e) {

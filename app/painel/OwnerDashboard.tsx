@@ -10,6 +10,7 @@ import type { Cost, OwnerData } from '@/lib/owner';
 import { deleteCost, saveCost, saveUsdBrl } from './actions';
 import { Kpi } from './Kpi';
 import { Projections } from './Projections';
+import { UsersView } from './UsersView';
 
 const brl = (n: number, cents = true) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: cents ? 2 : 0, maximumFractionDigits: cents ? 2 : 0 });
 const pct = (n: number | null) => (n === null ? '—' : `${(n * 100).toFixed(1).replace('.', ',')}%`);
@@ -181,15 +182,16 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
   const [tab, setTab] = useState<'todos' | 'pagantes' | 'teste' | 'cancelados'>('todos');
-  // Aba do painel (Cockpit ou Rumo aos 1.000), lembrada no endereço: /painel?aba=rumo
-  const [view, setView] = useState<'agora' | 'rumo'>('agora');
+  // Aba do painel, lembrada no endereço: /painel?aba=usuarios ou ?aba=rumo
+  const [view, setView] = useState<'agora' | 'usuarios' | 'rumo'>('agora');
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('aba') === 'rumo') setView('rumo');
+    const a = new URLSearchParams(window.location.search).get('aba');
+    if (a === 'rumo' || a === 'usuarios') setView(a);
   }, []);
-  const goView = (v: 'agora' | 'rumo') => {
+  const goView = (v: 'agora' | 'usuarios' | 'rumo') => {
     setView(v);
     const url = new URL(window.location.href);
-    if (v === 'rumo') url.searchParams.set('aba', 'rumo');
+    if (v !== 'agora') url.searchParams.set('aba', v);
     else url.searchParams.delete('aba');
     window.history.replaceState(null, '', url.toString());
   };
@@ -239,6 +241,9 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
           <button type="button" role="tab" aria-selected={view === 'agora'} className={view === 'agora' ? 'ownTab on' : 'ownTab'} onClick={() => goView('agora')}>
             <span className="ownTabDot cyan" aria-hidden="true" />Cockpit<span className="ownTabSub">o negócio hoje</span>
           </button>
+          <button type="button" role="tab" aria-selected={view === 'usuarios'} className={view === 'usuarios' ? 'ownTab on' : 'ownTab'} onClick={() => goView('usuarios')}>
+            <span className="ownTabDot green" aria-hidden="true" />Usuários<span className="ownTabSub">quem está usando e quem travou</span>
+          </button>
           <button type="button" role="tab" aria-selected={view === 'rumo'} className={view === 'rumo' ? 'ownTab on' : 'ownTab'} onClick={() => goView('rumo')}>
             <span className="ownTabDot violet" aria-hidden="true" />Rumo aos 1.000<span className="ownTabSub">projeções e próximos passos</span>
           </button>
@@ -246,6 +251,8 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
 
         {view === 'rumo' ? (
           <Projections data={data} />
+        ) : view === 'usuarios' ? (
+          <UsersView users={data.users} updatedAt={data.updatedAt} />
         ) : (
         <>
         {data.error && <div className="formError" role="alert">Stripe: {data.error}</div>}
@@ -289,7 +296,7 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
               <div><span className="muted">Hoje</span><b>{data.visits.today}</b></div>
               <div><span className="muted">Visitantes</span><b>{data.visits.visitors30}</b></div>
               <div><span className="muted">Páginas vistas</span><b>{data.visits.views30}</b></div>
-              <div><span className="muted">Visita → cadastro</span><b>{data.visits.visitors30 ? `${Math.round((data.app.usersMonth / data.visits.visitors30) * 1000) / 10}%` : '—'}</b></div>
+              <div><span className="muted">Visita → conta criada</span><b>{data.visits.visitors30 ? `${(Math.round((data.app.users30 / data.visits.visitors30) * 1000) / 10).toString().replace('.', ',')}%` : '—'}</b></div>
             </div>
             {data.visits.funnel.since && (
               <div className="ownFunnel" aria-label="Funil da landing">
@@ -298,6 +305,7 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
                   ['Rolaram metade', data.visits.funnel.scroll50],
                   ['Clicaram para cadastrar', data.visits.funnel.cta],
                   ['Abriram o cadastro', data.visits.funnel.cadastro],
+                  ['Criaram conta', data.app.users30],
                 ].map(([label, n], i) => (
                   <div key={label as string}>
                     <span className="muted">{label}</span>
@@ -396,13 +404,16 @@ export function OwnerDashboard({ data }: { data: OwnerData }) {
         </section>
 
         <section aria-labelledby="h-uso" className="ownBlock">
-          <div className="ownBlockHead"><h2 id="h-uso">Uso da ferramenta</h2><span className="muted">do banco do 1loop</span></div>
+          <div className="ownBlockHead">
+            <h2 id="h-uso">Uso da ferramenta</h2>
+            <span className="muted">só clientes, sem a equipe · <button type="button" className="linkBtn" onClick={() => goView('usuarios')}>ver cada conta</button></span>
+          </div>
           <div className="ownKpis five">
-            <Kpi label="Contas criadas" value={String(data.app.users)} hint={`${data.app.usersMonth} este mês`} />
-            <Kpi label="Sem assinatura" value={String(data.app.noSubscription)} hint="cadastraram e não foram ao pagamento" />
-            <Kpi label="Posts gerados" value={String(data.app.postsMonth)} hint={`${data.app.postsTotal} no total · ${data.app.published} publicados`} />
-            <Kpi label="Chamadas de IA no mês" value={String(data.app.aiCallsMonth)} hint="posts, refações, ajustes e estratégias" />
-            <Kpi label="Marcas" value={String(data.app.brands)} hint={`${data.app.strategies} estratégias geradas`} />
+            <Kpi label="Contas de clientes" value={String(data.app.users)} hint={`${data.app.usersMonth} criadas este mês`} tone="cyan" />
+            <Kpi label="Ativas (7 dias)" value={String(data.app.active7)} hint="abriram o app ou fizeram algo" tone="green" />
+            <Kpi label="Geraram post" value={String(data.app.withPost)} hint={`${data.app.postsTotal} posts · ${data.app.published} publicados`} tone="violet" />
+            <Kpi label="Foram ao pagamento" value={String(data.app.checkout)} hint={`${data.app.networks} com rede conectada`} tone="amber" />
+            <Kpi label="Chamadas de IA no mês" value={String(data.app.aiCallsMonth)} hint="todas as contas: posts, refações, ajustes, estratégias" />
           </div>
         </section>
 

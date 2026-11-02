@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { accessFor } from '@/lib/access';
 import { PLANS, type PlanId } from '@/lib/plans';
@@ -44,6 +45,7 @@ const loadContext = cache(async (): Promise<AppContext> => {
   ]);
 
   if (access.mode === 'blocked') redirect('/planos?assinatura=pendente');
+  touchLastSeen(admin, user.id);
   const plan: PlanId = access.plan in PLANS ? access.plan : 'pro';
   const sub = { status: access.status, trial_end: access.trialEnd };
 
@@ -73,6 +75,22 @@ const loadContext = cache(async (): Promise<AppContext> => {
     preview: access.mode === 'preview',
   };
 });
+
+/**
+ * Último acesso ao app, para o painel do dono (no máximo 1 gravação a cada 30 min por pessoa).
+ * Roda depois da resposta; se a coluna ainda não existir no banco, o erro é ignorado.
+ */
+function touchLastSeen(admin: ReturnType<typeof createAdminClient>, userId: string) {
+  try {
+    after(async () => {
+      const now = new Date();
+      const cut = new Date(now.getTime() - 30 * 60000).toISOString();
+      await admin.from('profiles').update({ last_seen_at: now.toISOString() }).eq('id', userId).or(`last_seen_at.is.null,last_seen_at.lt."${cut}"`);
+    });
+  } catch {
+    // fora de uma requisição (não acontece no app), segue sem gravar
+  }
+}
 
 /** Páginas que a prévia mostra: início, entrevista, estratégia e conteúdos. */
 export async function getPreviewContext(): Promise<AppContext> {
