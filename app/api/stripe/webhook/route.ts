@@ -4,6 +4,8 @@ import { stripe } from '@/lib/stripe';
 import { recordExtraPack, sendWelcomeEmail, syncSubscription } from '@/lib/billing';
 import { sendPaidConversion } from '@/lib/conversions';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyPendingReferral, rewardReferral } from '@/lib/referral';
+import { isPlanId } from '@/lib/plans';
 import { applyOfferToSubscription } from '@/lib/offers';
 
 // Virou cliente pagante: teste acabou e a cobrança passou (trialing → active), ou assinou já pagando.
@@ -60,6 +62,9 @@ export async function POST(request: Request) {
           const row = await syncSubscription(subId);
           // Condição especial (10% abaixo do Founders no 1º mês) para quem tem a oferta na conta.
           if (session.client_reference_id) await applyOfferToSubscription(session.client_reference_id, subId);
+          // Meses grátis de indicação guardados (quem indicou antes de assinar).
+          if (session.client_reference_id && session.customer)
+            await applyPendingReferral(session.client_reference_id, typeof session.customer === 'string' ? session.customer : session.customer.id, ((p: unknown) => (isPlanId(p) ? p : 'pro'))(row?.plan));
           await sendWelcomeEmail(session, row);
         }
         if (session.mode === 'payment') await recordExtraPack(session);
@@ -74,7 +79,10 @@ export async function POST(request: Request) {
         const becamePaid =
           sub.status === 'active' &&
           ((event.type === 'customer.subscription.updated' && before === 'trialing') || event.type === 'customer.subscription.created');
-        if (becamePaid) await reportPaid(sub, event.created);
+        if (becamePaid) {
+          await reportPaid(sub, event.created);
+          await rewardReferral(sub);
+        }
         break;
       }
       default:

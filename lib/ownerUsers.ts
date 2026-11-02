@@ -110,7 +110,7 @@ export async function loadOwnerUsers(admin: SupabaseClient, isOwner: (e: string)
         plan: chosenPlan(u),
         origem: o
           ? {
-              source: o.utm_source || (o.referrer ? safeHost(o.referrer) : '') || 'direto',
+              source: o.ref ? 'indicação' : o.utm_source || (o.referrer ? safeHost(o.referrer) : '') || 'direto',
               campaign: o.utm_campaign || null,
               ad: o.utm_content || null,
             }

@@ -48,6 +48,7 @@ const TABS: Item[] = [
 ];
 
 const ACCOUNT: Item[] = [
+  { href: '/app/indicar', label: 'Indique e ganhe', icon: ic(<><rect x="3" y="8" width="18" height="5" rx="1" /><path d="M12 8v13M19 13v8H5v-8M12 8S10.5 3 8 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4-5a2.5 2.5 0 0 1 0 5" /></>) },
   { href: '/app/marcas', label: 'Marcas', icon: ic(<><rect x="3" y="7" width="18" height="13" rx="2.5" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></>) },
   { href: '/app/perfil', label: 'Perfil', icon: ic(<><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>) },
   {

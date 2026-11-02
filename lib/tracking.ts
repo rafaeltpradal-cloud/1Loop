@@ -29,12 +29,14 @@ export type Origin = {
   fbclid?: string;
   gclid?: string;
   li_fat_id?: string;
+  /** Código de quem indicou (link do Indique e ganhe). */
+  ref?: string;
   landing?: string;
   referrer?: string;
   at?: string;
 };
 
-export const ORIGIN_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'li_fat_id'] as const;
+export const ORIGIN_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'fbclid', 'gclid', 'li_fat_id', 'ref'] as const;
 
 /** Lê o cookie de origem com segurança (texto curto, só as chaves conhecidas). */
 export function parseOrigin(raw: string | undefined | null): Origin | null {

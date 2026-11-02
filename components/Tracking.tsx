@@ -21,8 +21,17 @@ export function track(event: { ga: string; meta?: string; params?: Record<string
 /** Guarda a origem do primeiro acesso (UTMs e ids de clique) por 90 dias. */
 function rememberOrigin() {
   try {
-    if (document.cookie.split('; ').some((c) => c.startsWith(`${ORIGIN_COOKIE}=`))) return;
     const q = new URLSearchParams(location.search);
+    const existing = document.cookie.split('; ').find((c) => c.startsWith(`${ORIGIN_COOKIE}=`));
+    if (existing) {
+      // Link de indicação vale mesmo para quem já tinha chegado antes por anúncio: guarda o código junto.
+      const ref = q.get('ref');
+      if (ref && /^[a-f0-9]{8}$/i.test(ref)) {
+        const saved = JSON.parse(decodeURIComponent(existing.slice(ORIGIN_COOKIE.length + 1))) as Record<string, string>;
+        if (saved.ref !== ref) document.cookie = `${ORIGIN_COOKIE}=${encodeURIComponent(JSON.stringify({ ...saved, ref }))}; path=/; max-age=${90 * 86400}; samesite=lax; secure`;
+      }
+      return;
+    }
     const origin: Record<string, string> = {};
     for (const k of ORIGIN_KEYS) {
       const v = q.get(k);
