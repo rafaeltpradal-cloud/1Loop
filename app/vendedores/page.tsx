@@ -4,6 +4,7 @@ import { LoopMark, Wordmark } from '@/components/Logo';
 import { LandingInteractions } from '../_landing/LandingInteractions';
 import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 import { PLANS } from '@/lib/plans';
+import { SignUpForm } from '../(auth)/cadastro/SignUpForm';
 
 // Página dos anúncios (vendedores). Enxuta de propósito: carrega rápido no navegador do Instagram,
 // uma promessa, um botão (cadastro sem cartão) e as respostas para as dúvidas que travam o clique.
@@ -16,7 +17,8 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-const CTA = '/cadastro?plano=pro';
+// Os botões levam ao formulário no topo da própria página (cadastro sem trocar de tela).
+const CTA = '#comecar';
 
 const CSS = `
 .vp{--ink:#0E0F12;--muted:#5E646C;--line:#E3E6EA;--bg:#F4F5F7;--blue:#0A66C2;--violet:#7C4DFF;font-family:var(--font-manrope),Manrope,system-ui,sans-serif;color:var(--ink);background:var(--bg);min-height:100vh}
@@ -32,6 +34,9 @@ const CSS = `
 .vpSub{font-size:18px;line-height:1.55;color:var(--muted);margin:0 0 22px;max-width:520px}
 .vpBtn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 28px;border-radius:14px;background:#0E0F12;color:#fff;font-weight:800;font-size:17px;text-decoration:none;box-shadow:0 10px 24px rgba(14,15,18,.18)}
 .vpBtn:hover{transform:translateY(-1px)}
+html{scroll-behavior:smooth}
+.vpForm{max-width:460px;scroll-margin-top:16px}
+.vpForm .card{box-shadow:0 18px 40px rgba(14,15,18,.08)}
 .vpMicro{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:13.5px;font-weight:700;color:var(--muted)}
 .vpMicro span::before{content:"✓ ";color:#12A594}
 .vpPost{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 24px 50px rgba(14,15,18,.08);font-size:14.5px;line-height:1.55}
@@ -57,6 +62,7 @@ const CSS = `
   .vpGrid{grid-template-columns:1fr}
   .vpSub{font-size:16.5px}
   .vpHero .vpBtn{width:100%}
+  .vpForm{max-width:none}
   .vpSticky{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:20;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:rgba(244,245,247,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
   .vpSticky .vpBtn{width:100%;min-height:52px;font-size:16px}
 }
@@ -86,7 +92,9 @@ export default function SalesLandingPage() {
             <p className="vpSub">
               Responda 5 perguntas sobre o que você vende e para quem. O 1loop monta sua estratégia de 30 dias e escreve os posts na sua voz. Você aprova; eles saem sozinhos no horário.
             </p>
-            <a className="vpBtn" href={CTA} data-cta="hero">Ver meu primeiro post grátis →</a>
+            <div id="comecar" className="vpForm">
+              <SignUpForm plan="pro" compact cta="Ver meu primeiro post grátis →" />
+            </div>
             <div className="vpMicro">
               <span>Sem cartão</span>
               <span>Pronto em 2 minutos</span>
