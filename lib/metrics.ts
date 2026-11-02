@@ -110,8 +110,14 @@ export async function syncAll() {
     // O endereço é aberto (o agendador chama sem senha): marca atualizada há pouco fica de fora.
     const { data: last } = await admin.from('account_metrics').select('updated_at').eq('brand_id', c.brand_id).gte('updated_at', sixHoursAgo).limit(1);
     if (last?.length) continue;
-    const r = await syncInstagram(admin, c.brand_id as number);
-    results.push({ brand: c.brand_id as number, ok: r.ok });
+    // Uma conexão com problema (token que não abre, permissão revogada) não pode travar a coleta das outras.
+    try {
+      const r = await syncInstagram(admin, c.brand_id as number);
+      results.push({ brand: c.brand_id as number, ok: r.ok });
+    } catch (err) {
+      console.error('[desempenho] marca', c.brand_id, err instanceof Error ? err.message : err);
+      results.push({ brand: c.brand_id as number, ok: false });
+    }
   }
   return results;
 }

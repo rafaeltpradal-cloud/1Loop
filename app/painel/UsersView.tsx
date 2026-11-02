@@ -59,11 +59,12 @@ function todo(users: OwnerUser[], now: number) {
   const out: { u: OwnerUser; why: string; action: string; weight: number }[] = [];
   for (const u of users) {
     const idle = now - Date.parse(lastOf(u) ?? u.createdAt);
+    const talk = whatsapp(u.phone) ? 'chame no WhatsApp' : 'mande um e-mail pessoal';
     if (u.stage === 'atrasado') out.push({ u, weight: 100, why: 'Pagamento recusado', action: 'Avise e mande o link para trocar o cartão' });
     else if (u.stage === 'teste' && u.sub?.trialEnd && Date.parse(u.sub.trialEnd) - now < 2 * DAY)
       out.push({ u, weight: 90, why: `Teste acaba em ${day(u.sub.trialEnd)}`, action: u.posts.published ? 'Pergunte como foram os posts publicados' : 'Ajude a publicar o 1º post antes da cobrança' });
     else if (u.stage === 'pagamento')
-      out.push({ u, weight: 80, why: 'Chegou ao pagamento e não assinou', action: u.offer ? 'Já recebeu a oferta de 10%: chame no WhatsApp' : 'Chame no WhatsApp e tire a dúvida' });
+      out.push({ u, weight: 80, why: 'Chegou ao pagamento e não assinou', action: u.offer ? `Já recebeu a oferta de 10%: ${talk}` : `Pergunte o que faltou: ${talk}` });
     else if (u.stage === 'post' && idle > DAY) out.push({ u, weight: 70, why: `Gerou ${u.posts.total} post${u.posts.total > 1 ? 's' : ''} e parou`, action: 'Mostre o próximo post e convide para o teste' });
     else if (u.stage === 'estrategia' && idle > DAY) out.push({ u, weight: 60, why: 'Tem estratégia, não gerou post', action: 'Convide a gerar o 1º post (1 clique)' });
     else if (u.stage === 'entrevista' && idle > DAY)
@@ -153,7 +154,7 @@ export function UsersView({ users, updatedAt }: { users: OwnerUser[]; updatedAt:
         </div>
         <div className="ownKpis six">
           <Kpi label="Contas" value={String(clients.length)} hint={`${new7} nos últimos 7 dias`} tone="cyan" />
-          <Kpi label="Ativas (7 dias)" value={String(filters[1][2])} hint={`${filters[2][2]} paradas`} tone="green" />
+          <Kpi label="Ativas (7 dias)" value={String(filters[1][2])} hint={`${filters[2][2]} parada${filters[2][2] === 1 ? '' : 's'}`} tone="green" />
           <Kpi label="Geraram post" value={String(clients.filter((u) => u.posts.total > 0).length)} hint={`${clients.reduce((s, u) => s + u.posts.total, 0)} posts no total`} tone="violet" />
           <Kpi label="Publicaram" value={String(clients.filter((u) => u.posts.published > 0).length)} hint={`${clients.filter((u) => u.networks.some((x) => !x.expired)).length} com rede conectada`} tone="violet" />
           <Kpi label="Foram ao pagamento" value={String(clients.filter((u) => u.reachedCheckout || realSub(u)).length)} hint={`${filters[3][2]} ainda sem assinar`} tone="amber" />
