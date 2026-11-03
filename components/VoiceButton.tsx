@@ -25,7 +25,7 @@ function getCtor(): RecognitionCtor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
-export function VoiceButton({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+export function VoiceButton({ value, onChange, label = 'Responder em áudio' }: { value: string; onChange: (v: string) => void; label?: string }) {
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
@@ -95,7 +95,7 @@ export function VoiceButton({ value, onChange }: { value: string; onChange: (v: 
               <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
             </svg>
           </span>
-          {listening ? 'Parar gravação' : 'Responder em áudio'}
+          {listening ? 'Parar' : label}
         </button>
         {listening && (
           <span className="muted" role="status" aria-live="polite" style={{ fontSize: 13 }}>

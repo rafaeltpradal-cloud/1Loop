@@ -120,7 +120,7 @@ export function CreatePost({ slots, media, preview, author }: { slots: Slot[]; m
               placeholder={foto ? 'Ex.: a partir desta foto, conta que palestrei para 200 vendedores' : 'Ex.: escreva sobre a objeção de preço que ouvi hoje'}
               aria-label="O que você quer que a IA faça"
             />
-            <VoiceButton value={pedido} onChange={setPedido} />
+            <VoiceButton value={pedido} onChange={setPedido} label="Falar" />
             <button type="submit" className="btn3d btnSm" disabled={aiBusy || (!pedido.trim() && !texto.trim() && !foto)}>{aiBusy ? 'Escrevendo…' : 'Criar'}</button>
           </form>
           <div className="storyIdeas">
@@ -134,9 +134,11 @@ export function CreatePost({ slots, media, preview, author }: { slots: Slot[]; m
         {/* Legenda */}
         <section className="card createBlock" aria-labelledby="h-legenda">
           <h2 id="h-legenda"><label htmlFor="legenda">3. Legenda</label></h2>
-          <textarea id="legenda" rows={10} value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={5000} placeholder="Escreva aqui do seu jeito, ou peça para a IA aí em cima." />
+          <div className="field">
+            <textarea id="legenda" rows={10} value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={5000} placeholder="Escreva aqui do seu jeito, ou peça para a IA aí em cima." />
+          </div>
           <div className="storyTools">
-            <VoiceButton value={texto} onChange={setTexto} />
+            <VoiceButton value={texto} onChange={setTexto} label="Ditar a legenda" />
             <span className="muted" style={{ fontSize: 12 }}>{texto.length}/5000</span>
           </div>
           {tags.length > 0 && (
