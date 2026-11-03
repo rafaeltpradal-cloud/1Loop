@@ -187,7 +187,7 @@ export async function ownerData(): Promise<OwnerData> {
   const uniq = (rows: { visitor: string }[]) => new Set(rows.map((r) => r.visitor)).size;
   const fromSince = since ? visitRows.filter((r) => r.day >= since) : [];
   const funnel = {
-    landing: uniq(fromSince.filter((r) => r.path === '/' || r.path === '/vendedores')),
+    landing: uniq(fromSince.filter((r) => r.path === '/' || r.path === '/vendedores' || r.path === '/comercial')),
     scroll50: uniq(eventRows.filter((r) => r.event === 'scroll50')),
     cta: uniq(eventRows.filter((r) => r.event === 'cta' || r.event === 'plano')),
     cadastro: uniq(fromSince.filter((r) => r.path === '/cadastro')),
