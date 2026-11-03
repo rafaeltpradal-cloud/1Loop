@@ -12,7 +12,7 @@ export * from '@/lib/contentTypes';
 // Regras por rede e por formato
 // ---------------------------------------------------------------------------
 
-const NETWORK_RULES: Record<string, string> = {
+export const NETWORK_RULES: Record<string, string> = {
   Instagram: 'Legenda de até 1.500 caracteres, primeira linha forte (aparece antes do "mais"), parágrafos curtos, 3 a 5 hashtags específicas.',
   LinkedIn: 'Texto de 900 a 1.600 caracteres, primeira linha que para a rolagem, frases curtas com quebras de linha, tom profissional e direto. No máximo 3 hashtags. Sem emojis em excesso.',
   TikTok: 'Legenda curta (até 150 caracteres) com 3 ou 4 hashtags. O peso está no roteiro.',
@@ -75,9 +75,14 @@ function promptFor(input: GenerateInput) {
   const special = specialDatesByDay([fromISO(date).getFullYear()]).get(date);
   const rede = NETWORK_RULES[item.rede] ? item.rede : 'Instagram';
 
+  const quem = typeof answers.quem_sou === 'string' ? answers.quem_sou.trim() : '';
+  const meta = typeof answers.onde_quero_chegar === 'string' ? answers.onde_quero_chegar.trim() : '';
   return `Entrevista do cliente:
 ${interviewText(answers)}
-
+${quem || meta ? `
+Norte de todo conteúdo (vale para este post):
+${quem ? `- Quem ele é: ${quem}\n` : ''}${meta ? `- Onde quer chegar: ${meta}\n` : ''}- O post precisa soar como alguém com essa trajetória e aproximá-lo desse lugar: reforce o posicionamento, sem citar o objetivo de forma literal.
+` : ''}
 Estratégia:
 - Objetivo do mês: ${strategy.objetivo}
 - Posicionamento: ${strategy.posicionamento}

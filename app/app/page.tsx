@@ -194,6 +194,10 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
       )}
 
       <section aria-label="Atalhos" className="homeQuick">
+        <Link href="/app/conteudos/criar" className="card">
+          <b>Crie seu post</b>
+          <span className="muted">Sua foto, sua legenda e uma IA para pedir o que quiser.</span>
+        </Link>
         <Link href="/app/conteudos/novo" className="card">
           <b>Contar uma história</b>
           <span className="muted">Fale 1 minuto sobre algo do seu dia. O 1loop transforma em post.</span>

@@ -402,6 +402,17 @@ export function PostEditor({
                 </span>
               </div>
               <div className="textPreviewBody">{kind === 'thread' && c.partes ? c.partes.join('\n\n— — —\n\n') : caption}</div>
+              {kind === 'texto' &&
+                (c.foto ? (
+                  <button type="button" className="previewPhoto" style={{ padding: 0, border: 0, cursor: 'pointer' }} onClick={() => setPicker('foto')} aria-label="Trocar a foto">
+                    <img src={mediaUrl(c.foto)} alt="Foto do post" style={{ width: '100%', borderRadius: 10, display: 'block', maxHeight: 420, objectFit: 'cover' }} />
+                  </button>
+                ) : (
+                  <button type="button" className="previewPhoto empty" onClick={() => setPicker('foto')}>
+                    <b>Coloque sua foto aqui</b>
+                    <span>Pode ser qualquer foto sua</span>
+                  </button>
+                ))}
             </div>
           )}
           <div className="photoRow">

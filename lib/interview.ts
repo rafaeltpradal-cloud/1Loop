@@ -27,6 +27,12 @@ export const QUESTIONS: Question[] = [
     placeholder: 'Ex.: Ajudo lojas de moda a vender mais pelo Instagram',
   },
   {
+    id: 'quem_sou', block: 'Você', kind: 'longtext',
+    title: 'Resumo: quem é você?',
+    hint: 'Sua trajetória em 3 a 5 frases: o que já fez, o que sabe fazer bem e o que te diferencia. Vai em todos os posts.',
+    placeholder: 'Ex.: 10 anos em vendas B2B, liderei times de 15 a 85 pessoas, hoje ajudo empresas a organizar a operação comercial',
+  },
+  {
     id: 'oferta', block: 'Você', kind: 'longtext',
     title: 'O que você vende (ou quer começar a vender)?',
     hint: 'Produtos, serviços, mentorias, cursos. Se souber, inclua a faixa de preço.',
@@ -43,6 +49,12 @@ export const QUESTIONS: Question[] = [
     title: 'Qual é o principal objetivo para os próximos 30 dias?',
     hint: 'Um objetivo claro deixa cada conteúdo com um papel.',
     options: ['Vender meus produtos ou serviços', 'Gerar leads para o meu negócio', 'Virar referência no meu mercado', 'Crescer audiência'],
+  },
+  {
+    id: 'onde_quero_chegar', block: 'Objetivo', kind: 'longtext',
+    title: 'E onde você quer chegar?',
+    hint: 'Pensando em 1 ano: ser referência em quê, para quem e com que resultado. Cada post vai te aproximar disso.',
+    placeholder: 'Ex.: Ser a referência em gestão comercial para PMEs e fechar 5 projetos de consultoria por mês vindos do LinkedIn',
   },
   {
     id: 'publico', block: 'Público', kind: 'text',

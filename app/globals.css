@@ -1187,7 +1187,7 @@ html[data-theme="dark"] .owner .ownJBar span { box-shadow: 0 0 10px color-mix(in
 .homeChip.err { background: color-mix(in srgb, #E0458F 16%, transparent); color: #C02A72; }
 html[data-theme="dark"] .homeChip.draft { color: #FFB020; }
 html[data-theme="dark"] .homeChip.err { color: #FF6FB5; }
-.homeQuick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.homeQuick { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 .homeQuick .card { padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; box-shadow: none; text-decoration: none; color: inherit; font-size: 14px; line-height: 1.45; }
 .homeQuick .card b { font-size: 15px; }
 @media (max-width: 900px) { .homeStats { grid-template-columns: 1fr 1fr; } .homeSteps { grid-template-columns: 1fr 1fr; } .homeQuick { grid-template-columns: 1fr; } }
@@ -1258,3 +1258,36 @@ html[data-theme="dark"] .navBadge { color: #FFB020; }
 
 .refStats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 640px) { .refStats { grid-template-columns: 1fr; } }
+
+/* Crie seu post */
+.createGrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+.createMain { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.createBlock { padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; box-shadow: none; }
+.createBlock h2 { font-size: 15px; font-weight: 700; }
+.createBlock h2 .muted { font-weight: 500; font-size: 13px; }
+.createBlock textarea { resize: vertical; min-height: 200px; }
+.createBlockHead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.createPhoto { position: relative; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 14px; overflow: hidden; width: 100%; max-height: 360px; display: block; }
+.createPhoto img { width: 100%; max-height: 360px; object-fit: contain; background: var(--surface); display: block; }
+.createPhotoSwap { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: 999px; }
+.createPhoto.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 180px; padding: 24px; border: 2px dashed var(--line); background: var(--surface); text-align: center; font-size: 14px; transition: border-color .15s ease; }
+.createPhoto.empty:hover, .createPhoto.empty:focus-visible { border-color: var(--violet); }
+.createPhoto.empty .muted { font-size: 13px; max-width: 380px; }
+.createPhotoIcon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--violet); color: #fff; font-size: 22px; }
+.createAi { border: 1px solid color-mix(in srgb, var(--violet) 35%, var(--line)); }
+.aiBar { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); }
+.aiBar:focus-within { border-color: var(--violet); box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 18%, transparent); }
+.aiBar input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: 15px; min-height: 40px; padding: 0; box-shadow: none; }
+.aiSpark { color: var(--violet); font-size: 16px; }
+.createTags { display: flex; flex-wrap: wrap; gap: 6px; }
+.createPreview { position: sticky; top: 20px; display: flex; flex-direction: column; gap: 10px; }
+.previewPhoto { width: 100%; border-radius: 10px; display: block; max-height: 420px; object-fit: cover; }
+.previewPhoto.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; aspect-ratio: 4 / 3; border: 2px dashed var(--line); background: color-mix(in srgb, var(--violet) 5%, var(--surface)); cursor: pointer; font-size: 14px; color: var(--ink-2); }
+.previewPhoto.empty span { font-size: 12px; color: var(--muted); }
+.previewPhoto.empty:hover, .previewPhoto.empty:focus-visible { border-color: var(--violet); }
+@media (max-width: 960px) {
+  .createGrid { grid-template-columns: 1fr; }
+  .createPreview { position: static; order: -1; }
+  .aiBar { flex-wrap: wrap; padding: 8px; }
+  .aiBar input { flex-basis: calc(100% - 30px); }
+}

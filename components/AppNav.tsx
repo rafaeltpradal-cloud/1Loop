@@ -29,6 +29,7 @@ const GROUPS: { label: string; items: (Item & { match?: string[]; badge?: 'draft
     items: [
       { href: '/app', label: 'Início', icon: I.home },
       { href: '/app/conteudos', label: 'Conteúdos', icon: I.posts, badge: 'drafts' },
+      { href: '/app/conteudos/criar', label: 'Crie seu post', icon: I.plus },
       { href: '/app/conteudos/novo', label: 'Contar uma história', icon: I.story },
       { href: '/app/comentarios', label: 'Comentar em posts', icon: I.comment },
     ],
@@ -42,7 +43,7 @@ const GROUPS: { label: string; items: (Item & { match?: string[]; badge?: 'draft
 const TABS: Item[] = [
   { href: '/app', label: 'Início', icon: I.home },
   { href: '/app/conteudos', label: 'Conteúdos', icon: I.posts },
-  { href: '/app/conteudos/novo', label: 'Novo', icon: I.plus },
+  { href: '/app/conteudos/criar', label: 'Novo', icon: I.plus },
   { href: '/app/desempenho', label: 'Resultados', icon: I.perf },
   { href: '/app/redes', label: 'Redes', icon: I.nets },
 ];
@@ -105,7 +106,7 @@ export function AppNav({ group, counts }: { group: 'main' | 'account' | 'tabs'; 
     return (
       <nav aria-label="Menu" className="tabBar">
         {TABS.map((it) => (
-          <Link key={it.href} href={it.href} className={it.href === '/app/conteudos/novo' ? 'tabItem tabNew' : 'tabItem'} aria-current={current === it.href ? 'page' : undefined}>
+          <Link key={it.href} href={it.href} className={it.href === '/app/conteudos/criar' ? 'tabItem tabNew' : 'tabItem'} aria-current={current === it.href ? 'page' : undefined}>
             {it.icon}
             <span>{it.label}</span>
           </Link>
@@ -123,7 +124,7 @@ export function AppNav({ group, counts }: { group: 'main' | 'account' | 'tabs'; 
   }
   return (
     <nav aria-label="Menu" className="navGroups">
-      <Link href="/app/conteudos/novo" className="navNew">
+      <Link href="/app/conteudos/criar" className="navNew">
         {I.plus}
         Novo post
       </Link>
