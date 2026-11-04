@@ -28,6 +28,12 @@ const EMAIL: Record<string, string> = {
   fd2: 'Founders: último dia',
   ext1: 'Aviso de prorrogação do Founders',
   of1: 'Desculpas + 10% no 1º mês',
+  a1: 'Engajamento: a um passo de virar referência',
+  a2: 'Engajamento: o primeiro post é o mais difícil',
+  a3: 'Engajamento: seu post está esperando',
+  b1: 'Constância: primeiro post no ar',
+  b2: 'Constância: voltou a ficar parado',
+  b3: 'Constância: marco de 5 posts',
 };
 
 const NET: Record<string, string> = { linkedin: 'LinkedIn', linkedin_page: 'Página LI', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', youtube: 'YouTube', threads: 'Threads' };

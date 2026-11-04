@@ -98,6 +98,9 @@ export async function runRecovery({ dryRun = false, now = new Date(), ext = fals
     const hasOffer = !!activeOffer(u, now);
     const kind = dueKind(u, sent, now, { ext, offer, hasOffer });
     if (!kind) continue;
+    // Recebeu e-mail de engajamento (lib/nurture) há pouco: espera, salvo os avisos de prazo.
+    const nurtured = Math.max(0, ...Object.values((u.app_metadata?.nurture as Record<string, unknown> | undefined) ?? {}).map((v) => (typeof v === 'string' && v.includes('T') ? Date.parse(v) : 0)));
+    if (kind !== 'fd1' && kind !== 'fd2' && kind !== 'of1' && kind !== 'ext1' && now.getTime() - nurtured < MIN_GAP) continue;
     result.candidates++;
 
     const [{ data: profile }, { data: interview }, { count: strategies }, { data: posts }] = await Promise.all([

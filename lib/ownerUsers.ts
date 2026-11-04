@@ -95,7 +95,8 @@ export async function loadOwnerUsers(admin: SupabaseClient, isOwner: (e: string)
       const st = strat.get(u.id) ?? [];
       const o = (p.origem as Record<string, string> | null) ?? null;
       const dbSub = subBy.get(u.id);
-      const recovery = (u.app_metadata?.recovery as Record<string, string> | undefined) ?? {};
+      // E-mails automáticos: recuperação (pv/fd/…) e engajamento (a1–a3 gerou e não postou; b1–b3 constância).
+      const recovery = { ...((u.app_metadata?.recovery as Record<string, string> | undefined) ?? {}), ...((u.app_metadata?.nurture as Record<string, string> | undefined) ?? {}) };
       const answered = i?.answers ? Object.keys(i.answers).filter((k) => qIds.has(k)).length : 0;
       const name = String(p.name || u.user_metadata?.name || '').trim();
       const row: OwnerUser = {
@@ -129,7 +130,7 @@ export async function loadOwnerUsers(admin: SupabaseClient, isOwner: (e: string)
         sub: dbSub ? { status: dbSub.status, plan: (dbSub.plan as PlanId | null) ?? null, trialEnd: dbSub.trial_end, mrr: 0, source: 'banco' } : null,
         stage: 'cadastrou',
         emails: Object.entries(recovery)
-          .filter(([, at]) => typeof at === 'string')
+          .filter(([, at]) => typeof at === 'string' && at.includes('T'))
           .map(([kind, at]) => ({ kind, at }))
           .sort((a, b) => a.at.localeCompare(b.at)),
         offer: !!u.app_metadata?.offer && !(u.app_metadata.offer as { used?: string }).used,
