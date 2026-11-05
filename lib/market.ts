@@ -32,7 +32,11 @@ const EUR_PRICE_IDS: Record<PlanId, string | undefined> = {
 };
 
 // Preços em euro criados no Stripe (modo real).
-const EUR_PRICE_IDS_FIXED: Record<PlanId, string | undefined> = { basic: undefined, pro: undefined, multi: undefined };
+const EUR_PRICE_IDS_FIXED: Record<PlanId, string | undefined> = {
+  basic: 'price_1UYQ1pGc8IrWJEtGAHthIy8x', // 19 €/mês
+  pro: 'price_1UYQ5KGc8IrWJEtGqp9Vttmq', // 39 €/mês
+  multi: 'price_1UYQA8Gc8IrWJEtGc8H9iWyN', // 99 €/mês
+};
 
 export function eurPriceId(plan: PlanId): string | undefined {
   return EUR_PRICE_IDS[plan] || EUR_PRICE_IDS_FIXED[plan];
