@@ -11,6 +11,7 @@ import { ContentTabs } from '@/components/content/ContentTabs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getUsage } from '@/lib/usage';
 import { previewPostLimit, previewUsage } from '@/lib/access';
+import { BrandVisualKick } from '@/components/content/BrandVisual';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -97,6 +98,8 @@ export default async function ConteudosPage() {
         <span className="pageSub">{done} de {total} posts prontos</span>
       </div>
       <ContentTabs active="semana" />
+      {/* Conta que já tem posts e ainda não tem o visual próprio: cria agora (a partir das referências e da entrevista). */}
+      {!strategy.visual && !strategy.modelo?.estilo && !ctx.preview && done > 0 && <BrandVisualKick />}
       <WeekBoard
         items={items}
         today={isoInBrazil()}

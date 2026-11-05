@@ -439,6 +439,12 @@ html[data-theme="dark"] .calSpecial.holiday b { color: #FDBA74; }
 }
 .styleChip[aria-checked="true"] { color: var(--ink); border-color: var(--ink); }
 .styleSwatch { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); }
+.styleChip.marca .styleSwatch { background: conic-gradient(from 200deg, #C2512F, #1F3A5F, #E9C46A, #C2512F); }
+.visualBar { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: 14px; text-align: center; }
+.visualInfo { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; font-size: 13.5px; }
+.visualActions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.visualAsk { display: flex; gap: 8px; width: 100%; }
+.visualAsk .input { flex: 1; min-height: 40px; font-size: 14px; }
 .styleChip.notas .styleSwatch { background: linear-gradient(135deg, #121211 55%, #FFD640 55%); }
 .styleChip.claro .styleSwatch { background: linear-gradient(135deg, #F7F7F5 55%, #7C4DFF 55%); }
 .styleChip.escuro .styleSwatch { background: linear-gradient(135deg, #0E0F12 55%, #E0458F 55%); }
@@ -1291,3 +1297,7 @@ html[data-theme="dark"] .navBadge { color: #FFB020; }
   .aiBar { flex-wrap: wrap; padding: 8px; }
   .aiBar input { flex-basis: calc(100% - 30px); }
 }
+
+.brandVisualCard { padding: 20px; display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+.brandSwatches { display: inline-flex; border-radius: 12px; overflow: hidden; border: 1px solid var(--line-2); }
+.brandSwatches span { width: 28px; height: 44px; display: block; }

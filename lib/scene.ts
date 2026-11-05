@@ -1,8 +1,19 @@
 // Cena editável das imagens dos posts: camadas de texto, retângulo e foto.
 // O mesmo desenho serve para a prévia, o download e o editor visual. Só roda no navegador.
 
-/** Cor CSS, ou "brand" (degradê da marca) ou "shade" (sombra escura de baixo para cima). */
+import type { FontKey } from '@/lib/visual';
+
+/**
+ * Cor CSS, ou "brand" (degradê da marca), "shade" (sombra escura de baixo para cima),
+ * "g:#AAAAAA:#BBBBBB:45" (degradê linear em graus) ou "r:#AAAAAA:#BBBBBB" (degradê radial).
+ */
 export type Fill = string;
+
+/** Famílias das fontes extras (nomes reais vindos do CSS da página, ver lib/postImage.ts). */
+const FAMILIES: Partial<Record<FontKey, string>> = {};
+export function setFontFamilies(m: Partial<Record<FontKey, string>>) {
+  Object.assign(FAMILIES, m);
+}
 
 export type TextLayer = {
   id: string;
@@ -17,9 +28,13 @@ export type TextLayer = {
   align: 'left' | 'center' | 'right';
   lh: number;
   hi?: string; // trecho em destaque
-  hiStyle?: 'box' | 'gradient' | 'brush';
+  hiStyle?: 'box' | 'gradient' | 'brush' | 'underline' | 'color';
   hiColor?: string;
+  hiColor2?: string; // segunda cor do degradê do destaque
   hiInk?: string;
+  font?: FontKey; // fonte da camada (sem = a da marca do app)
+  upper?: boolean; // caixa alta
+  ls?: number; // espaçamento entre letras, em px
   ruled?: string; // cor das linhas de caderno sob o texto
   cursor?: string; // cursor piscando no fim do texto (estilo bloco de notas)
   bg?: string; // fundo atrás do texto (etiquetas e botões)
@@ -27,12 +42,14 @@ export type TextLayer = {
   pad?: number;
   radius?: number;
 };
-export type RectLayer = { id: string; type: 'rect'; x: number; y: number; w: number; h: number; fill: Fill; radius?: number; stroke?: string };
+export type RectLayer = { id: string; type: 'rect'; x: number; y: number; w: number; h: number; fill: Fill; radius?: number; stroke?: string; strokeW?: number };
 export type ImageLayer = { id: string; type: 'image'; x: number; y: number; w: number; h: number; media: number; fit: 'cover' | 'contain'; radius?: number };
 export type Layer = TextLayer | RectLayer | ImageLayer;
 /** chrome "notes": ícones do app de notas (barra de status, compartilhar, mais e barra de ferramentas). */
 export type Chrome = { kind: 'notes'; ink: string; accent: string; line: string };
-export type Scene = { w: number; h: number; bg: Fill; glow?: boolean; chrome?: Chrome; layers: Layer[] };
+/** Textura sobre o fundo: grade, pontos ou listras finas. */
+export type Pattern = { kind: 'grade' | 'pontos' | 'listras'; color: string; step: number };
+export type Scene = { w: number; h: number; bg: Fill; glow?: boolean; glowColor?: string; pattern?: Pattern; chrome?: Chrome; layers: Layer[] };
 
 export const BRAND_GRADIENT = ['#3B6CF6', '#7C4DFF', '#E0458F', '#F08A24'];
 export const mediaUrl = (id: number, thumb = false) => `/api/media/${id}${thumb ? '?thumb=1' : ''}`;
@@ -92,14 +109,23 @@ export function wrapWords(ctx: CanvasRenderingContext2D, paragraphs: Word[][], m
   return lines;
 }
 
-const fontOf = (l: TextLayer, family: string) => `${l.weight} ${l.size}px ${family}`;
+const familyOf = (l: TextLayer, family: string) => (l.font && l.font !== 'sans' && FAMILIES[l.font] ? FAMILIES[l.font]! : family);
+const fontOf = (l: TextLayer, family: string) => `${l.font === 'display' ? 400 : l.weight} ${l.size}px ${familyOf(l, family)}`;
+const textOf = (l: TextLayer) => (l.upper ? l.text.toLocaleUpperCase('pt-BR') : l.text);
+const hiOf = (l: TextLayer) => (l.hi && l.upper ? l.hi.toLocaleUpperCase('pt-BR') : l.hi);
+/** Fonte + espaçamento entre letras (quando o navegador suporta). */
+function applyFont(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
+  ctx.font = fontOf(l, family);
+  const c = ctx as CanvasRenderingContext2D & { letterSpacing?: string };
+  if ('letterSpacing' in c) c.letterSpacing = `${l.ls ?? 0}px`;
+}
 
 /** Linhas e tamanho ocupado por uma camada de texto. */
 export function layoutText(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
-  ctx.font = fontOf(l, family);
+  applyFont(ctx, l, family);
   const pad = l.bg ? l.pad ?? 0 : 0;
   const inner = Math.max(10, l.w - pad * 2);
-  const lines = wrapWords(ctx, tokenize(l.text, l.hi), inner);
+  const lines = wrapWords(ctx, tokenize(textOf(l), hiOf(l)), inner);
   const lineH = l.size * l.lh;
   const textH = Math.max(1, lines.length) * lineH;
   const maxLine = Math.max(0, ...lines.map((x) => x.width));
@@ -112,13 +138,31 @@ export function fitSize(ctx: CanvasRenderingContext2D, base: Omit<TextLayer, 'si
   for (let size = max; size >= min; size -= 2) {
     const l = { ...base, size } as TextLayer;
     const { h, lines, inner } = layoutText(ctx, l, family);
-    ctx.font = fontOf(l, family);
+    applyFont(ctx, l, family);
     if (h <= maxH && lines.every((x) => x.width <= inner + 0.5)) return size;
   }
   return min;
 }
 
 function fillStyle(ctx: CanvasRenderingContext2D, fill: Fill, x: number, y: number, w: number, h: number) {
+  if (fill.startsWith('g:')) {
+    const [, a, b, deg] = fill.split(':');
+    const ang = ((Number(deg) || 0) * Math.PI) / 180;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const r = Math.max(w, h, 1) / 2;
+    const g = ctx.createLinearGradient(cx - Math.cos(ang) * r, cy - Math.sin(ang) * r, cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+    g.addColorStop(0, a);
+    g.addColorStop(1, b);
+    return g;
+  }
+  if (fill.startsWith('r:')) {
+    const [, a, b] = fill.split(':');
+    const g = ctx.createRadialGradient(x + w * 0.8, y + h * 0.15, 0, x + w * 0.8, y + h * 0.15, Math.max(w, h, 1) * 1.05);
+    g.addColorStop(0, a);
+    g.addColorStop(1, b);
+    return g;
+  }
   if (fill === 'brand') {
     const g = ctx.createLinearGradient(x, 0, x + Math.max(w, 1), 0);
     BRAND_GRADIENT.forEach((c, i) => g.addColorStop(i / (BRAND_GRADIENT.length - 1), c));
@@ -147,7 +191,7 @@ export function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w
 
 function drawText(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
   const { lines, lineH, h, boxW, pad, inner } = layoutText(ctx, l, family);
-  ctx.font = fontOf(l, family);
+  applyFont(ctx, l, family);
   const boxX = l.align === 'center' && l.bg && l.bgMode !== 'full' ? l.x + (l.w - boxW) / 2 : l.align === 'right' && l.bg && l.bgMode !== 'full' ? l.x + l.w - boxW : l.x;
   if (l.bg) {
     ctx.fillStyle = fillStyle(ctx, l.bg, boxX, l.y, boxW, h);
@@ -204,7 +248,15 @@ function drawText(ctx: CanvasRenderingContext2D, l: TextLayer, family: string) {
         ctx.fill();
         ctx.fillStyle = l.hiInk ?? '#121211';
       } else if (w.hi && l.hiStyle === 'gradient') {
-        ctx.fillStyle = fillStyle(ctx, 'brand', cx, 0, ww, 0);
+        ctx.fillStyle = l.hiColor && l.hiColor2 ? fillStyle(ctx, `g:${l.hiColor}:${l.hiColor2}:0`, cx, base - l.size, ww, l.size) : fillStyle(ctx, 'brand', cx, 0, ww, 0);
+      } else if (w.hi && l.hiStyle === 'underline') {
+        const next = line.words[k + 1];
+        const extend = next?.hi ? space : 0;
+        ctx.fillStyle = l.hiColor ?? '#E0458F';
+        ctx.fillRect(cx, base + l.size * 0.1, ww + extend, Math.max(4, l.size * 0.12));
+        ctx.fillStyle = fillStyle(ctx, l.color, cx, top, ww, lineH);
+      } else if (w.hi && l.hiStyle === 'color') {
+        ctx.fillStyle = l.hiColor ?? '#E0458F';
       } else {
         ctx.fillStyle = fillStyle(ctx, l.color, cx, top, ww, lineH);
       }
@@ -353,10 +405,12 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, family: s
   ctx.clearRect(0, 0, scene.w, scene.h);
   ctx.fillStyle = fillStyle(ctx, scene.bg, 0, 0, scene.w, scene.h);
   ctx.fillRect(0, 0, scene.w, scene.h);
+  if (scene.pattern) drawPattern(ctx, scene.pattern, scene.w, scene.h);
   if (scene.glow) {
     const g = ctx.createRadialGradient(scene.w * 0.85, scene.h * 0.05, 0, scene.w * 0.85, scene.h * 0.05, scene.w * 0.9);
-    g.addColorStop(0, 'rgba(124,77,255,0.28)');
-    g.addColorStop(1, 'rgba(124,77,255,0)');
+    const gc = scene.glowColor && /^#[0-9a-fA-F]{6}$/.test(scene.glowColor) ? scene.glowColor : '#7C4DFF';
+    g.addColorStop(0, `${gc}47`);
+    g.addColorStop(1, `${gc}00`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, scene.w, scene.h);
   }
@@ -368,7 +422,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, family: s
       ctx.fill();
       if (l.stroke) {
         ctx.strokeStyle = l.stroke;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = l.strokeW ?? 3;
         ctx.stroke();
       }
     } else if (l.type === 'image') {
@@ -377,6 +431,25 @@ export function drawScene(ctx: CanvasRenderingContext2D, scene: Scene, family: s
       drawText(ctx, l, family);
     }
   }
+}
+
+function drawPattern(ctx: CanvasRenderingContext2D, p: Pattern, W: number, H: number) {
+  const step = Math.max(12, p.step);
+  ctx.save();
+  ctx.fillStyle = p.color;
+  if (p.kind === 'pontos') {
+    for (let y = step / 2; y < H; y += step) for (let x = step / 2; x < W; x += step) {
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(1.5, step * 0.06), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (p.kind === 'grade') {
+    for (let x = 0; x <= W; x += step) ctx.fillRect(x, 0, 1.5, H);
+    for (let y = 0; y <= H; y += step) ctx.fillRect(0, y, W, 1.5);
+  } else {
+    for (let y = 0; y <= H; y += step) ctx.fillRect(0, y, W, Math.max(2, step * 0.08));
+  }
+  ctx.restore();
 }
 
 /** Retângulo ocupado por uma camada (para selecionar e arrastar no editor). */
@@ -392,7 +465,9 @@ export function boundsOf(ctx: CanvasRenderingContext2D, l: Layer, family: string
 // ---------------------------------------------------------------------------
 
 const num = (v: unknown, min: number, max: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d);
-const color = (v: unknown, d: string) => (typeof v === 'string' && (/^#[0-9a-fA-F]{3,8}$/.test(v) || /^rgba?\([\d\s.,%]+\)$/.test(v) || v === 'brand' || v === 'shade') ? v : d);
+const color = (v: unknown, d: string) =>
+  typeof v === 'string' && (/^#[0-9a-fA-F]{3,8}$/.test(v) || /^rgba?\([\d\s.,%]+\)$/.test(v) || v === 'brand' || v === 'shade' || /^g:#[0-9a-fA-F]{6}:#[0-9a-fA-F]{6}:-?\d{1,3}$/.test(v) || /^r:#[0-9a-fA-F]{6}:#[0-9a-fA-F]{6}$/.test(v)) ? v : d;
+const FONTS = ['sans', 'grotesk', 'serif', 'display', 'mono'];
 const optColor = (v: unknown) => (v === undefined ? undefined : color(v, '#000000'));
 
 export function sanitizeScene(raw: unknown): Scene | null {
@@ -407,7 +482,7 @@ export function sanitizeScene(raw: unknown): Scene | null {
     const id = typeof l.id === 'string' ? l.id.slice(0, 40) : newId();
     const base = { id, x: num(l.x, -4000, 6000, 0), y: num(l.y, -4000, 6000, 0) };
     if (l.type === 'rect') {
-      layers.push({ ...base, type: 'rect', w: num(l.w, 1, 6000, 100), h: num(l.h, 1, 6000, 100), fill: color(l.fill, '#000000'), radius: num(l.radius, 0, 2000, 0), stroke: optColor(l.stroke) });
+      layers.push({ ...base, type: 'rect', w: num(l.w, 1, 6000, 100), h: num(l.h, 1, 6000, 100), fill: color(l.fill, '#000000'), radius: num(l.radius, 0, 2000, 0), stroke: optColor(l.stroke), strokeW: l.strokeW === undefined ? undefined : num(l.strokeW, 1, 80, 3) });
     } else if (l.type === 'image') {
       if (!Number.isInteger(l.media)) continue;
       layers.push({ ...base, type: 'image', w: num(l.w, 1, 6000, 100), h: num(l.h, 1, 6000, 100), media: l.media as number, fit: l.fit === 'contain' ? 'contain' : 'cover', radius: num(l.radius, 0, 2000, 0) });
@@ -423,7 +498,11 @@ export function sanitizeScene(raw: unknown): Scene | null {
         align: l.align === 'center' || l.align === 'right' ? l.align : 'left',
         lh: num(l.lh, 0.8, 2.5, 1.2),
         hi: typeof l.hi === 'string' ? l.hi.slice(0, 200) : undefined,
-        hiStyle: l.hiStyle === 'box' || l.hiStyle === 'gradient' || l.hiStyle === 'brush' ? l.hiStyle : undefined,
+        hiStyle: ['box', 'gradient', 'brush', 'underline', 'color'].includes(l.hiStyle as string) ? (l.hiStyle as TextLayer['hiStyle']) : undefined,
+        hiColor2: optColor(l.hiColor2),
+        font: FONTS.includes(l.font as string) ? (l.font as FontKey) : undefined,
+        upper: l.upper === true ? true : undefined,
+        ls: l.ls === undefined ? undefined : num(l.ls, -10, 40, 0),
         cursor: optColor(l.cursor),
         hiColor: optColor(l.hiColor),
         hiInk: optColor(l.hiInk),
@@ -437,5 +516,8 @@ export function sanitizeScene(raw: unknown): Scene | null {
   }
   const ch = r.chrome as Record<string, unknown> | undefined;
   const chrome: Chrome | undefined = ch && ch.kind === 'notes' ? { kind: 'notes', ink: color(ch.ink, '#F2EEE6'), accent: color(ch.accent, '#E09A00'), line: color(ch.line, '#2A2A27') } : undefined;
-  return { w, h, bg: color(r.bg, '#FFFFFF'), glow: r.glow === true, chrome, layers };
+  const pt = r.pattern as Record<string, unknown> | undefined;
+  const pattern: Pattern | undefined =
+    pt && (pt.kind === 'grade' || pt.kind === 'pontos' || pt.kind === 'listras') ? { kind: pt.kind, color: color(pt.color, 'rgba(0,0,0,0.08)'), step: num(pt.step, 12, 400, 48) } : undefined;
+  return { w, h, bg: color(r.bg, '#FFFFFF'), glow: r.glow === true, glowColor: typeof r.glowColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.glowColor) ? r.glowColor : undefined, pattern, chrome, layers };
 }

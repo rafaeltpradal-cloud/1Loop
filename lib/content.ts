@@ -6,6 +6,7 @@ import type { CalendarItem, Strategy } from '@/lib/strategy';
 import { formatLong, specialDatesByDay, fromISO } from '@/lib/dates';
 import { kindOf, type FormatKind, type PostContent, type Story } from '@/lib/contentTypes';
 import { sanitizeScene, type Scene } from '@/lib/scene';
+import { sanitizeVisual } from '@/lib/visual';
 
 export * from '@/lib/contentTypes';
 
@@ -191,6 +192,7 @@ Devolva o JSON COMPLETO do conteúdo ajustado, no mesmo formato acima, e mais o 
   const content = normalizeContent(raw, input);
   // Mantém o que é da pessoa: estilo, foto, vídeo e edições visuais (se o texto das imagens não mudou).
   if (current.estilo) content.estilo = current.estilo;
+  if (current.visual) content.visual = current.visual;
   if (current.foto) content.foto = current.foto;
   if (current.video) content.video = current.video;
   const sameVisual =
@@ -308,6 +310,11 @@ export function sanitizeEdit(raw: unknown, current: PostContent, opts: { allowCa
   if (Array.isArray(r.hashtags))
     next.hashtags = r.hashtags.filter((h): h is string => typeof h === 'string').map((h) => h.replace(/^#/, '').replace(/\s+/g, '').slice(0, 40)).filter(Boolean).slice(0, 10);
   if (r.estilo === 'notas' || r.estilo === 'claro' || r.estilo === 'escuro') next.estilo = r.estilo;
+  if (r.estilo === 'marca' && (current.visual || isObj(r.visual))) next.estilo = 'marca';
+  if ('visual' in r) {
+    const v = sanitizeVisual(r.visual);
+    if (v) next.visual = v;
+  }
   if (Array.isArray(r.slides) && current.slides)
     next.slides = r.slides.filter(isObj).map((s) => ({ titulo: str(s.titulo, '', 120), texto: typeof s.texto === 'string' ? s.texto.slice(0, 400) : '' })).slice(0, 10);
   if (isObj(r.imagem) && current.imagem) {

@@ -10,6 +10,8 @@ import { sanitizeAnswers, resolveAnswers } from '@/lib/interview';
 import type { Strategy } from '@/lib/strategy';
 import { itemDate, planStartFrom } from '@/lib/dates';
 import { generatePost, kindOf, POST_COLUMNS, serieNumberFor, type InputImage, type PostContent } from '@/lib/content';
+import { applyVisualToDrafts, ensureBrandVisual, usesBrandVisual } from '@/lib/visualAI';
+import { variantFor } from '@/lib/visual';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -107,10 +109,29 @@ export async function POST(req: Request) {
     const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
     const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
     const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
-    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined, market: access.market });
+    // Visual próprio da marca (criado pela IA a partir da entrevista e das referências), em paralelo com o texto.
+    const firstVisual = !strategy.visual && usesBrandVisual(strategy) && !prev?.estilo;
+    const [{ content, source }, brandVisual] = await Promise.all([
+      generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined, market: access.market }),
+      usesBrandVisual(strategy) && !prev?.estilo
+        ? ensureBrandVisual(admin, { userId: user.id, brandId, strategyId: strategyRow.id as number, strategy, answers }).catch((err) => {
+            console.error('[visual da marca]', err);
+            return null;
+          })
+        : Promise.resolve(strategy.visual ?? null),
+    ]);
     // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
-    if (prev?.estilo) content.estilo = prev.estilo;
-    else if (strategy.modelo?.estilo) content.estilo = strategy.modelo.estilo;
+    if (prev?.estilo) {
+      content.estilo = prev.estilo;
+      if (prev.visual) content.visual = prev.visual;
+    } else if (strategy.modelo?.estilo) content.estilo = strategy.modelo.estilo;
+    else if (brandVisual) {
+      // Cada post sai numa variação da identidade (layout e cor diferentes).
+      content.estilo = 'marca';
+      content.visual = variantFor(brandVisual, index);
+      // Primeira vez: os rascunhos que estavam no bloco de notas padrão passam para o visual da marca.
+      if (firstVisual) await applyVisualToDrafts(admin, user.id, strategyRow.id as number, brandVisual, 'padrao').catch(() => 0);
+    }
     if (prev?.foto) content.foto = prev.foto;
     if (prev?.ajustes) content.ajustes = prev.ajustes;
 

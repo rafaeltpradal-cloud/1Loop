@@ -56,7 +56,7 @@ export async function POST(req: Request) {
     const { strategy, resposta } = await reviseStrategy(current, sanitizeAnswers(interview?.answers ?? {}), plan, pedido, marketOf(user));
     const previous: Strategy = { ...current };
     delete previous.anterior;
-    const kept = applyModelo({ ...strategy, serie: { ...strategy.serie, inicio: current.serie?.inicio }, modelo: current.modelo }, null);
+    const kept = applyModelo({ ...strategy, serie: { ...strategy.serie, inicio: current.serie?.inicio }, modelo: current.modelo, visual: current.visual }, null);
     const next: Strategy = { ...kept, ajustes: used + 1, anterior: previous };
     const { error } = await admin.from('strategies').update({ data: next }).eq('id', row.id).eq('user_id', user.id);
     if (error) throw error;

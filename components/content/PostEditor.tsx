@@ -17,6 +17,7 @@ import { schedulePost, uploadPostAsset } from '@/app/app/conteudos/publish';
 import { AutoPublish, type AutoInfo } from '@/components/content/AutoPublish';
 import { AiAsk, type AiReply } from '@/components/AiAsk';
 import { PostPerformance, type PostPerf } from '@/components/perf/PostPerformance';
+import { nextVariant, variantFor, type Visual } from '@/lib/visual';
 
 const OPEN_URL: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/feed/?shareActive=true',
@@ -68,6 +69,7 @@ export function PostEditor({
   preview = false,
   first = false,
   market = 'br',
+  brandVisual = null,
 }: {
   post: PostRow;
   brand: Brand;
@@ -80,6 +82,8 @@ export function PostEditor({
   defaultTime: string;
   perf?: PostPerf;
   market?: 'br' | 'pt';
+  /** Identidade visual da marca (para o estilo "Seu estilo"). */
+  brandVisual?: Visual | null;
   /** Conta na prévia (sem cartão): sem refazer nem ajustar com a IA. */
   preview?: boolean;
   /** Acabou de sair da entrevista: mostra a comemoração do primeiro post. */
@@ -131,6 +135,41 @@ export function PostEditor({
   }, [specs.length, slide]);
 
   const set = (patch: Partial<PostContent>) => setC((prev) => ({ ...prev, ...patch }));
+
+  // ----- visual próprio (identidade da marca) -----
+  const [visualBusy, setVisualBusy] = useState(false);
+  const [visualAsk, setVisualAsk] = useState(false);
+  const [visualPedido, setVisualPedido] = useState('');
+  const [visualNote, setVisualNote] = useState('');
+  async function newVisual(pedido = '') {
+    setVisualBusy(true);
+    setVisualNote('');
+    try {
+      const res = await fetch('/api/visual', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ acao: 'post', postId: post.id, pedido }) });
+      const data = (await res.json().catch(() => ({}))) as { visual?: Visual; porque?: string; error?: string };
+      if (!res.ok || !data.visual) {
+        flash('error', data.error || 'Não deu para criar o visual agora.');
+        return;
+      }
+      // O servidor já salvou o visual; o resto do que a pessoa editou continua aqui para salvar.
+      setC((prev) => {
+        const next = { ...prev, estilo: 'marca' as const, visual: data.visual };
+        delete next.canvas;
+        return next;
+      });
+      setVisualNote(data.porque || '');
+      setVisualAsk(false);
+      setVisualPedido('');
+    } finally {
+      setVisualBusy(false);
+    }
+  }
+  function chooseStyle(id: PostContent['estilo']) {
+    if (id !== 'marca') return set({ estilo: id });
+    if (c.visual) return set({ estilo: 'marca' });
+    if (brandVisual) return set({ estilo: 'marca', visual: variantFor(brandVisual, post.item_index) });
+    void newVisual();
+  }
 
   function flash(kind: 'ok' | 'error', text: string) {
     setMsg({ kind, text });
@@ -370,13 +409,51 @@ export function PostEditor({
                 </div>
               )}
               <div className="styleRow" role="radiogroup" aria-label="Estilo das imagens">
-                {IMAGE_STYLES.map((s) => (
-                  <button key={s.id} type="button" role="radio" aria-checked={(c.estilo ?? 'notas') === s.id} className={`styleChip ${s.id}`} onClick={() => set({ estilo: s.id })}>
-                    <span className="styleSwatch" aria-hidden="true" />
-                    {s.nome}
-                  </button>
-                ))}
+                {IMAGE_STYLES.map((s) => {
+                  const vv = s.id === 'marca' ? c.visual ?? brandVisual : null;
+                  return (
+                    <button key={s.id} type="button" role="radio" aria-checked={(c.estilo ?? 'notas') === s.id} className={`styleChip ${s.id}`} onClick={() => chooseStyle(s.id)} disabled={visualBusy}>
+                      <span className="styleSwatch" aria-hidden="true" style={vv ? { background: `linear-gradient(135deg, ${vv.cores.fundo} 55%, ${vv.cores.acento} 55%)` } : undefined} />
+                      {s.nome}
+                    </button>
+                  );
+                })}
               </div>
+              {(c.estilo === 'marca' || visualBusy) && (
+                <div className="visualBar">
+                  {visualBusy ? (
+                    <span className="visualInfo"><span className="spinner" style={{ width: 16, height: 16 }} /> Criando um visual a partir das suas referências e do seu perfil…</span>
+                  ) : c.visual ? (
+                    <span className="visualInfo">
+                      <b>{c.visual.nome}</b>
+                      {visualNote ? <span className="muted"> · {visualNote}</span> : null}
+                    </span>
+                  ) : null}
+                  {!visualBusy && c.visual && (
+                    <div className="visualActions">
+                      <button type="button" className="btnGhost btnSm" onClick={() => set({ visual: nextVariant(c.visual!), canvas: undefined })}>Outro layout</button>
+                      <button type="button" className="btnGhost btnSm" onClick={() => setVisualAsk((v) => !v)} disabled={preview}>✨ Novo visual com IA</button>
+                    </div>
+                  )}
+                  {visualAsk && !visualBusy && (
+                    <form
+                      className="visualAsk"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        void newVisual(visualPedido);
+                      }}
+                    >
+                      <input className="input" value={visualPedido} onChange={(e) => setVisualPedido(e.target.value)} placeholder="Opcional: mais minimalista, fundo escuro, cores da minha marca…" maxLength={300} />
+                      <button type="submit" className="btn3d btnSm">Criar</button>
+                    </form>
+                  )}
+                  {!visualBusy && (
+                    <span className="muted" style={{ fontSize: 12.5 }}>
+                      A IA usa suas <Link href="/app/conteudos/fotos">referências de estilo</Link> e a sua entrevista. Quanto mais referências, mais a sua cara.
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="previewActions">
                 {canCanvas ? (
                   <button type="button" className="btnGhost btnSm" onClick={() => setEditing(true)}>Editar no canvas</button>

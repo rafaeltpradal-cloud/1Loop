@@ -1,3 +1,4 @@
+import type { Visual } from '@/lib/visual';
 import { localize, type Market } from '@/lib/market';
 import Anthropic from '@anthropic-ai/sdk';
 import { createJson } from '@/lib/aiJson';
@@ -22,6 +23,8 @@ export type Strategy = {
   serie: { nome: string; descricao: string; inicio?: number };
   /** Modelo fixo da marca: todo post sai neste formato e estilo (ex.: Imagem de série no bloco de notas). */
   modelo?: { formato: string; estilo?: 'notas' | 'claro' | 'escuro'; serie?: string };
+  /** Identidade visual da marca (lib/visual.ts), criada pela IA a partir da entrevista e das referências. */
+  visual?: Visual;
   ritmo: { frequencia: string; horario: string; redes: string[] };
   pilares: Pillar[];
   funil: FunnelStage[];
@@ -320,6 +323,9 @@ export function demoStrategy(answers: Answers, plan: PlanId): Strategy {
 export function applyModelo(next: Strategy, prev?: Strategy | null): Strategy {
   const modelo = next.modelo ?? prev?.modelo;
   const out: Strategy = { ...next, serie: { ...next.serie } };
+  // A identidade visual é da marca: passa de uma estratégia para a próxima.
+  const visual = next.visual ?? prev?.visual;
+  if (visual) out.visual = visual;
   if (modelo) {
     out.modelo = modelo;
     out.calendario = out.calendario.map((c) => ({ ...c, formato: modelo.formato }));

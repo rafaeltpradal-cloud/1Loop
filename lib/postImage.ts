@@ -1,16 +1,19 @@
 // Monta as imagens dos posts como cenas editáveis (lib/scene) e gera os PNGs no navegador.
 
 import { kindOf, type ImageStyle, type PostContent, type Story } from '@/lib/contentTypes';
-import { drawScene, fitSize, layoutText, loadSceneImages, newId, type Layer, type Scene, type TextLayer } from '@/lib/scene';
+import { drawScene, fitSize, layoutText, loadSceneImages, newId, setFontFamilies, type Layer, type Scene, type TextLayer } from '@/lib/scene';
+import { designSpecs } from '@/lib/designImage';
+import type { FontKey } from '@/lib/visual';
 
 export type Brand = { name: string; handle?: string; serie: string };
 /** Data (AAAA-MM-DD) e horário (HH:MM) do post, mostrados na imagem estilo bloco de notas. */
 export type PostMeta = { date?: string; time?: string };
 export type ImageSpec = { key: string; label: string; w: number; h: number; build: (ctx: CanvasRenderingContext2D, font: string) => Scene };
 
+type ClassicStyle = Exclude<ImageStyle, 'marca'>;
 type Palette = { bg: string; ink: string; muted: string; line: string; tagBg: string; tagInk: string; hiStyle: 'box' | 'gradient'; accent: string; glow?: boolean; topBar?: boolean };
 
-const PALETTES: Record<ImageStyle, Palette> = {
+const PALETTES: Record<ClassicStyle, Palette> = {
   notas: { bg: '#121210', ink: '#F2EEE6', muted: '#8A867E', line: '#262624', tagBg: '#E09A00', tagInk: '#121210', hiStyle: 'box', accent: '#E09A00' },
   claro: { bg: '#F7F7F5', ink: '#0E0F12', muted: '#5E646C', line: '#E3E6EA', tagBg: '#0E0F12', tagInk: '#FFFFFF', hiStyle: 'gradient', accent: '#7C4DFF', topBar: true },
   escuro: { bg: '#0E0F12', ink: '#FFFFFF', muted: '#9AA1AA', line: '#26282E', tagBg: '#FFFFFF', tagInk: '#0E0F12', hiStyle: 'gradient', accent: '#A98BFF', glow: true },
@@ -33,7 +36,7 @@ function text(p: Partial<TextLayer> & Pick<TextLayer, 'x' | 'y' | 'w' | 'text'>)
   return { id: newId(), type: 'text', size: 40, weight: 700, color: '#000000', align: 'left', lh: 1.2, ...p };
 }
 
-type Ctx = { ctx: CanvasRenderingContext2D; font: string; W: number; H: number; pad: number; p: Palette; style: ImageStyle };
+type Ctx = { ctx: CanvasRenderingContext2D; font: string; W: number; H: number; pad: number; p: Palette; style: ClassicStyle };
 
 function base(c: Ctx, photo?: number): Layer[] {
   const layers: Layer[] = [];
@@ -145,7 +148,7 @@ function notesQuote(c0: PostContent, brand: Brand, serieNumero: number | undefin
   };
 }
 
-function quoteImage(c0: PostContent, style: ImageStyle, brand: Brand, serieNumero: number | undefined, prova: boolean): ImageSpec {
+function quoteImage(c0: PostContent, style: ClassicStyle, brand: Brand, serieNumero: number | undefined, prova: boolean): ImageSpec {
   const W = 1080;
   const H = 1350;
   return {
@@ -172,7 +175,7 @@ function quoteImage(c0: PostContent, style: ImageStyle, brand: Brand, serieNumer
   };
 }
 
-function carouselImages(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
+function carouselImages(c0: PostContent, style: ClassicStyle, brand: Brand): ImageSpec[] {
   const slides = c0.slides ?? [];
   const W = 1080;
   const H = 1350;
@@ -205,7 +208,7 @@ function carouselImages(c0: PostContent, style: ImageStyle, brand: Brand): Image
   }));
 }
 
-function coverImage(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec {
+function coverImage(c0: PostContent, style: ClassicStyle, brand: Brand): ImageSpec {
   const W = 1080;
   const H = 1920;
   return {
@@ -228,7 +231,7 @@ function coverImage(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec
   };
 }
 
-function storyImages(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpec[] {
+function storyImages(c0: PostContent, style: ClassicStyle, brand: Brand): ImageSpec[] {
   const stories = c0.stories ?? [];
   const W = 1080;
   const H = 1920;
@@ -272,7 +275,7 @@ function storyImages(c0: PostContent, style: ImageStyle, brand: Brand): ImageSpe
   }));
 }
 
-function photoImage(c0: PostContent, style: ImageStyle): ImageSpec {
+function photoImage(c0: PostContent, style: ClassicStyle): ImageSpec {
   const W = 1080;
   const H = 1350;
   return {
@@ -286,8 +289,13 @@ function photoImage(c0: PostContent, style: ImageStyle): ImageSpec {
 
 /** Todas as imagens de um post, na ordem de publicação. */
 export function imagesFor(formato: string, c: PostContent, brand: Brand, serieNumero?: number, meta: PostMeta = {}): ImageSpec[] {
-  const style = c.estilo ?? 'notas';
   const kind = kindOf(formato);
+  // Visual próprio da pessoa (identidade criada pela IA), com variação por post.
+  if (c.estilo === 'marca' && c.visual) {
+    const specs = designSpecs(kind, c, c.visual, brand, serieNumero);
+    if (specs) return specs;
+  }
+  const style: ClassicStyle = c.estilo && c.estilo !== 'marca' ? c.estilo : c.estilo === 'marca' ? 'claro' : 'notas';
   if (kind === 'carrossel') return carouselImages(c, style, brand);
   if (kind === 'imagem') return [style === 'notas' && !c.foto ? notesQuote(c, brand, serieNumero, meta) : quoteImage(c, style, brand, serieNumero, false)];
   if (kind === 'prova') return [quoteImage(c, style, brand, serieNumero, true)];
@@ -303,8 +311,26 @@ export function brandFont(): Promise<string> {
   if (!fontReady) {
     fontReady = (async () => {
       const fam = getComputedStyle(document.body).fontFamily || 'sans-serif';
+      // Fontes extras das identidades visuais: o nome real vem das variáveis CSS (next/font, app/layout.tsx).
+      const root = getComputedStyle(document.documentElement);
+      const extra: Partial<Record<FontKey, string>> = {};
+      const vars: [FontKey, string, string][] = [['serif', '--font-serif', 'serif'], ['grotesk', '--font-grotesk', 'sans-serif'], ['display', '--font-display', 'sans-serif'], ['mono', '--font-mono', 'monospace']];
+      for (const [k, v, fb] of vars) {
+        const val = root.getPropertyValue(v).trim();
+        extra[k] = val ? `${val}, ${fb}` : fb;
+      }
+      setFontFamilies(extra);
       try {
-        await Promise.all([document.fonts.load(`800 80px ${fam}`), document.fonts.load(`600 40px ${fam}`), document.fonts.load(`700 30px ${fam}`)]);
+        await Promise.all([
+          document.fonts.load(`800 80px ${fam}`),
+          document.fonts.load(`600 40px ${fam}`),
+          document.fonts.load(`700 30px ${fam}`),
+          document.fonts.load(`800 80px ${extra.serif}`),
+          document.fonts.load(`700 80px ${extra.grotesk}`),
+          document.fonts.load(`600 40px ${extra.grotesk}`),
+          document.fonts.load(`400 80px ${extra.display}`),
+          document.fonts.load(`700 60px ${extra.mono}`),
+        ]);
       } catch {
         // segue com a fonte que tiver
       }
