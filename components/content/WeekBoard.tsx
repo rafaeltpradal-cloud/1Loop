@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { NetworkIcon } from '@/components/NetworkIcon';
 import { networkByName } from '@/lib/networks';
@@ -42,7 +42,7 @@ export type Quota = { used: number; max: number; extras: number; month: string; 
 /** O que o "Aprovar todos" precisa para desenhar e agendar cada post. */
 export type ApproveCtx = { brandName: string; handles: Record<string, string>; serie: string; serieNumbers: Record<number, number>; defaultTime: string; connected: string[] };
 
-export function WeekBoard({ items, today, planStart, quota, approve }: { items: BoardItem[]; today: string; planStart: string; quota: Quota; approve?: ApproveCtx }) {
+export function WeekBoard({ items, today, planStart, quota, approve, autoStart }: { items: BoardItem[]; today: string; planStart: string; quota: Quota; approve?: ApproveCtx; /** Conta sem nenhum post: gera os 3 primeiros sozinho ao abrir. */ autoStart?: boolean }) {
   const router = useRouter();
   const [posts, setPosts] = useState<Record<number, PostRow | null>>(() => Object.fromEntries(items.map((i) => [i.index, i.post])));
   const [anchor, setAnchor] = useState(() => (today < planStart ? planStart : today));
@@ -143,8 +143,8 @@ export function WeekBoard({ items, today, planStart, quota, approve }: { items: 
     router.refresh();
   }
 
-  async function generateWeek() {
-    const list = missing.map((i) => i.index).slice(0, Math.max(0, left));
+  async function generateWeek(limit = Infinity) {
+    const list = missing.map((i) => i.index).slice(0, Math.max(0, Math.min(left, limit)));
     setQueue({ done: 0, total: list.length });
     for (let k = 0; k < list.length; k++) {
       await generate(list[k]);
@@ -153,6 +153,20 @@ export function WeekBoard({ items, today, planStart, quota, approve }: { items: 
     setQueue(null);
     router.refresh();
   }
+
+  // Primeira visita sem nenhum post: a pessoa já vê os primeiros posts saindo, sem procurar o botão.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoStart || started.current || missing.length === 0 || left <= 0) return;
+    started.current = true;
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem('1loop-autostart') === '1';
+      sessionStorage.setItem('1loop-autostart', '1');
+    } catch {}
+    if (!seen) generateWeek(3);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const busy = running !== null || approving !== null;
   const label = `${formatShort(anchor)} a ${formatShort(end)}`;
@@ -186,7 +200,7 @@ export function WeekBoard({ items, today, planStart, quota, approve }: { items: 
             <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
           )
         ) : missing.length > 0 ? (
-          <button type="button" className="btn3d weekGenerate" onClick={generateWeek} disabled={busy}>
+          <button type="button" className="btn3d weekGenerate" onClick={() => generateWeek()} disabled={busy}>
             {queue
               ? `Gerando ${Math.min(queue.done + 1, queue.total)} de ${queue.total}…`
               : `Gerar ${Math.min(missing.length, left)} ${Math.min(missing.length, left) === 1 ? 'conteúdo' : 'conteúdos'} da semana`}

@@ -101,6 +101,7 @@ export default async function ConteudosPage() {
         items={items}
         today={isoInBrazil()}
         approve={approve}
+        autoStart={!ctx.preview && done === 0}
         planStart={start}
         quota={
           pv
