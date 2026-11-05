@@ -14,6 +14,7 @@ import { isOwner } from '@/lib/owner';
 import { siteUrl } from '@/lib/stripe';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { FREE_TRIAL_LAUNCH, freeTrialEnd } from '@/lib/access';
+import { QUESTIONS } from '@/lib/interview';
 
 const HOUR = 3600000;
 const DAY = 24 * HOUR;
@@ -22,8 +23,8 @@ const GAP = 44 * HOUR;
 /** Lembretes de constância seguidos sem a pessoa publicar: depois disso para até ela voltar. */
 const MAX_NUDGES = 4;
 
-export type NurtureKind = 'ft0' | 'a0' | 't1' | 't2' | 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
-export const NURTURE_KINDS: NurtureKind[] = ['ft0', 'a0', 't1', 't2', 'a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
+export type NurtureKind = 'ft0' | 'a0' | 'i2' | 't1' | 't2' | 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
+export const NURTURE_KINDS: NurtureKind[] = ['ft0', 'a0', 'i2', 't1', 't2', 'a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
 
 /** Situação da conta em relação ao teste grátis e à assinatura. */
 export type Account = { createdAt: number; trialEnd: number; subscribed: boolean };
@@ -53,8 +54,9 @@ export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now 
     if (inTrial && acc.trialEnd - now <= 2.5 * DAY && !sent.t1) return 't1';
     // Acabou há pouco.
     if (!inTrial && now - acc.trialEnd <= 4 * DAY && acc.trialEnd > FREE_TRIAL_LAUNCH && !sent.t2) return 't2';
-    // Conta nova que ainda não chegou ao primeiro post.
-    if (inTrial && !act.posts.length && acc.createdAt >= FREE_TRIAL_LAUNCH && !sent.a0 && now - acc.createdAt >= 20 * HOUR) return 'a0';
+    // Ainda não chegou ao primeiro post (parou na entrevista ou não gerou): dois toques durante o teste.
+    if (inTrial && !act.posts.length && !sent.a0 && now - acc.createdAt >= 20 * HOUR) return 'a0';
+    if (inTrial && !act.posts.length && sent.a0 && !sent.i2 && now - ts(sent.a0) >= 2 * DAY) return 'i2';
   }
   if (!act.posts.length) return null;
 
@@ -79,7 +81,7 @@ export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now 
   return null;
 }
 
-export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: string; unsubscribeUrl: string; act: { posts: number; published: number; firstDraftId: number | null; daysQuiet: number; nudge: number }; trial?: { endLabel: string; daysLeft: number } }) {
+export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: string; unsubscribeUrl: string; act: { posts: number; published: number; firstDraftId: number | null; daysQuiet: number; nudge: number; answered?: number; total?: number; interviewDone?: boolean }; trial?: { endLabel: string; daysLeft: number } }) {
   const n = esc(p.firstName);
   const app = p.appUrl;
   const draftUrl = p.act.firstDraftId ? `${app}/app/conteudos/${p.act.firstDraftId}` : `${app}/app/conteudos`;
@@ -90,26 +92,72 @@ export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: 
   let cta = { label: '', href: '' };
 
   const endLabel = p.trial?.endLabel ?? '';
+  // Em que etapa a pessoa parou (para quem ainda não tem post).
+  const total = p.act.total ?? QUESTIONS.length;
+  const answered = Math.min(p.act.answered ?? 0, total);
+  const left = Math.max(1, total - answered);
+  const interviewDone = !!p.act.interviewDone;
+  const interviewLine = interviewDone
+    ? 'Sua entrevista já está feita. Abra “Conteúdos” e os seus 3 primeiros posts começam a sair sozinhos, na sua voz.'
+    : answered > 0
+      ? `Você parou a entrevista em ${answered} de ${total} perguntas. Faltam ${left}, e logo depois saem a sua estratégia e os primeiros posts, escritos na sua voz.`
+      : `Comece pela entrevista: são perguntas rápidas sobre você, o seu público e onde quer chegar. Logo depois saem a sua estratégia e os primeiros posts, escritos na sua voz.`;
+  const interviewCta = interviewDone
+    ? { label: 'Ver meus primeiros posts', href: `${app}/app/conteudos` }
+    : { label: answered > 0 ? 'Continuar a entrevista' : 'Começar a entrevista', href: `${app}/app/entrevista` };
+  const ownWay = 'Prefere começar do seu jeito? Em “Crie seu post” você coloca uma foto sua, conta o que quer dizer e a IA escreve a legenda.';
   switch (p.kind) {
-    case 'ft0':
-      subject = `${p.firstName}, liberamos 7 dias do 1loop completo para você (sem cartão)`;
+    case 'ft0': {
       title = 'Tudo liberado por 7 dias, sem cartão';
-      paragraphs = [
-        `${n}, mudamos o teste do 1loop: agora são <b>7 dias com tudo liberado</b>, sem precisar colocar cartão. E a sua conta já está nele, até <b>${esc(endLabel)}</b>.`,
-        'Dá para conectar o seu LinkedIn e deixar o 1loop publicar sozinho, gerar os posts da semana, ajustar com a IA e criar posts do zero com a sua foto.',
-        'Minha sugestão: conecte o LinkedIn e agende 2 posts para esta semana. Leva 5 minutos e você já começa a aparecer.',
-      ];
-      cta = { label: 'Entrar e conectar meu LinkedIn', href: `${app}/app/redes` };
+      const intro = `${n}, mudamos o teste do 1loop: agora são <b>7 dias com tudo liberado</b>, sem precisar colocar cartão. E a sua conta já está nele, até <b>${esc(endLabel)}</b>.`;
+      if (!p.act.posts) {
+        // Parou na entrevista ou antes do primeiro post.
+        subject = !interviewDone && answered > 0
+          ? `${p.firstName}, faltam ${left} perguntas para a sua estratégia ficar pronta (7 dias liberados)`
+          : `${p.firstName}, liberamos 7 dias do 1loop completo para você (sem cartão)`;
+        paragraphs = [intro, interviewLine, ownWay];
+        cta = interviewCta;
+      } else if (!p.act.published) {
+        // Gerou e não publicou: antes publicar pedia cartão, agora não.
+        subject = `${p.firstName}, ${p.act.posts > 1 ? 'seus posts já podem' : 'seu post já pode'} ir para o LinkedIn (7 dias liberados, sem cartão)`;
+        paragraphs = [
+          intro,
+          `${p.act.posts > 1 ? `Seus ${p.act.posts} posts estão prontos` : 'Seu post está pronto'}, na sua voz. Antes, publicar pedia cartão; agora não: conecte o LinkedIn e o 1loop publica por você no horário certo, ou copie e cole.`,
+          'Você está a um passo de começar a aparecer para quem importa: cliente, gestor e recrutador olham o seu LinkedIn antes de responder.',
+        ];
+        cta = { label: 'Publicar meu primeiro post', href: draftUrl };
+      } else {
+        subject = `${p.firstName}, liberamos 7 dias do 1loop completo para você (sem cartão)`;
+        paragraphs = [
+          intro,
+          'Dá para conectar o seu LinkedIn e deixar o 1loop publicar sozinho, gerar os posts da semana, ajustar com a IA e criar posts do zero com a sua foto.',
+          'Minha sugestão: conecte o LinkedIn e agende 2 posts para esta semana. Leva 5 minutos e você mantém a constância.',
+        ];
+        cta = { label: 'Entrar e conectar meu LinkedIn', href: `${app}/app/redes` };
+      }
       break;
+    }
     case 'a0':
       subject = `${p.firstName}, seu primeiro post está a 5 minutos`;
       title = 'Falta pouco para o seu primeiro post';
       paragraphs = [
-        `${n}, você criou a conta, mas ainda não chegou ao primeiro post. Termine a entrevista (são perguntas rápidas) e a sua estratégia e os posts da semana saem na sua voz.`,
-        'Prefere começar do seu jeito? Em “Crie seu post” você coloca uma foto sua, conta o que quer dizer e a IA escreve a legenda.',
+        `${n}, você criou a conta, mas ainda não chegou ao primeiro post. ${interviewLine}`,
+        ownWay,
         `Seu teste grátis, com tudo liberado e sem cartão, vai até ${esc(endLabel)}.`,
       ];
-      cta = { label: 'Continuar de onde parei', href: `${app}/app` };
+      cta = interviewCta;
+      break;
+    case 'i2':
+      subject = interviewDone
+        ? `${p.firstName}, seus primeiros posts estão a 1 clique`
+        : `${p.firstName}, 10 minutos agora e o seu LinkedIn trabalha a semana toda`;
+      title = 'Você não precisa ter ideia de post';
+      paragraphs = [
+        `${n}, quem mais trava no LinkedIn não é por falta de assunto: é por falta de tempo para transformar o que sabe em post. É isso que o 1loop faz por você.`,
+        `${interviewLine} Depois, toda semana, os posts chegam prontos e você só aprova.`,
+        `Seu teste com tudo liberado, sem cartão, vai até ${esc(endLabel)}.`,
+      ];
+      cta = interviewCta;
       break;
     case 't1':
       subject = `${p.firstName}, seu teste grátis acaba ${p.trial && p.trial.daysLeft <= 1 ? 'amanhã' : `em ${p.trial?.daysLeft ?? 2} dias`}`;
@@ -238,12 +286,19 @@ const internal = (email: string) => {
 
 export async function runNurture({ dryRun = false, now = new Date() } = {}) {
   const admin = createAdminClient();
-  const [users, { data: posts }, { data: subs }, { data: profiles }] = await Promise.all([
+  const [users, { data: posts }, { data: subs }, { data: profiles }, { data: interviews }] = await Promise.all([
     allUsers(admin),
     admin.from('posts').select('id, user_id, status, source, created_at, published_at').neq('source', 'demo').limit(50000),
     admin.from('subscriptions').select('user_id, status, created_at').order('created_at', { ascending: false }),
     admin.from('profiles').select('id, name'),
+    admin.from('interviews').select('user_id, answers, completed_at, updated_at').order('updated_at', { ascending: false }),
   ]);
+  const interviewOf = new Map<string, { answered: number; done: boolean }>();
+  for (const i of (interviews ?? []) as { user_id: string; answers: Record<string, unknown> | null; completed_at: string | null }[]) {
+    if (interviewOf.has(i.user_id)) continue;
+    const answered = i.answers ? Object.keys(i.answers).filter((k) => QUESTIONS.some((q) => q.id === k)).length : 0;
+    interviewOf.set(i.user_id, { answered, done: !!i.completed_at });
+  }
   const byUser = new Map<string, PostLite[]>();
   for (const p of (posts ?? []) as (PostLite & { user_id: string })[]) byUser.set(p.user_id, [...(byUser.get(p.user_id) ?? []), p]);
   const subStatus = new Map<string, string>();
@@ -280,6 +335,9 @@ export async function runNurture({ dryRun = false, now = new Date() } = {}) {
         firstDraftId: act.firstDraftId,
         daysQuiet: lastPubIso ? Math.floor((now.getTime() - ts(lastPubIso)) / DAY) : 0,
         nudge: nudges,
+        answered: interviewOf.get(u.id)?.answered ?? 0,
+        total: QUESTIONS.length,
+        interviewDone: interviewOf.get(u.id)?.done ?? false,
       },
       trial: {
         endLabel: end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }),
@@ -305,13 +363,23 @@ export async function runNurture({ dryRun = false, now = new Date() } = {}) {
 }
 
 /** Exemplo para o dono conferir o texto. */
-export function sampleNurture(kind: NurtureKind) {
+export function sampleNurture(kind: NurtureKind, etapa?: string) {
+  const noPosts = etapa === 'entrevista' || etapa === 'gerar';
   return nurtureEmail({
     kind,
     firstName: 'Rafael',
     appUrl: siteUrl(),
     unsubscribeUrl: `${siteUrl()}/api/emails/sair?u=exemplo&t=exemplo`,
-    act: { posts: 2, published: kind === 'b3' ? 5 : kind.startsWith('b') ? 2 : 0, firstDraftId: null, daysQuiet: 9, nudge: 0 },
+    act: {
+      posts: noPosts || kind === 'a0' || kind === 'i2' ? 0 : 2,
+      published: kind === 'b3' ? 5 : kind.startsWith('b') || etapa === 'constancia' ? 2 : 0,
+      firstDraftId: null,
+      daysQuiet: 9,
+      nudge: 0,
+      answered: etapa === 'gerar' ? QUESTIONS.length : 6,
+      total: QUESTIONS.length,
+      interviewDone: etapa === 'gerar',
+    },
     trial: { endLabel: '12/11', daysLeft: 2 },
   });
 }

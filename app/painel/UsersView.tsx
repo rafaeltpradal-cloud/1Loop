@@ -30,6 +30,7 @@ const EMAIL: Record<string, string> = {
   of1: 'Desculpas + 10% no 1º mês',
   ft0: 'Aviso: 7 dias liberados sem cartão',
   a0: 'Engajamento: primeiro post a 5 minutos',
+  i2: 'Engajamento: 2º lembrete (sem post ainda)',
   t1: 'Teste: acaba em 2 dias',
   t2: 'Teste: acabou',
   a1: 'Engajamento: a um passo de virar referência',

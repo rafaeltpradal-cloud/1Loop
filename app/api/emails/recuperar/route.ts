@@ -29,7 +29,7 @@ export async function GET(req: Request) {
     if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
     const isNurture = !!amostra && NURTURE_KINDS.includes(amostra as unknown as NurtureKind);
     if (amostra && (KINDS.includes(amostra) || isNurture)) {
-      const mail = isNurture ? sampleNurture(amostra as unknown as NurtureKind) : sampleRecovery(amostra, url.searchParams.get('etapa') === 'parou' ? 'parou' : 'pronto');
+      const mail = isNurture ? sampleNurture(amostra as unknown as NurtureKind, url.searchParams.get('etapa') ?? undefined) : sampleRecovery(amostra, url.searchParams.get('etapa') === 'parou' ? 'parou' : 'pronto');
       // &enviar=1 manda o exemplo para o e-mail do dono (para testar os botões na caixa de entrada).
       if (url.searchParams.get('enviar') === '1' && user.email) {
         const ok = await sendEmail({ to: user.email, ...mail, subject: `[Teste] ${mail.subject}` });
