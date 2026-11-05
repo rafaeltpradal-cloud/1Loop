@@ -92,9 +92,9 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
               <SignUpForm plan="pro" compact cta="Ver meu primeiro post grátis →" />
             </div>
             <div className="vpMicro">
-              <span>Sem cartão</span>
+              <span>7 dias grátis, sem cartão</span>
               <span>Pronto em 2 minutos</span>
-              <span>Feito para o LinkedIn</span>
+              <span>Publica sozinho no LinkedIn</span>
             </div>
           </div>
 
