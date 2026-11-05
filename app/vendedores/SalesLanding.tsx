@@ -141,7 +141,7 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
           <h2 className="vpH2">Dúvidas comuns</h2>
           <details>
             <summary>Preciso colocar cartão para testar?</summary>
-            <p>Não. Você cria a conta, responde as perguntas e vê sua estratégia e seu primeiro post sem cartão. Só se gostar você escolhe um plano e ganha 7 dias grátis com publicação automática.</p>
+            <p>Não. São 7 dias grátis com tudo liberado, inclusive conectar o LinkedIn e publicar no automático, sem cartão. Só se gostar você escolhe um plano.</p>
           </details>
           <details>
             <summary>Vai parecer escrito por robô?</summary>

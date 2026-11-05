@@ -60,7 +60,7 @@ export function CommentHelper({ preview }: { preview: boolean }) {
         </div>
         {error && (
           <div role="alert" className="formError">
-            {error.msg} {error.paywall && <Link href="/app/assinar">Começar 7 dias grátis</Link>}
+            {error.msg} {error.paywall && <Link href="/app/assinar">Assinar e continuar</Link>}
           </div>
         )}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>

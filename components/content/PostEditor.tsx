@@ -306,11 +306,11 @@ export function PostEditor({
             <b>Seu primeiro post está pronto.</b>
             <span>
               {preview
-                ? ' Feito a partir da sua entrevista e da sua estratégia. Gostou? Começando os 7 dias grátis você publica direto no LinkedIn e libera o mês inteiro.'
+                ? ' Feito a partir da sua entrevista e da sua estratégia. Seu teste acabou: assine para publicar direto no LinkedIn e liberar o mês inteiro.'
                 : ' Feito a partir da sua entrevista e da sua estratégia. Revise, ajuste com a IA se quiser e publique hoje.'}
             </span>
           </div>
-          {preview ? <a className="btn3d btnSm" href="/app/assinar">Começar 7 dias grátis</a> : <a className="btnGhost btnSm" href="/app/conteudos">Ver a semana</a>}
+          {preview ? <a className="btn3d btnSm" href="/app/assinar">Assinar e continuar</a> : <a className="btnGhost btnSm" href="/app/conteudos">Ver a semana</a>}
         </div>
       )}
       {first && (
@@ -321,9 +321,9 @@ export function PostEditor({
       )}
       {preview && status !== 'publicado' && (
         <div className="card previewLock">
-          <b>Peça à IA e refazer</b>
-          <span className="muted">Ajustar o post com a IA e refazer liberam no teste de 7 dias. Na prévia, você pode editar o texto à mão.</span>
-          <a className="linkBtn" href="/app/assinar">Liberar agora →</a>
+          <b>Seu teste grátis acabou</b>
+          <span className="muted">Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.</span>
+          <a className="linkBtn" href="/app/assinar">Assinar →</a>
         </div>
       )}
       {!preview && status !== 'publicado' && status !== 'publicando' && (

@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Contador do menu: rascunhos que ainda vão sair (de hoje em diante).
   const today = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 10);
   const drafts = (postRows ?? []).filter((p) => p.status === 'rascunho' && (p.date as string) >= today).length;
-  const firstSteps = [ctx.hasStrategy, statuses.length > 0, (conns ?? 0) > 0, statuses.includes('publicado')];
+  const firstSteps = [ctx.hasStrategy, statuses.length > 0, (conns ?? 0) > 0, statuses.includes('publicado') || statuses.includes('agendado')];
   const stepsDone = firstSteps.filter(Boolean).length;
   const switcher = (compact?: boolean) => <BrandSwitcher current={ctx.brandId} brands={ctx.brands} limit={ctx.brandLimit} compact={compact} />;
 
@@ -40,9 +40,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Link>
         {multi && switcher(true)}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Link href={ctx.preview ? '/app/assinar' : '/app/plano'} className="mobilePlan">
-            <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
-            {ctx.preview ? 'Prévia' : plan.name}
+          <Link href={ctx.preview || ctx.freeTrial ? '/app/assinar' : '/app/plano'} className="mobilePlan">
+            <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' || ctx.freeTrial ? 'var(--violet)' : 'var(--teal)' }} />
+            {ctx.preview ? 'Assinar' : ctx.freeTrial ? `Teste · ${ctx.trialDaysLeft ?? 0}d` : plan.name}
           </Link>
           <Link href="/app/configuracoes" className="mobileIconBtn" aria-label="Configurações">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -68,19 +68,21 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppNav group="main" counts={{ drafts }} />
         <div className="sidebarFoot">
           <AppNav group="account" />
-          <Link href={ctx.preview ? '/app/assinar' : '/app/plano'} className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
+          <Link href={ctx.preview || ctx.freeTrial ? '/app/assinar' : '/app/plano'} className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14 }}>
-              <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' ? 'var(--violet)' : 'var(--teal)' }} />
-              {ctx.preview ? 'Prévia grátis' : `Plano ${plan.name}`}
+              <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' || ctx.freeTrial ? 'var(--violet)' : 'var(--teal)' }} />
+              {ctx.preview ? 'Teste encerrado' : ctx.freeTrial ? 'Teste grátis' : `Plano ${plan.name}`}
               <span className="planCardGo" aria-hidden="true">›</span>
             </span>
             <span className="muted" style={{ fontSize: 12 }}>
               {ctx.preview
-                ? 'Começar 7 dias grátis'
+                ? 'Assinar para continuar'
+                : ctx.freeTrial
+                  ? `${ctx.trialDaysLeft ?? 0} ${ctx.trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'} · sem cartão`
                 : ctx.trialDaysLeft !== null
                   ? `Teste: ${ctx.trialDaysLeft} ${ctx.trialDaysLeft === 1 ? 'dia restante' : 'dias restantes'}`
                   : plan.rhythm}
-              {!ctx.preview && ctx.plan !== 'multi' ? ' · fazer upgrade' : ''}
+              {!ctx.preview && !ctx.freeTrial && ctx.plan !== 'multi' ? ' · fazer upgrade' : ''}
             </span>
             {ctx.trialDaysLeft !== null && (
               <span className="navProgressBar" aria-hidden="true"><span style={{ width: `${Math.max(4, ((7 - Math.min(7, ctx.trialDaysLeft)) / 7) * 100)}%` }} /></span>
@@ -106,6 +108,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       </aside>
       <main className="content">
         {ctx.preview && <PreviewBar userId={ctx.userId} plan={ctx.plan} />}
+        {ctx.freeTrial && (ctx.trialDaysLeft ?? 9) <= 2 && (
+          <div className="previewBar" role="note">
+            <div className="previewBarText">
+              <b>{ctx.trialDaysLeft === 0 ? 'Seu teste grátis acaba hoje' : `Seu teste grátis acaba em ${ctx.trialDaysLeft} ${ctx.trialDaysLeft === 1 ? 'dia' : 'dias'}`}</b>
+              <span>Assine para não parar de aparecer: seus posts agendados continuam saindo.</span>
+            </div>
+            <Link className="btn3d btnSm" href="/app/assinar">Assinar</Link>
+          </div>
+        )}
         {children}
       </main>
       <AppNav group="tabs" counts={{ drafts }} />

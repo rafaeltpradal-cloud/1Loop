@@ -181,7 +181,7 @@ export function WeekBoard({ items, today, planStart, quota, approve }: { items: 
         )}
         {missing.length > 0 && left <= 0 ? (
           quota.preview ? (
-            <Link className="btn3d btnSm" href="/app/assinar">Liberar o mês inteiro · 7 dias grátis</Link>
+            <Link className="btn3d btnSm" href="/app/assinar">Assinar e liberar o mês</Link>
           ) : (
             <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
           )
@@ -202,7 +202,7 @@ export function WeekBoard({ items, today, planStart, quota, approve }: { items: 
           <>
             <span>Posts da prévia: <b>{baseUsed}</b> de {quota.max}</span>
             {left <= 0 ? (
-              <span>Gostou? <Link href="/app/assinar">Comece seus 7 dias grátis</Link> e gere o mês inteiro.</span>
+              <span>Seu teste acabou. <Link href="/app/assinar">Assine</Link> e volte a gerar o mês inteiro.</span>
             ) : (
               <span>Gere {left === 1 ? 'mais 1 post' : `mais ${left} posts`} grátis, sem cartão.</span>
             )}

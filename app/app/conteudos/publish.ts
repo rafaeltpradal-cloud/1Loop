@@ -43,7 +43,7 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
   const { user } = await currentUser();
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
   // Publicar faz parte do teste: na prévia (sem cartão) não agenda nem publica.
-  if ((await accessFor(user)).mode !== 'paid') return { ok: false, error: 'Para publicar, comece seus 7 dias grátis.' };
+  if ((await accessFor(user)).mode !== 'paid') return { ok: false, error: 'Seu teste grátis acabou. Assine para publicar.' };
   const at = new Date(when);
   if (!Number.isInteger(postId) || Number.isNaN(at.getTime())) return { ok: false, error: 'Data inválida.' };
   if (at.getTime() < Date.now() - 5 * 60 * 1000) return { ok: false, error: 'Escolha um horário no futuro.' };

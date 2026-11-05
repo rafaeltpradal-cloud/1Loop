@@ -1,6 +1,8 @@
-// Acesso ao app: assinantes (teste ou pago) usam tudo; quem acabou de criar a conta e
-// ainda não colocou o cartão entra na PRÉVIA: entrevista, 1 estratégia e até 3 posts,
-// para ver o resultado antes de começar os 7 dias de teste.
+// Acesso ao app:
+// - Conta nova: 7 dias de TESTE GRÁTIS SEM CARTÃO com tudo liberado (publicar, conectar redes, IA).
+//   Contas criadas antes do lançamento ganham os 7 dias a partir do lançamento.
+// - Assinantes (teste do Stripe ou pago) usam tudo.
+// - Acabou o teste grátis sem assinar: PRÉVIA (vê e edita o que já tem; para gerar e publicar, assina).
 import type { User } from '@supabase/supabase-js';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { isPlanId, type PlanId } from '@/lib/plans';
@@ -8,6 +10,16 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 // 2 estratégias: a do começo rápido e a refeita depois da entrevista completa.
 export const PREVIEW = { strategies: 2, posts: 3 };
+
+const DAY = 86400000;
+export const FREE_TRIAL_DAYS = 7;
+/** Início do teste grátis sem cartão (antes disso o teste de 7 dias pedia cartão). */
+export const FREE_TRIAL_LAUNCH = Date.parse('2026-11-05T00:00:00-03:00');
+
+/** Fim do teste grátis sem cartão desta conta. */
+export function freeTrialEnd(user: Pick<User, 'created_at'>): Date {
+  return new Date(Math.max(Date.parse(user.created_at), FREE_TRIAL_LAUNCH) + FREE_TRIAL_DAYS * DAY);
+}
 
 export type Access =
   | { mode: 'paid'; plan: PlanId; status: string; trialEnd: string | null }
@@ -21,7 +33,7 @@ export function chosenPlan(user: Pick<User, 'user_metadata'>): PlanId {
 }
 
 /** Prévia só para quem nunca teve assinatura. Quem cancelou ou teve o teste encerrado volta para os planos. */
-export async function accessFor(user: Pick<User, 'id' | 'user_metadata'>): Promise<Access> {
+export async function accessFor(user: Pick<User, 'id' | 'user_metadata' | 'created_at'>): Promise<Access> {
   const { data } = await createAdminClient()
     .from('subscriptions')
     .select('plan, status, trial_end')
@@ -29,13 +41,18 @@ export async function accessFor(user: Pick<User, 'id' | 'user_metadata'>): Promi
     .order('created_at', { ascending: false })
     .limit(1);
   const sub = data?.[0];
-  if (!sub) return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null };
+  if (!sub) {
+    // Teste grátis sem cartão: status próprio ('trial_free') para a interface e os e-mails saberem.
+    const end = freeTrialEnd(user);
+    if (end.getTime() > Date.now()) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_free', trialEnd: end.toISOString() };
+    return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null };
+  }
   const plan: PlanId = isPlanId(sub.plan) ? sub.plan : 'pro';
   const mode = ACTIVE_STATUSES.includes(sub.status) ? 'paid' : 'blocked';
   return { mode, plan, status: sub.status as string, trialEnd: (sub.trial_end as string | null) ?? null };
 }
 
-export const PREVIEW_LOCKED_MSG = 'Ajustar com a IA faz parte do teste. Comece seus 7 dias grátis para liberar.';
+export const PREVIEW_LOCKED_MSG = 'Seu teste grátis acabou. Assine para voltar a ajustar com a IA.';
 
 /** Quantos posts e estratégias a conta já gerou (a prévia conta tudo, de todas as marcas). */
 export async function previewUsage(userId: string) {

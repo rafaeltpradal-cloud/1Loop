@@ -64,9 +64,9 @@ export async function POST(req: Request) {
   // Prévia (sem cartão): até 3 posts novos, sem refazer.
   if (access.mode === 'preview') {
     if (existing)
-      return NextResponse.json({ error: 'Na prévia não dá para refazer posts. Comece seus 7 dias grátis para refazer e ajustar com a IA.', limit: true, paywall: true }, { status: 429 });
+      return NextResponse.json({ error: 'Seu teste grátis acabou. Assine para refazer e ajustar posts com a IA.', limit: true, paywall: true }, { status: 429 });
     if ((await previewUsage(user.id)).posts >= PREVIEW.posts)
-      return NextResponse.json({ error: `Você já viu os ${PREVIEW.posts} posts da prévia. Comece seus 7 dias grátis para gerar o mês inteiro.`, limit: true, paywall: true }, { status: 429 });
+      return NextResponse.json({ error: 'Seu teste grátis acabou. Assine para gerar os próximos posts.', limit: true, paywall: true }, { status: 429 });
   }
   if (existing && existing.versions >= maxVersions(plan))
     return NextResponse.json(

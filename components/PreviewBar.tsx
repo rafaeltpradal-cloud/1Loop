@@ -1,23 +1,23 @@
 import Link from 'next/link';
-import { PREVIEW, previewUsage } from '@/lib/access';
+import { previewUsage } from '@/lib/access';
 import { foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
 
-// Faixa fixa no topo do app enquanto a conta está na prévia (sem cartão).
+// Faixa no topo do app quando o teste grátis acabou e a pessoa ainda não assinou.
 export async function PreviewBar({ userId, plan }: { userId: string; plan: PlanId }) {
   const used = await previewUsage(userId);
-  const posts = Math.min(PREVIEW.posts, used.posts);
+  const posts = used.posts;
   const founders = foundersOpen() && priceNow(plan) !== PLANS[plan].priceFull;
   return (
     <div className="previewBar" role="note">
       <div className="previewBarText">
-        <b>Prévia grátis</b>
+        <b>Seu teste grátis acabou</b>
         <span>
-          {used.strategies ? 'Estratégia pronta' : 'Estratégia depois da entrevista'} · {posts} de {PREVIEW.posts} posts
+          {posts > 0 ? `${used.strategies ? 'Sua estratégia e ' : ''}${posts === 1 ? 'seu post continuam' : `seus ${posts} posts continuam`} aqui.` : 'Tudo o que você fez continua aqui.'} Assine para voltar a gerar e publicar
           {founders ? ` · Founders ${brl(priceNow(plan))}/mês ${foundersCountdown()}` : ''}
         </span>
       </div>
-      <Link className="btn3d btnSm" href="/app/assinar">Começar 7 dias grátis</Link>
+      <Link className="btn3d btnSm" href="/app/assinar">Assinar e continuar</Link>
     </div>
   );
 }

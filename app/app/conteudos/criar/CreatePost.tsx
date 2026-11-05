@@ -18,7 +18,7 @@ const PEDIDOS_VAZIO = ['Um aprendizado da semana', 'Uma conquista recente', 'Uma
 
 type Err = { msg: string; paywall?: boolean } | null;
 
-export function CreatePost({ slots, media, preview, author }: { slots: Slot[]; media: MediaItem[]; preview: boolean; author: { name: string; avatar: string | null } }) {
+export function CreatePost({ slots, media, author }: { slots: Slot[]; media: MediaItem[]; preview: boolean; author: { name: string; avatar: string | null } }) {
   const router = useRouter();
   const [foto, setFoto] = useState<number | null>(null);
   const [texto, setTexto] = useState('');
@@ -172,12 +172,12 @@ export function CreatePost({ slots, media, preview, author }: { slots: Slot[]; m
           )}
           {error && (
             <div role="alert" className="formError">
-              {error.msg} {error.paywall && <Link href="/app/assinar">Começar 7 dias grátis</Link>}
+              {error.msg} {error.paywall && <Link href="/app/assinar">Assinar e continuar</Link>}
             </div>
           )}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" className="btn3d" onClick={save} disabled={saving || slot === null || texto.trim().length < 10}>{saving ? 'Salvando…' : 'Salvar post'}</button>
-            <span className="muted" style={{ fontSize: 13 }}>{preview ? 'Conta como um dos posts da prévia.' : 'Conta como um post do mês. Depois você revisa, agenda ou publica.'}</span>
+            <span className="muted" style={{ fontSize: 13 }}>Conta como um post do mês. Depois você revisa, agenda ou publica.</span>
           </div>
         </section>
       </div>

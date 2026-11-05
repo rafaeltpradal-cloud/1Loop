@@ -4,8 +4,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { stripe, siteUrl } from '@/lib/stripe';
 import { foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
 import { adContextFromRequest } from '@/lib/conversions';
+import { freeTrialEnd } from '@/lib/access';
 
-// GET /checkout?plano=pro → cria a sessão de pagamento do Stripe (com 7 dias de teste) e redireciona.
+// GET /checkout?plano=pro → cria a sessão de pagamento do Stripe e redireciona.
+// O teste de 7 dias é grátis e sem cartão (lib/access.ts): quem assina durante o teste só é cobrado quando ele acaba;
+// quem assina depois é cobrado na hora.
 // Os dados do cartão são digitados na página do Stripe, nunca passam pelo nosso servidor.
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -51,6 +54,9 @@ export async function GET(request: Request) {
   }
 
   const coupon = foundersCoupon(plan);
+  // O Stripe exige o fim do teste pelo menos 48 h à frente; com menos que isso, a cobrança é na hora.
+  const ftEnd = freeTrialEnd(user).getTime();
+  const trial = ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};
   const session = await stripe().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
@@ -58,7 +64,7 @@ export async function GET(request: Request) {
     line_items: [{ price, quantity: 1 }],
     payment_method_collection: 'always',
     subscription_data: {
-      trial_period_days: 7,
+      ...trial,
       // trk_*: ids de anúncio (cookies _fbp/_fbc/_ga, IP e navegador) para atribuir a cobrança ao anúncio.
       metadata: { user_id: user.id, plan, ...adContextFromRequest(request) },
     },

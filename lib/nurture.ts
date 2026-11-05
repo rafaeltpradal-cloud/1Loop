@@ -1,4 +1,6 @@
 // Engajamento da base: e-mails pelo que a pessoa FEZ no app (não pelo tempo de conta).
+// Teste grátis sem cartão (lib/access.ts): ft0 avisa quem já tinha conta que liberamos 7 dias com tudo;
+// a0 puxa quem não chegou ao primeiro post; t1 avisa 2 dias antes do fim do teste; t2 quando acaba.
 // Trilha A: gerou post e ainda não publicou nenhum → "você está a um passo de virar referência".
 // Trilha B: já publicou → constância (primeiro post no ar, lembrete quando para de aparecer, marco de 5 posts).
 // Roda junto com a recuperação (1x por dia, 10h de Brasília), no máximo 1 e-mail por pessoa a cada ~2 dias
@@ -11,6 +13,7 @@ import { unsubscribeUrl } from '@/lib/recovery';
 import { isOwner } from '@/lib/owner';
 import { siteUrl } from '@/lib/stripe';
 import { ACTIVE_STATUSES } from '@/lib/billing';
+import { FREE_TRIAL_LAUNCH, freeTrialEnd } from '@/lib/access';
 
 const HOUR = 3600000;
 const DAY = 24 * HOUR;
@@ -19,8 +22,11 @@ const GAP = 44 * HOUR;
 /** Lembretes de constância seguidos sem a pessoa publicar: depois disso para até ela voltar. */
 const MAX_NUDGES = 4;
 
-export type NurtureKind = 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
-export const NURTURE_KINDS: NurtureKind[] = ['a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
+export type NurtureKind = 'ft0' | 'a0' | 't1' | 't2' | 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
+export const NURTURE_KINDS: NurtureKind[] = ['ft0', 'a0', 't1', 't2', 'a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
+
+/** Situação da conta em relação ao teste grátis e à assinatura. */
+export type Account = { createdAt: number; trialEnd: number; subscribed: boolean };
 
 type Sent = Partial<Record<NurtureKind, string>> & { nudges?: number; lastPub?: string };
 type PostLite = { id: number; status: string; created_at: string; published_at: string | null };
@@ -37,9 +43,20 @@ function activityOf(posts: PostLite[]): Activity {
 const ts = (v?: string | null) => (v ? Date.parse(v) : 0);
 
 /** Qual e-mail de engajamento cabe hoje (no máximo um). */
-export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now = Date.now()): NurtureKind | null {
-  if (!act.posts.length) return null;
+export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now = Date.now(), acc?: Account): NurtureKind | null {
   if (now - lastAnyEmail < GAP) return null;
+  if (acc && !acc.subscribed) {
+    const inTrial = acc.trialEnd > now;
+    // Quem já tinha conta antes do teste sem cartão: avisa uma vez que está tudo liberado.
+    if (inTrial && acc.createdAt < FREE_TRIAL_LAUNCH && !sent.ft0) return 'ft0';
+    // Faltam 2 dias ou menos (e ainda dá para assinar sem perder os dias que faltam: o aviso sai com folga).
+    if (inTrial && acc.trialEnd - now <= 2.5 * DAY && !sent.t1) return 't1';
+    // Acabou há pouco.
+    if (!inTrial && now - acc.trialEnd <= 4 * DAY && acc.trialEnd > FREE_TRIAL_LAUNCH && !sent.t2) return 't2';
+    // Conta nova que ainda não chegou ao primeiro post.
+    if (inTrial && !act.posts.length && acc.createdAt >= FREE_TRIAL_LAUNCH && !sent.a0 && now - acc.createdAt >= 20 * HOUR) return 'a0';
+  }
+  if (!act.posts.length) return null;
 
   // Trilha A: tem post e nunca publicou (nem agendou).
   if (!act.published.length) {
@@ -62,7 +79,7 @@ export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now 
   return null;
 }
 
-export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: string; unsubscribeUrl: string; act: { posts: number; published: number; firstDraftId: number | null; daysQuiet: number; nudge: number } }) {
+export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: string; unsubscribeUrl: string; act: { posts: number; published: number; firstDraftId: number | null; daysQuiet: number; nudge: number }; trial?: { endLabel: string; daysLeft: number } }) {
   const n = esc(p.firstName);
   const app = p.appUrl;
   const draftUrl = p.act.firstDraftId ? `${app}/app/conteudos/${p.act.firstDraftId}` : `${app}/app/conteudos`;
@@ -72,7 +89,52 @@ export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: 
   let paragraphs: string[] = [];
   let cta = { label: '', href: '' };
 
+  const endLabel = p.trial?.endLabel ?? '';
   switch (p.kind) {
+    case 'ft0':
+      subject = `${p.firstName}, liberamos 7 dias do 1loop completo para você (sem cartão)`;
+      title = 'Tudo liberado por 7 dias, sem cartão';
+      paragraphs = [
+        `${n}, mudamos o teste do 1loop: agora são <b>7 dias com tudo liberado</b>, sem precisar colocar cartão. E a sua conta já está nele, até <b>${esc(endLabel)}</b>.`,
+        'Dá para conectar o seu LinkedIn e deixar o 1loop publicar sozinho, gerar os posts da semana, ajustar com a IA e criar posts do zero com a sua foto.',
+        'Minha sugestão: conecte o LinkedIn e agende 2 posts para esta semana. Leva 5 minutos e você já começa a aparecer.',
+      ];
+      cta = { label: 'Entrar e conectar meu LinkedIn', href: `${app}/app/redes` };
+      break;
+    case 'a0':
+      subject = `${p.firstName}, seu primeiro post está a 5 minutos`;
+      title = 'Falta pouco para o seu primeiro post';
+      paragraphs = [
+        `${n}, você criou a conta, mas ainda não chegou ao primeiro post. Termine a entrevista (são perguntas rápidas) e a sua estratégia e os posts da semana saem na sua voz.`,
+        'Prefere começar do seu jeito? Em “Crie seu post” você coloca uma foto sua, conta o que quer dizer e a IA escreve a legenda.',
+        `Seu teste grátis, com tudo liberado e sem cartão, vai até ${esc(endLabel)}.`,
+      ];
+      cta = { label: 'Continuar de onde parei', href: `${app}/app` };
+      break;
+    case 't1':
+      subject = `${p.firstName}, seu teste grátis acaba ${p.trial && p.trial.daysLeft <= 1 ? 'amanhã' : `em ${p.trial?.daysLeft ?? 2} dias`}`;
+      title = `Seu teste vai até ${endLabel}`;
+      paragraphs = [
+        p.act.published
+          ? `${n}, você já publicou ${p.act.published} ${p.act.published === 1 ? 'post' : 'posts'} com o 1loop. Para não perder o ritmo (e o que já está agendado), garanta o seu plano.`
+          : p.act.posts
+            ? `${n}, você tem ${p.act.posts} ${p.act.posts === 1 ? 'post pronto' : 'posts prontos'} no 1loop. Publique pelo menos um antes do fim do teste: é aí que o LinkedIn começa a trabalhar por você.`
+            : `${n}, ainda dá tempo de ver o 1loop funcionando: termine a entrevista e o primeiro post sai em minutos.`,
+        `Se assinar agora, a primeira cobrança só acontece em ${esc(endLabel)}, no fim do teste. Cancele quando quiser.`,
+      ];
+      cta = { label: 'Garantir meu plano', href: `${app}/app/assinar` };
+      break;
+    case 't2':
+      subject = `${p.firstName}, seu teste acabou (seus posts continuam aqui)`;
+      title = 'Seu teste grátis acabou';
+      paragraphs = [
+        p.act.posts
+          ? `${n}, a sua estratégia e ${p.act.posts === 1 ? 'o seu post continuam' : `os seus ${p.act.posts} posts continuam`} no 1loop. Assinando, você volta a gerar a semana, ajustar com a IA e publicar sozinho no horário certo.`
+          : `${n}, a sua conta continua no 1loop. Assinando, você recebe a estratégia do mês e os posts na sua voz, publicados no horário certo.`,
+        'Quem aparece toda semana é quem o mercado lembra primeiro. Cancele quando quiser.',
+      ];
+      cta = { label: 'Assinar e voltar a publicar', href: `${app}/app/assinar` };
+      break;
     case 'a1':
       subject = `${p.firstName}, você está a um passo de virar referência no LinkedIn`;
       title = 'Você está a um passo de virar referência';
@@ -195,11 +257,13 @@ export async function runNurture({ dryRun = false, now = new Date() } = {}) {
     // Segunda é dia do resumo semanal de quem assina: não manda outro por cima.
     if (monday && ACTIVE_STATUSES.includes(subStatus.get(u.id) ?? '')) continue;
     const act = activityOf(byUser.get(u.id) ?? []);
-    if (!act.posts.length) continue;
     const sent = ((u.app_metadata?.nurture as Sent | undefined) ?? {}) as Sent;
     const recovery = (u.app_metadata?.recovery as Record<string, string> | undefined) ?? {};
     const lastAny = Math.max(0, ...[...Object.values(recovery), ...NURTURE_KINDS.map((k) => sent[k])].map((v) => (typeof v === 'string' ? ts(v) : 0)));
-    const kind = dueNurture(act, sent, lastAny, now.getTime());
+    const subStat = subStatus.get(u.id);
+    const end = freeTrialEnd(u);
+    const acc: Account = { createdAt: Date.parse(u.created_at), trialEnd: end.getTime(), subscribed: !!subStat };
+    const kind = dueNurture(act, sent, lastAny, now.getTime(), acc);
     if (!kind) continue;
 
     const lastPubIso = act.published.at(-1)?.published_at ?? null;
@@ -216,6 +280,10 @@ export async function runNurture({ dryRun = false, now = new Date() } = {}) {
         firstDraftId: act.firstDraftId,
         daysQuiet: lastPubIso ? Math.floor((now.getTime() - ts(lastPubIso)) / DAY) : 0,
         nudge: nudges,
+      },
+      trial: {
+        endLabel: end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' }),
+        daysLeft: Math.max(0, Math.ceil((end.getTime() - now.getTime()) / DAY)),
       },
     });
     if (dryRun) {
@@ -244,5 +312,6 @@ export function sampleNurture(kind: NurtureKind) {
     appUrl: siteUrl(),
     unsubscribeUrl: `${siteUrl()}/api/emails/sair?u=exemplo&t=exemplo`,
     act: { posts: 2, published: kind === 'b3' ? 5 : kind.startsWith('b') ? 2 : 0, firstDraftId: null, daysQuiet: 9, nudge: 0 },
+    trial: { endLabel: '12/11', daysLeft: 2 },
   });
 }

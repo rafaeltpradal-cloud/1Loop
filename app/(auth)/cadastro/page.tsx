@@ -31,7 +31,7 @@ export default async function CadastroPage({ searchParams }: { searchParams: Pro
             <li><b>Estratégia de 30 dias</b><span>Pilares, calendário e o que postar em cada dia.</span></li>
             <li><b>Seu primeiro post pronto</b><span>Texto e imagem na sua voz, para o LinkedIn.</span></li>
           </ol>
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>Gostou? Aí sim você escolhe um plano e testa 7 dias grátis com publicação automática.</p>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>São 7 dias com tudo liberado, inclusive a publicação automática no LinkedIn. Sem cartão.</p>
         </aside>
       </div>
     </PublicShell>

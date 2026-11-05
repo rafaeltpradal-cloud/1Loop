@@ -12,7 +12,7 @@ const label = (iso: string) => fromISO(iso).toLocaleDateString('pt-BR', { weekda
 
 const IDEIAS = ['Uma objeção que ouvi esta semana e como respondi', 'Um erro que cometi com um cliente e o que aprendi', 'Uma venda que quase perdi', 'Uma pergunta que meu cliente sempre faz'];
 
-export function StoryPost({ slots, preview }: { slots: Slot[]; preview: boolean }) {
+export function StoryPost({ slots }: { slots: Slot[]; preview: boolean }) {
   const router = useRouter();
   const [text, setText] = useState('');
   const [slot, setSlot] = useState<number | null>(slots[0]?.index ?? null);
@@ -82,12 +82,12 @@ export function StoryPost({ slots, preview }: { slots: Slot[]; preview: boolean 
       </fieldset>
       {error && (
         <div role="alert" className="formError">
-          {error.msg} {error.paywall && <Link href="/app/assinar">Começar 7 dias grátis</Link>}
+          {error.msg} {error.paywall && <Link href="/app/assinar">Assinar e continuar</Link>}
         </div>
       )}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="submit" className="btn3d" disabled={busy || text.trim().length < 20 || slot === null}>{busy ? 'Escrevendo seu post…' : 'Transformar em post'}</button>
-        <span className="muted" style={{ fontSize: 13 }}>{preview ? 'Conta como um dos posts da prévia.' : 'Conta como um post do mês.'}</span>
+        <span className="muted" style={{ fontSize: 13 }}>Conta como um post do mês.</span>
       </div>
     </form>
   );

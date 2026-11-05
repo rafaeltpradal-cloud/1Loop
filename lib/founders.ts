@@ -33,13 +33,14 @@ export function foundersCountdown(now = new Date()) {
 export function landingWithFounders(html: string, now = new Date()) {
   // Os botões principais levam direto ao cadastro (sem cartão): a pessoa vê a estratégia antes de escolher plano.
   let out = html
-    .replace('Planos Basic e Pro · 7 dias para testar · cancele quando quiser', 'Sem cartão: sua estratégia e seu primeiro post prontos em 5 minutos')
+    .replace('Planos Basic e Pro · 7 dias para testar · cancele quando quiser', '7 dias grátis com tudo liberado · sem cartão · estratégia e primeiro post em 5 minutos')
     .replace(/href="#planos"><span>Testar<span class="hideXs"> 7 dias<\/span><\/span><\/a>/, 'href="/cadastro?plano=pro" data-cta="topo"><span>Começar grátis</span></a>')
     .replace('<a class="btn3d" href="#planos">Testar 7 dias grátis</a>', '<a class="btn3d" href="/cadastro?plano=pro" data-cta="hero">Ver minha estratégia grátis</a>')
     .replace(/<a class="btn3d" href="#planos"( style="[^"]*")>Começar meus 7 dias<\/a>/, '<a class="btn3d" href="/cadastro?plano=pro" data-cta="final"$1>Ver minha estratégia grátis</a>')
     // Cards de plano: deixar claro que o cadastro não pede cartão (o cartão só entra no fim da prévia).
     .replace(/(href="\/cadastro\?plano=(basic|pro|multi)")>Testar 7 dias o (Basic|Pro|Multi)</g, '$1 data-cta="plano-$2">Começar grátis no $3<')
-    .replace('<span>✓ 7 dias para testar</span>', '<span>✓ Comece sem cartão</span><span>✓ 7 dias para testar</span>');
+    .replace('<span>✓ 7 dias para testar</span>', '<span>✓ 7 dias grátis, sem cartão</span><span>✓ Publicação automática já no teste</span>')
+    .replace('Sim. Você testa por 7 dias e pode cancelar a qualquer momento.', 'Sim. Você testa 7 dias grátis com tudo liberado, sem colocar cartão. Se assinar, cancela quando quiser.');
   if (foundersOpen(now)) {
     return out.replace(
       'Preço Founders para os <span class="grad">1.000 primeiros</span> · travado para sempre',

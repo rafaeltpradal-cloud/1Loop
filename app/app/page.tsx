@@ -5,7 +5,6 @@ import { LoopMark } from '@/components/Logo';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { TrackOnce } from '@/components/Tracking';
 import { priceNow } from '@/lib/founders';
-import { PREVIEW } from '@/lib/access';
 import type { Strategy } from '@/lib/strategy';
 import { addDays, fromISO, isoInBrazil, itemDate, planStartFrom } from '@/lib/dates';
 import { NetworkIcon } from '@/components/NetworkIcon';
@@ -61,22 +60,17 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
   // Quem já tem estratégia terminou a entrevista (mesmo que ela tenha ficado salva em outra versão).
   const interviewDone = !!interview?.completed_at || ctx.hasStrategy;
 
-  const steps = ctx.preview
-    ? [
-        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
-        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
-        { n: 3, title: 'Seus primeiros posts', desc: `Até ${PREVIEW.posts} posts prontos, grátis e sem cartão.`, done: posts.length >= PREVIEW.posts, href: '/app/conteudos', cta: posts.length > 0 ? 'Ver meus posts' : 'Gerar meus posts' },
-        { n: 4, title: 'Começar 7 dias grátis', desc: 'Publicação automática e o mês inteiro de posts.', done: false, href: '/app/assinar', cta: 'Começar 7 dias grátis' },
-      ]
-    : [
-        { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que vende e para quem.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
-        { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
-        { n: 3, title: 'Conectar redes', desc: 'Conecte LinkedIn ou Instagram para publicar sozinho.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar redes' },
-        { n: 4, title: 'Primeiro post publicado', desc: 'Aprove um post e ele sai no horário certo.', done: posts.some((p) => p.status === 'publicado'), href: '/app/conteudos', cta: posts.length ? 'Aprovar e agendar' : 'Gerar conteúdos' },
-      ];
+  // Primeiros passos: o objetivo é o primeiro post PUBLICADO (é aí que a pessoa sente o valor e cria o hábito).
+  const steps = [
+    { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que faz e onde quer chegar.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
+    { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
+    { n: 3, title: 'Primeiro post pronto', desc: 'Gere um post da sua semana ou crie o seu, com a sua foto.', done: posts.length > 0, href: posts.length ? '/app/conteudos' : '/app/conteudos/criar', cta: posts.length ? 'Ver meus posts' : 'Criar meu primeiro post' },
+    { n: 4, title: 'Conectar o LinkedIn', desc: 'Um clique. O 1loop publica sozinho no horário certo.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar o LinkedIn' },
+    { n: 5, title: 'Primeiro post no ar', desc: 'Aprove e agende, ou publique e toque em “Publiquei”.', done: posts.some((p) => p.status === 'publicado' || p.status === 'agendado'), href: '/app/conteudos', cta: 'Publicar meu post' },
+  ];
   const doneCount = steps.filter((s) => s.done).length;
   const nextStep = steps.find((s) => !s.done) ?? null;
-  const onboarding = ctx.preview || !!nextStep;
+  const onboarding = !!nextStep;
 
   // ---------- Sua semana (segunda a domingo, horário de Brasília) ----------
   const today = isoInBrazil();
@@ -105,7 +99,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
       {assinou === '1' && !ctx.preview && (
         <>
           <TrackOnce id={`trial-${ctx.userId}`} ga="start_trial" meta="StartTrial" params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }} />
-          <div className="formNote rise" role="status">Pronto, {ctx.firstName}! Seu teste de 7 dias começou. Conecte o LinkedIn e o primeiro post já pode sair hoje.</div>
+          <div className="formNote rise" role="status">Pronto, {ctx.firstName}! Sua assinatura está confirmada. Seus posts continuam saindo no horário certo.</div>
         </>
       )}
       <div className="pageHead rise">

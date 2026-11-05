@@ -76,7 +76,7 @@ Você precisa ter 18 anos ou mais e dar informações verdadeiras. A conta é pe
 
 ### 3. Teste grátis, assinatura e cobrança
 
-- O teste dura 7 dias e exige um cartão. Se você não cancelar antes do fim do teste, a assinatura começa e o primeiro mês é cobrado na data informada no cadastro e por e-mail.
+- O teste dura 7 dias a partir do cadastro e não exige cartão. Ao fim do teste, para continuar gerando e publicando, você escolhe um plano e informa o cartão. Se assinar durante o teste, a primeira cobrança acontece só no fim dele, na data informada na assinatura e por e-mail.
 - A assinatura é mensal e renova automaticamente, cobrada no mesmo cartão, até você cancelar.
 - Você pode cancelar a qualquer momento em Configurações. O acesso continua até o fim do período já pago; não há reembolso proporcional, salvo o previsto em lei.
 - Preço Founders: quem assina com o preço Founders mantém esse valor enquanto a assinatura continuar ativa, sem interrupção. Se cancelar e voltar depois, vale o preço da época.

@@ -38,7 +38,7 @@ export function recoveryEmail(p: RecoveryInput) {
       : 'Sua estratégia já está pronta.';
   const price = `<b>${brl(p.plan.now)}/mês</b> em vez de ${brl(p.plan.full)}, travado para sempre`;
   const when = p.founders.daysLeft <= 0 ? 'hoje' : p.founders.daysLeft === 1 ? 'amanhã' : `faltam ${p.founders.daysLeft} dias`;
-  const offer = founders ? `Preço Founders até ${p.founders.label} (${when}): ${price}.` : '7 dias grátis, cancele em 1 clique.';
+  const offer = founders ? `Preço Founders até ${p.founders.label} (${when}): ${price}.` : 'Sem fidelidade: cancele em 1 clique.';
 
   let subject = '';
   let title = '';
@@ -59,7 +59,7 @@ export function recoveryEmail(p: RecoveryInput) {
         `${n}, perfil parado é só mais um vendedor. Perfil ativo chega com credibilidade, e a venda fica mais fácil.`,
         offer,
       ];
-      cta = { label: founders ? 'Garantir meu preço Founders' : 'Começar 7 dias grátis', href: startUrl };
+      cta = { label: founders ? 'Garantir meu preço Founders' : 'Assinar o 1loop', href: startUrl };
       break;
     case 'pv3':
       subject = `${p.firstName}, autoridade se constrói toda semana`;
@@ -68,18 +68,18 @@ export function recoveryEmail(p: RecoveryInput) {
         `${n}, você responde a entrevista uma vez. Todo mês recebe estratégia e posts na sua voz, publicados no melhor horário.`,
         `${where} ${offer}`,
       ];
-      cta = { label: p.stage.interviewDone ? 'Começar 7 dias grátis' : 'Terminar minha entrevista', href: p.stage.interviewDone ? startUrl : continueUrl };
+      cta = { label: p.stage.interviewDone ? 'Assinar o 1loop' : 'Terminar minha entrevista', href: p.stage.interviewDone ? startUrl : continueUrl };
       break;
     case 'fd1':
       subject = `Amanhã acaba: ${brl(p.plan.now)}/mês no ${p.plan.name}`;
       title = 'O preço Founders acaba amanhã';
-      paragraphs = [`${n}, comece sua autoridade no LinkedIn pelo menor preço que o 1loop vai ter: ${price}.`, 'E os 7 dias de teste continuam grátis.'];
+      paragraphs = [`${n}, garanta sua autoridade no LinkedIn pelo menor preço que o 1loop vai ter: ${price}.`, 'Sem fidelidade: cancele quando quiser.'];
       cta = { label: 'Garantir meu preço Founders', href: startUrl };
       break;
     case 'fd2':
       subject = `Últimas horas, ${p.firstName}: o Founders acaba hoje às 23h59`;
       title = 'Acaba hoje às 23h59';
-      paragraphs = [`${n}, à meia-noite o preço Founders deixa de existir: ${price}.`, 'Os 7 dias continuam grátis. Você só paga se ficar.'];
+      paragraphs = [`${n}, à meia-noite o preço Founders deixa de existir: ${price}.`, 'Sem fidelidade: cancele quando quiser.'];
       cta = { label: `Garantir ${brl(p.plan.now)}/mês`, href: startUrl };
       break;
     case 'of1': {
@@ -99,7 +99,7 @@ export function recoveryEmail(p: RecoveryInput) {
       title = `O preço Founders vale até ${p.founders.label}`;
       paragraphs = [
         `${n}, você chegou a ver que o preço Founders acabava em 31/10. Como você já começou no 1loop, quis te avisar pessoalmente: ele foi prorrogado até ${p.founders.label}.`,
-        `${where} ${price}. Os 7 dias de teste continuam grátis e você cancela em 1 clique.`,
+        `${where} ${price}. Sem fidelidade: você cancela em 1 clique.`,
       ];
       cta = { label: 'Garantir meu preço Founders', href: startUrl };
       break;

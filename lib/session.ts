@@ -25,6 +25,7 @@ export type AppContext = {
   brandLimit: number;
   /** Conta nova sem cartão: entrevista, estratégia e até 3 posts (ver lib/access.ts). */
   preview: boolean;
+  freeTrial: boolean;
 };
 
 // Carrega usuário, perfil e assinatura uma vez por requisição.
@@ -55,7 +56,7 @@ const loadContext = cache(async (): Promise<AppContext> => {
   const { count } = await supabase.from('strategies').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('brand_id', brand.id);
 
   const trialDaysLeft =
-    sub.status === 'trialing' && sub.trial_end ? Math.max(0, Math.ceil((new Date(sub.trial_end).getTime() - Date.now()) / 86400000)) : null;
+    (sub.status === 'trialing' || sub.status === 'trial_free') && sub.trial_end ? Math.max(0, Math.ceil((new Date(sub.trial_end).getTime() - Date.now()) / 86400000)) : null;
   const name = (profile?.name as string | undefined) || user.email?.split('@')[0] || '';
 
   return {
@@ -73,6 +74,8 @@ const loadContext = cache(async (): Promise<AppContext> => {
     brands: brands.map((b, i) => ({ id: b.id, name: b.name, locked: i >= limit })),
     brandLimit: limit,
     preview: access.mode === 'preview',
+    /** Teste grátis sem cartão em andamento (ainda não assinou). */
+    freeTrial: access.status === 'trial_free',
   };
 });
 

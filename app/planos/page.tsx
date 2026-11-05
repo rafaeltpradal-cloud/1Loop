@@ -18,7 +18,7 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
           <h1 style={{ fontSize: 'clamp(30px, 4vw, 46px)', lineHeight: 1.08, letterSpacing: '-1.2px' }}>
             <span className="graphite">Teste 7 dias.</span> <span className="grad">Cancele quando quiser.</span>
           </h1>
-          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. Você cria a conta, responde a entrevista e vê sua estratégia e seus primeiros posts antes de colocar o cartão.</p>
+          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. Você testa 7 dias com tudo liberado, inclusive a publicação automática, sem colocar cartão.</p>
         </div>
         {foundersOpen() && (
           <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Preço Founders até {FOUNDERS_ENDS_LABEL}, {foundersCountdown()}. Quem entra agora mantém o preço enquanto for assinante.</div>
