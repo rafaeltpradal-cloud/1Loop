@@ -92,6 +92,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
       auto={auto}
       defaultTime={strategy?.ritmo.horario ?? '07:30'}
       preview={ctx.preview}
+      market={ctx.market}
       first={primeiro === '1'}
     />
   );

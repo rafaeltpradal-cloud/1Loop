@@ -1,3 +1,4 @@
+import { currencyOf, EUR_PRICES } from '@/lib/market';
 import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
 import { QUICK_DEFAULTS, QUICK_QUESTIONS, sanitizeAnswers } from '@/lib/interview';
@@ -29,12 +30,20 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
           params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }}
         />
       )}
-      {bemvindo && ctx.preview && (
-        <TrackOnce id={`signup-${ctx.userId}`} ga="sign_up" meta="CompleteRegistration" params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }} />
+      {/* Cadastro novo (prévia, teste grátis sem cartão ou post de teste de Portugal): conversão de cadastro dos anúncios. */}
+      {bemvindo && assinou !== '1' && (ctx.preview || ctx.freeTrial || ctx.testPost) && (
+        <TrackOnce
+          id={`signup-${ctx.userId}`}
+          ga="sign_up"
+          meta="CompleteRegistration"
+          params={{ plan: ctx.plan, value: ctx.market === 'pt' ? EUR_PRICES[ctx.plan] : priceNow(ctx.plan), currency: currencyOf(ctx.market) }}
+        />
       )}
       {bemvindo && (
         <div className="formNote rise" role="status">
-          {ctx.preview
+          {ctx.testPost
+            ? `Conta criada, ${ctx.firstName}! São só 5 perguntas: em 2 minutos sai a sua estratégia de 30 dias e o seu post de teste, que já pode publicar no LinkedIn.`
+            : ctx.preview || ctx.freeTrial
             ? `Conta criada, ${ctx.firstName}! São só 5 perguntas: em 2 minutos sai sua estratégia de 30 dias e seu primeiro post.`
             : `Pronto, ${ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.`}
         </div>

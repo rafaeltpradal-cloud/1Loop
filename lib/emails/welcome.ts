@@ -1,4 +1,5 @@
 import { brl } from '@/lib/plans';
+import { frame, strip } from '@/lib/emails/trial';
 
 // E-mail de boas-vindas / confirmação de assinatura. HTML simples, com estilos inline (compatível com Gmail e Outlook).
 
@@ -65,4 +66,22 @@ Para trocar de plano, atualizar o cartão ou cancelar: ${p.appUrl}/app/configura
 Dúvidas? É só responder este e-mail.`;
 
   return { subject, html, text };
+}
+
+/** Portugal (assinatura em euro): confirmação em português de Portugal, sem teste de 7 dias. */
+export function welcomeEmailPt(p: { firstName: string; planName: string; rhythm: string; amount: number; appUrl: string }) {
+  const price = `${p.amount.toLocaleString('pt-PT', { minimumFractionDigits: Number.isInteger(p.amount) ? 0 : 2, maximumFractionDigits: 2 })} €`;
+  const subject = `A sua assinatura do 1loop creators ${p.planName} está ativa`;
+  const paragraphs = [
+    `${esc(p.firstName)}, a sua assinatura do plano <b>${esc(p.planName)}</b> (${esc(p.rhythm.toLowerCase())}) está confirmada: <b>${price}/mês</b>.`,
+    'A partir de agora, os seus posts saem todas as semanas na sua voz, prontos para aprovar e publicados automaticamente no LinkedIn, no horário certo.',
+    'Próximo passo: gere os posts desta semana e agende-os. Leva 5 minutos.',
+  ];
+  const cta = { label: 'Ver os meus posts', href: `${p.appUrl}/app/conteudos` };
+  const footer = `Para mudar de plano, atualizar o cartão ou cancelar, aceda a <a href="${p.appUrl}/app/configuracoes" style="color:#2A2D33">Configurações</a>. Dúvidas? Basta responder a este e-mail.`;
+  return {
+    subject,
+    html: frame({ appUrl: p.appUrl, title: 'Assinatura ativa. Bem-vindo!', paragraphs, cta, footer }),
+    text: `Assinatura ativa. Bem-vindo!\n\n${paragraphs.map(strip).join('\n\n')}\n\n${cta.label}: ${cta.href}`,
+  };
 }

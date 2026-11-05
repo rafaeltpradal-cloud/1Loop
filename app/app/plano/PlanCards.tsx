@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { PLANS, PLAN_ORDER, brl, type PlanId } from '@/lib/plans';
 import { changePlan } from './actions';
 import { priceNow } from '@/lib/founders';
+import { EUR_PRICES, fmtPrice } from '@/lib/market';
 
-export function PlanCards({ current, trialing }: { current: PlanId; trialing: boolean }) {
+export function PlanCards({ current, trialing, market = 'br' }: { current: PlanId; trialing: boolean; market?: 'br' | 'pt' }) {
+  const pt = market === 'pt';
+  const fmt = (n: number) => (pt ? fmtPrice(n, 'pt') : brl(n));
   const router = useRouter();
   const [confirming, setConfirming] = useState<PlanId | null>(null);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -31,8 +34,8 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
           const p = PLANS[id];
           const isCurrent = id === current;
           const upgrade = i > curIdx;
-          const price = priceNow(id);
-          const founders = price !== p.priceFull;
+          const price = pt ? EUR_PRICES[id] : priceNow(id);
+          const founders = !pt && price !== p.priceFull;
           return (
             <div
               key={id}
@@ -52,8 +55,8 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
               </div>
               <div className="muted" style={{ fontSize: 13 }}>{p.tagline}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                {founders && <s style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted-2)' }}>{brl(p.priceFull)}</s>}
-                <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>{brl(price)}</span>
+                {founders && <s style={{ fontSize: 14, fontWeight: 600, color: 'var(--muted-2)' }}>{fmt(p.priceFull)}</s>}
+                <span style={{ fontSize: 28, fontWeight: 700, letterSpacing: '-0.5px' }}>{fmt(price)}</span>
                 <span className="muted" style={{ fontSize: 13, fontWeight: 600 }}>/mês</span>
               </div>
               <div className="panel" style={{ padding: '10px 14px', fontWeight: 700, fontSize: 13 }}>{p.rhythm}</div>
@@ -68,7 +71,7 @@ export function PlanCards({ current, trialing }: { current: PlanId; trialing: bo
               ) : confirming === id ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--ink-2)' }}>
-                    Mudar para o {p.name} por {brl(price)}/mês?{' '}
+                    Mudar para o {p.name} por {fmt(price)}/mês?{' '}
                     {trialing ? 'Você continua no período de teste, sem cobrança agora.' : 'A diferença é ajustada de forma proporcional na próxima fatura.'}
                   </p>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

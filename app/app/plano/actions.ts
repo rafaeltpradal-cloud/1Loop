@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { stripe } from '@/lib/stripe';
 import { ACTIVE_STATUSES, syncSubscription } from '@/lib/billing';
 import { PLANS, foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
+import { eurPriceId, marketOf } from '@/lib/market';
 
 // Troca o plano da assinatura atual. Mantém o teste de 7 dias, aplica o Founders do novo plano
 // (se ainda houver) e ajusta a diferença de forma proporcional na próxima fatura.
@@ -28,7 +29,9 @@ export async function changePlan(target: string): Promise<{ ok: boolean; message
     if (!row || !ACTIVE_STATUSES.includes(row.status)) return { ok: false, message: 'Não encontramos uma assinatura ativa.' };
     if (row.plan === target) return { ok: true, message: `Você já está no ${PLANS[target].name}.` };
 
-    const price = stripePriceId(target);
+    // Assinatura em euro (Portugal) troca para o preço em euro do novo plano, sem Founders.
+    const pt = marketOf(user) === 'pt';
+    const price = pt ? eurPriceId(target) : stripePriceId(target);
     if (!price) return { ok: false, message: 'Esse plano ainda não está disponível.' };
 
     const sub = await stripe().subscriptions.retrieve(row.stripe_subscription_id as string);
@@ -38,7 +41,7 @@ export async function changePlan(target: string): Promise<{ ok: boolean; message
       proration_behavior: 'create_prorations',
       metadata: { ...sub.metadata, plan: target },
     };
-    const coupon = foundersCoupon(target);
+    const coupon = pt ? undefined : foundersCoupon(target);
     try {
       await stripe().subscriptions.update(sub.id, { ...base, discounts: coupon ? [{ coupon }] : '' });
     } catch (err) {

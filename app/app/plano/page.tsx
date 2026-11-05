@@ -80,9 +80,11 @@ export default async function PlanoPage({ searchParams }: { searchParams: Promis
 
       <section aria-labelledby="h-planos" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <h2 id="h-planos" style={{ fontSize: 18 }}>Mudar de plano</h2>
-        <PlanCards current={ctx.plan} trialing={ctx.status === 'trialing'} />
+        <PlanCards current={ctx.plan} trialing={ctx.status === 'trialing'} market={ctx.market} />
       </section>
 
+      {/* Pacote extra é cobrado em reais: por enquanto só no Brasil. */}
+      {ctx.market !== 'pt' && (
       <section aria-labelledby="h-pacote" className="card" style={{ padding: 26, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '999 1 380px', minWidth: 0 }}>
           <div className="eyebrow">Pacote extra</div>
@@ -96,6 +98,7 @@ export default async function PlanoPage({ searchParams }: { searchParams: Promis
           <button className="btnGhost" type="submit">Comprar pacote</button>
         </form>
       </section>
+      )}
 
       <div className="card" style={{ padding: '14px 20px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between', boxShadow: 'none' }}>
         <span className="muted" style={{ fontSize: 14 }}>Cartão, faturas e cancelamento ficam no portal seguro do Stripe.</span>

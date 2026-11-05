@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { accessFor } from '@/lib/access';
+import { accessFor, lockedMsg } from '@/lib/access';
 import { currentBrandId } from '@/lib/brands';
 import { resolveAnswers, sanitizeAnswers } from '@/lib/interview';
 import { isoInBrazil } from '@/lib/dates';
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const n = used.day === today ? used.n ?? 0 : 0;
   if (n >= max)
     return NextResponse.json(
-      { error: access.mode === 'preview' ? `Seu teste grátis acabou. Assine para continuar comentando com a IA.` : `Você usou os ${max} de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
+      { error: access.mode === 'preview' ? lockedMsg(access.market, 'Seu teste grátis acabou. Assine para continuar comentando com a IA.') : `Você usou os ${max} de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
       { status: 429 },
     );
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const brandId = await currentBrandId(user.id, admin);
   const { data: interview } = await admin.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle();
   try {
-    const comentarios = await suggestComments({ post, objetivo, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})) });
+    const comentarios = await suggestComments({ post, objetivo, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})), market: access.market });
     if (!comentarios.length) throw new Error('vazio');
     const { data: fresh } = await admin.auth.admin.getUserById(user.id);
     await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...(fresh?.user?.app_metadata ?? user.app_metadata), comments: { day: today, n: n + 1 } } });

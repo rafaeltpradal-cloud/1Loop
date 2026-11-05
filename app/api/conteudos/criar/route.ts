@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { accessFor, PREVIEW, previewUsage } from '@/lib/access';
+import { accessFor, lockedMsg, previewPostLimit, previewUsage, PT_TEST_USED_MSG } from '@/lib/access';
+import { PT_TEST_POSTS } from '@/lib/market';
 import { currentBrandId } from '@/lib/brands';
 import { getUsage } from '@/lib/usage';
 import { resolveAnswers, sanitizeAnswers } from '@/lib/interview';
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     const n = used.day === today ? used.n ?? 0 : 0;
     if (n >= max)
       return NextResponse.json(
-        { error: access.mode === 'preview' ? `Seu teste grátis acabou. Assine para continuar usando a IA.` : `Você usou os ${max} pedidos de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
+        { error: access.mode === 'preview' ? lockedMsg(access.market, 'Seu teste grátis acabou. Assine para continuar usando a IA.') : `Você usou os ${max} pedidos de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
         { status: 429 },
       );
     const { data: interview } = await admin.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle();
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
         if (data) foto = { data: Buffer.from(await data.arrayBuffer()).toString('base64'), mediaType: data.type === 'image/png' || data.type === 'image/webp' ? data.type : 'image/jpeg' };
       }
       const rede = typeof body.rede === 'string' ? body.rede : 'LinkedIn';
-      const draft = await writeDraft({ pedido, texto, rede, foto, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})) });
+      const draft = await writeDraft({ pedido, texto, rede, foto, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})), market: access.market });
       const { data: fresh } = await admin.auth.admin.getUserById(user.id);
       await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...(fresh?.user?.app_metadata ?? user.app_metadata), criar: { day: today, n: n + 1 } } });
       return NextResponse.json({ ...draft, restantes: max - n - 1 });
@@ -92,8 +93,10 @@ export async function POST(req: Request) {
   const { data: existing } = await admin.from('posts').select('id').eq('strategy_id', strategyRow.id).eq('item_index', index).eq('user_id', user.id).maybeSingle();
   if (existing) return NextResponse.json({ error: 'Este dia já tem post. Escolha um dia ainda vazio.' }, { status: 400 });
 
-  if (access.mode === 'preview' && (await previewUsage(user.id)).posts >= PREVIEW.posts)
-    return NextResponse.json({ error: 'Seu teste grátis acabou. Assine para voltar a criar posts.', limit: true, paywall: true }, { status: 429 });
+  if (access.mode === 'preview' && (await previewUsage(user.id)).posts >= previewPostLimit(access.market))
+    return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para voltar a criar posts.'), limit: true, paywall: true }, { status: 429 });
+  if (access.status === 'trial_post' && (await previewUsage(user.id)).posts >= PT_TEST_POSTS)
+    return NextResponse.json({ error: PT_TEST_USED_MSG, limit: true, paywall: true }, { status: 429 });
   let extra = false;
   if (access.mode === 'paid') {
     const usage = await getUsage(admin, user.id, brandId, access.plan);

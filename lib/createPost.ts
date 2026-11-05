@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createJson } from '@/lib/aiJson';
 import { interviewText, NETWORK_RULES, type InputImage } from '@/lib/content';
 import type { Answers } from '@/lib/interview';
+import { localize, type Market } from '@/lib/market';
 
 export type Draft = { legenda: string; hashtags: string[] };
 
@@ -14,7 +15,7 @@ Faça exatamente o que ela pediu: escrever do zero, reescrever, encurtar, mudar 
 - Se houver foto, ela vai publicada junto: aproveite o que aparece nela, sem afirmar o que a foto não mostra.
 Responda SOMENTE com um objeto JSON válido.`;
 
-export async function writeDraft(input: { pedido: string; texto: string; rede: string; answers: Answers; foto?: InputImage }): Promise<Draft> {
+export async function writeDraft(input: { pedido: string; texto: string; rede: string; answers: Answers; foto?: InputImage; market?: Market }): Promise<Draft> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY.trim() });
   const rede = NETWORK_RULES[input.rede] ? input.rede : 'LinkedIn';
@@ -30,7 +31,7 @@ JSON: { "legenda": "texto completo pronto para colar, com quebras de linha (\\n)
   const parsed = (await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 1800,
-    system: SYSTEM,
+    system: localize(SYSTEM, input.market),
     messages: [
       {
         role: 'user',

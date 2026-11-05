@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { accessFor, PREVIEW, previewUsage } from '@/lib/access';
+import { accessFor, lockedMsg, PREVIEW, previewUsage } from '@/lib/access';
 import { sanitizeAnswers } from '@/lib/interview';
 import { applyModelo, generateStrategy, type Strategy } from '@/lib/strategy';
 import { kindOf } from '@/lib/contentTypes';
@@ -31,7 +31,7 @@ export async function POST() {
   // Prévia (sem cartão): uma estratégia. Depois, só começando o teste.
   if (access.mode === 'preview' && (await previewUsage(user.id)).strategies >= PREVIEW.strategies)
     return NextResponse.json(
-      { error: 'Seu teste grátis acabou. Assine para gerar novas versões da estratégia.', limit: true, paywall: true },
+      { error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para gerar novas versões da estratégia.'), limit: true, paywall: true },
       { status: 429 },
     );
   // Limite de estratégias novas por mês (no Multi, por marca).
@@ -45,7 +45,7 @@ export async function POST() {
       { status: 429 },
     );
   try {
-    const generated = await generateStrategy(sanitizeAnswers(interview.answers), plan);
+    const generated = await generateStrategy(sanitizeAnswers(interview.answers), plan, access.market);
     const { data: prevRow } = await supabase.from('strategies').select('data').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle();
     const strategy = applyModelo(generated.strategy, (prevRow?.data as Strategy | undefined) ?? null);
     const source = generated.source;

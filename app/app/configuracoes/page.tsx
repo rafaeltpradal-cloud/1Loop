@@ -1,3 +1,4 @@
+import { EUR_PRICES, fmtPrice } from '@/lib/market';
 import Link from 'next/link';
 import { getAppContext } from '@/lib/session';
 import { PLANS, brl } from '@/lib/plans';
@@ -60,7 +61,7 @@ export default async function ConfiguracoesPage() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <div>
-              <div style={{ fontSize: 22, fontWeight: 700 }}>{plan.name} · {brl(plan.priceFounders ?? plan.priceFull)}/mês</div>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{plan.name} · {ctx.market === 'pt' ? fmtPrice(EUR_PRICES[ctx.plan], 'pt') : brl(plan.priceFounders ?? plan.priceFull)}/mês</div>
               <div className="muted" style={{ fontSize: 14, marginTop: 4 }}>{plan.rhythm}</div>
             </div>
             <span className="pill" style={{ alignSelf: 'flex-start' }}>

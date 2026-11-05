@@ -1,3 +1,4 @@
+import { marketOf } from '@/lib/market';
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   try {
     const plan = isPlanId(row.plan) ? row.plan : 'pro'; // calendário do plano em que a estratégia foi feita
-    const { strategy, resposta } = await reviseStrategy(current, sanitizeAnswers(interview?.answers ?? {}), plan, pedido);
+    const { strategy, resposta } = await reviseStrategy(current, sanitizeAnswers(interview?.answers ?? {}), plan, pedido, marketOf(user));
     const previous: Strategy = { ...current };
     delete previous.anterior;
     const kept = applyModelo({ ...strategy, serie: { ...strategy.serie, inicio: current.serie?.inicio }, modelo: current.modelo }, null);

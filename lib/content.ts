@@ -1,3 +1,4 @@
+import { localize, type Market } from '@/lib/market';
 import Anthropic from '@anthropic-ai/sdk';
 import { createJson } from '@/lib/aiJson';
 import { QUESTIONS, type Answers } from '@/lib/interview';
@@ -121,13 +122,13 @@ Formato exato do JSON (inclua só os campos do formato pedido, além dos comuns)
 }`;
 }
 
-export async function generatePost(input: GenerateInput): Promise<{ content: PostContent; source: 'ai' | 'demo' }> {
+export async function generatePost(input: GenerateInput & { market?: Market }): Promise<{ content: PostContent; source: 'ai' | 'demo' }> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) return { content: demoContent(input), source: 'demo' };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
   const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 3000,
-    system: SYSTEM,
+    system: localize(SYSTEM, input.market),
     messages: [
       {
         role: 'user',
@@ -144,7 +145,7 @@ export async function generatePost(input: GenerateInput): Promise<{ content: Pos
 }
 
 /** Ajusta um conteúdo pronto conforme o pedido da pessoa. Devolve o conteúdo novo e uma frase do que mudou. */
-export async function revisePost(input: GenerateInput & { current: PostContent; pedido: string }): Promise<{ content: PostContent; resposta: string }> {
+export async function revisePost(input: GenerateInput & { current: PostContent; pedido: string; market?: Market }): Promise<{ content: PostContent; resposta: string }> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
   const { current, pedido } = input;
   const atual = {
@@ -163,7 +164,7 @@ export async function revisePost(input: GenerateInput & { current: PostContent; 
   const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 3000,
-    system: `${SYSTEM}
+    system: `${localize(SYSTEM, input.market)}
 Agora você está AJUSTANDO um conteúdo que já existe, a pedido do cliente. Mude só o que o pedido exige e mantenha o resto igual (mesmo formato, mesma rede, mesmo tema, salvo se o pedido mandar mudar). Se o pedido for impossível ou contrário às regras (inventar números, depoimentos, fatos), faça o mais próximo possível sem inventar e explique em "resposta".`,
     messages: [
       {

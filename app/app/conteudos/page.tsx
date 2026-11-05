@@ -10,7 +10,7 @@ import { WeekBoard, type BoardItem } from '@/components/content/WeekBoard';
 import { ContentTabs } from '@/components/content/ContentTabs';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getUsage } from '@/lib/usage';
-import { PREVIEW, previewUsage } from '@/lib/access';
+import { previewPostLimit, previewUsage } from '@/lib/access';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -83,7 +83,7 @@ export default async function ConteudosPage() {
 
   const usage = await usageP;
   // Na prévia a cota é de 3 posts no total.
-  const pv = ctx.preview ? await previewUsage(ctx.userId) : null;
+  const pv = ctx.preview || ctx.testPost ? await previewUsage(ctx.userId) : null;
   const total = items.length;
   const done = items.filter((i) => i.post).length;
 
@@ -105,7 +105,7 @@ export default async function ConteudosPage() {
         planStart={start}
         quota={
           pv
-            ? { used: pv.posts, max: PREVIEW.posts, extras: 0, month: usage.month, nextMonth: usage.nextMonth, preview: true }
+            ? { used: pv.posts, max: previewPostLimit(ctx.market), extras: 0, month: usage.month, nextMonth: usage.nextMonth, preview: true, testPost: ctx.market === 'pt' }
             : { used: usage.posts.used, max: usage.posts.max, extras: usage.extras.available, month: usage.month, nextMonth: usage.nextMonth }
         }
       />

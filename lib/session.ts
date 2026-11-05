@@ -6,6 +6,7 @@ import { accessFor } from '@/lib/access';
 import { PLANS, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { listBrands, pickBrand, type BrandRow } from '@/lib/brands';
+import type { Market } from '@/lib/market';
 
 export type AppContext = {
   userId: string;
@@ -26,6 +27,10 @@ export type AppContext = {
   /** Conta nova sem cartão: entrevista, estratégia e até 3 posts (ver lib/access.ts). */
   preview: boolean;
   freeTrial: boolean;
+  /** Mercado da conta: 'pt' = Portugal (euro, 1 post de teste). */
+  market: Market;
+  /** Portugal antes de assinar: o post de teste, com tudo liberado até ele ir ao ar. */
+  testPost: boolean;
 };
 
 // Carrega usuário, perfil e assinatura uma vez por requisição.
@@ -76,6 +81,8 @@ const loadContext = cache(async (): Promise<AppContext> => {
     preview: access.mode === 'preview',
     /** Teste grátis sem cartão em andamento (ainda não assinou). */
     freeTrial: access.status === 'trial_free',
+    market: access.market,
+    testPost: access.status === 'trial_post',
   };
 });
 

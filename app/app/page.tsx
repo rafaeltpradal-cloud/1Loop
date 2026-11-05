@@ -1,3 +1,4 @@
+import { currencyOf, EUR_PRICES } from '@/lib/market';
 import Link from 'next/link';
 import { getPreviewContext as getAppContext } from '@/lib/session';
 import { createClient } from '@/lib/supabase/server';
@@ -98,7 +99,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
     <div className="page">
       {assinou === '1' && !ctx.preview && (
         <>
-          <TrackOnce id={`trial-${ctx.userId}`} ga="start_trial" meta="StartTrial" params={{ plan: ctx.plan, value: priceNow(ctx.plan), currency: 'BRL' }} />
+          <TrackOnce id={`trial-${ctx.userId}`} ga="start_trial" meta="StartTrial" params={{ plan: ctx.plan, value: ctx.market === 'pt' ? EUR_PRICES[ctx.plan] : priceNow(ctx.plan), currency: currencyOf(ctx.market) }} />
           <div className="formNote rise" role="status">Pronto, {ctx.firstName}! Sua assinatura está confirmada. Seus posts continuam saindo no horário certo.</div>
         </>
       )}

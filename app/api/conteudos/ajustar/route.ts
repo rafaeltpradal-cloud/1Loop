@@ -1,3 +1,4 @@
+import { marketOf } from '@/lib/market';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -75,6 +76,7 @@ export async function POST(req: Request) {
       foto,
       current,
       pedido,
+      market: marketOf(user),
     });
     await admin.from('posts').update({ content: { ...current, ajustes: used + 1 } }).eq('id', postId).eq('user_id', user.id);
     return NextResponse.json({ content: { ...content, ajustes: used + 1 }, resposta, left: MAX_POST_ADJUSTS - used - 1 });

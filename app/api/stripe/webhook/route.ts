@@ -26,6 +26,7 @@ async function reportPaid(sub: Stripe.Subscription, eventTime: number) {
       phone: (profile?.phone as string | undefined) ?? null,
       value,
       plan: (sub.metadata?.plan as string | undefined) ?? null,
+      currency: sub.currency === 'eur' ? 'EUR' : 'BRL',
       meta: sub.metadata as Record<string, string>,
       time: eventTime,
     });

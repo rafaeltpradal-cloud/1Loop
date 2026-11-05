@@ -66,9 +66,11 @@ html{scroll-behavior:smooth}
 }
 `;
 
-export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesPrices }) {
+/** pt: página de Lisboa (português de Portugal, preço em euro, 1 post de teste em vez dos 7 dias). */
+export function SalesLanding({ copy, prices, pt }: { copy: SalesCopy; prices: SalesPrices; pt?: { basic: number; pro: number } }) {
 
-  const founders = prices.founders;
+  const founders = !pt && prices.founders;
+  const ctaLabel = pt ? 'Ver o meu post de teste grátis →' : 'Ver meu primeiro post grátis →';
   return (
     <div className="vp">
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
@@ -89,10 +91,10 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
             </h1>
             <p className="vpSub">{copy.sub}</p>
             <div id="comecar" className="vpForm">
-              <SignUpForm plan="pro" compact cta="Ver meu primeiro post grátis →" />
+              <SignUpForm plan="pro" compact cta={ctaLabel} market={pt ? 'pt' : undefined} />
             </div>
             <div className="vpMicro">
-              <span>7 dias grátis, sem cartão</span>
+              <span>{pt ? '1 post de teste grátis, sem cartão' : '7 dias grátis, sem cartão'}</span>
               <span>Pronto em 2 minutos</span>
               <span>Publica sozinho no LinkedIn</span>
             </div>
@@ -129,16 +131,47 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
         <div className="vpWrap">
           <h2 className="vpH2">Como funciona</h2>
           <div className="vpGrid">
+            {pt ? (
+              <>
+                <div className="vpCard"><span className="vpNum">1</span><b>5 perguntas</b><p>O que faz, para quem e o seu tom. Leva 2 minutos.</p></div>
+                <div className="vpCard"><span className="vpNum">2</span><b>Estratégia de 30 dias</b><p>Pilares, calendário e o objetivo de cada post: alcance, confiança ou negócio.</p></div>
+                <div className="vpCard"><span className="vpNum">3</span><b>Posts prontos, publicados automaticamente</b><p>Texto e imagem na sua voz. Aprova e eles saem no LinkedIn no melhor horário.</p></div>
+              </>
+            ) : (
+              <>
             <div className="vpCard"><span className="vpNum">1</span><b>5 perguntas</b><p>O que você vende, para quem e o seu tom. Leva 2 minutos, dá para responder por voz.</p></div>
             <div className="vpCard"><span className="vpNum">2</span><b>Estratégia de 30 dias</b><p>Pilares, calendário e o objetivo de cada post: alcance, confiança ou venda.</p></div>
             <div className="vpCard"><span className="vpNum">3</span><b>Posts prontos, publicados sozinhos</b><p>Texto e imagem na sua voz. Você aprova e eles saem no LinkedIn no melhor horário.</p></div>
+              </>
+            )}
           </div>
         </div>
       </section>
 
       <section className="vpSec vpFaq">
         <div className="vpWrap">
-          <h2 className="vpH2">Dúvidas comuns</h2>
+          <h2 className="vpH2">{pt ? 'Perguntas frequentes' : 'Dúvidas comuns'}</h2>
+          {pt ? (
+            <>
+              <details>
+                <summary>Preciso de pôr cartão para experimentar?</summary>
+                <p>Não. Cria a conta, faz a entrevista e recebe o seu post de teste com tudo liberado: pode ligar o seu LinkedIn e publicá-lo. Se gostar do resultado, escolhe um plano.</p>
+              </details>
+              <details>
+                <summary>Vai parecer escrito por um robô?</summary>
+                <p>Os posts nascem das suas respostas: o que faz, para quem e a sua forma de falar. Revê tudo antes, edita o que quiser e pode pedir ajustes à IA. Tudo em português de Portugal.</p>
+              </details>
+              <details>
+                <summary>Funciona para a minha área?</summary>
+                <p>{copy.segment}</p>
+              </details>
+              <details>
+                <summary>Quanto custa depois?</summary>
+                <p>O Basic custa {pt.basic} €/mês e o Pro {pt.pro} €/mês. Sem fidelização: cancela num clique.</p>
+              </details>
+            </>
+          ) : (
+          <>
           <details>
             <summary>Preciso colocar cartão para testar?</summary>
             <p>Não. São 7 dias grátis com tudo liberado, inclusive conectar o LinkedIn e publicar no automático, sem cartão. Só se gostar você escolhe um plano.</p>
@@ -157,13 +190,15 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
               O Basic sai a partir de R$ {prices.basic}/mês e o Pro, R$ {prices.pro}/mês{founders ? ` no preço Founders, válido até ${prices.label}` : ''}. Sem fidelidade, cancela em 1 clique.
             </p>
           </details>
+          </>
+          )}
         </div>
       </section>
 
       <section className="vpFinal">
         <div className="vpWrap">
-          <h2 className="vpH2">Veja seu primeiro post antes de decidir.</h2>
-          <a className="vpBtn" href={CTA} data-cta="final">Ver meu primeiro post grátis →</a>
+          <h2 className="vpH2">{pt ? 'Veja o seu primeiro post antes de decidir.' : 'Veja seu primeiro post antes de decidir.'}</h2>
+          <a className="vpBtn" href={CTA} data-cta="final">{ctaLabel}</a>
           {founders && prices.pro < prices.proFull && (
             <div>
               <span className="vpFounders">Preço Founders ({`R$ ${prices.pro}`} em vez de R$ {prices.proFull} no Pro) {prices.countdown}</span>
@@ -173,7 +208,7 @@ export function SalesLanding({ copy, prices }: { copy: SalesCopy; prices: SalesP
       </section>
 
       <div className="vpSticky">
-        <a className="vpBtn" href={CTA} data-cta="fixo">Ver meu primeiro post grátis →</a>
+        <a className="vpBtn" href={CTA} data-cta="fixo">{ctaLabel}</a>
       </div>
       <LandingInteractions />
     </div>

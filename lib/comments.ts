@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createJson } from '@/lib/aiJson';
 import { interviewText } from '@/lib/content';
 import type { Answers } from '@/lib/interview';
+import { localize, type Market } from '@/lib/market';
 
 export type CommentIdea = { tipo: string; texto: string };
 
@@ -11,13 +12,13 @@ Um bom comentário: soma uma ideia ou experiência real, faz a pessoa querer res
 Escreva na voz do profissional descrito na entrevista, com o vocabulário do mercado dele. Nunca invente números, clientes ou fatos sobre ele.
 Responda SOMENTE com um objeto JSON válido.`;
 
-export async function suggestComments(input: { post: string; objetivo?: string; answers: Answers }): Promise<CommentIdea[]> {
+export async function suggestComments(input: { post: string; objetivo?: string; answers: Answers; market?: Market }): Promise<CommentIdea[]> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY.trim() });
   const parsed = (await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 900,
-    system: SYSTEM,
+    system: localize(SYSTEM, input.market),
     messages: [
       {
         role: 'user',

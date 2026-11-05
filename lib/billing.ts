@@ -3,7 +3,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { EXTRA_PACK, PLANS, planFromPriceId, type PlanId } from '@/lib/plans';
 import { stripe, siteUrl } from '@/lib/stripe';
 import { sendEmail } from '@/lib/email';
-import { welcomeEmail } from '@/lib/emails/welcome';
+import { welcomeEmail, welcomeEmailPt } from '@/lib/emails/welcome';
+import { EUR_PRICES } from '@/lib/market';
 
 export type SubscriptionRow = {
   user_id: string;
@@ -93,7 +94,10 @@ export async function sendWelcomeEmail(session: Stripe.Checkout.Session, row: Su
       // Sem prévia: usa o preço da tabela.
     }
 
-    const msg = welcomeEmail({
+    // Portugal (assinatura em euro): e-mail próprio em português de Portugal.
+    const msg = session.currency === 'eur'
+      ? welcomeEmailPt({ firstName: name.split(' ')[0], planName: plan.name, rhythm: plan.rhythm, amount: amount === (plan.priceFounders ?? plan.priceFull) ? EUR_PRICES[row.plan] : amount, appUrl: siteUrl() })
+      : welcomeEmail({
       firstName: name.split(' ')[0],
       planName: plan.name,
       rhythm: plan.rhythm,

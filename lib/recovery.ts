@@ -16,6 +16,7 @@ import { siteUrl } from '@/lib/stripe';
 import { isoInBrazil } from '@/lib/dates';
 import { activeOffer, offerPrice } from '@/lib/offers';
 import { FREE_TRIAL_LAUNCH, freeTrialEnd } from '@/lib/access';
+import { marketOf } from '@/lib/market';
 
 const HOUR = 3600000;
 const MIN_GAP = 20 * HOUR;
@@ -94,6 +95,8 @@ export async function runRecovery({ dryRun = false, now = new Date(), ext = fals
   for (const u of users) {
     if (!u.email || subscribed.has(u.id) || isOwner(u.email)) continue;
     if (u.app_metadata?.email_optout) continue;
+    // Portugal tem a trilha própria em lib/nurture (português de Portugal, preço em euro).
+    if (marketOf(u) === 'pt') continue;
     // Teste grátis sem cartão: quem está nele ou entrou depois do lançamento recebe a trilha de engajamento (lib/nurture).
     if (!offer && !ext && (Date.parse(u.created_at) >= FREE_TRIAL_LAUNCH || freeTrialEnd(u).getTime() > now.getTime())) {
       const k = dueKind(u, ((u.app_metadata?.recovery as Sent | undefined) ?? {}) as Sent, now);

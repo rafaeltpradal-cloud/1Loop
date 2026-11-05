@@ -37,7 +37,7 @@ export function StatusPill({ status }: { status: PostRow['status'] }) {
   return <span className={`statusPill ${status}`}>{STATUS_LABEL[status]}</span>;
 }
 
-export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string; preview?: boolean };
+export type Quota = { used: number; max: number; extras: number; month: string; nextMonth: string; preview?: boolean; /** Portugal: 1 post de teste antes de assinar. */ testPost?: boolean };
 
 /** O que o "Aprovar todos" precisa para desenhar e agendar cada post. */
 export type ApproveCtx = { brandName: string; handles: Record<string, string>; serie: string; serieNumbers: Record<number, number>; defaultTime: string; connected: string[] };
@@ -195,7 +195,7 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
         )}
         {missing.length > 0 && left <= 0 ? (
           quota.preview ? (
-            <Link className="btn3d btnSm" href="/app/assinar">Assinar e liberar o mês</Link>
+            <Link className="btn3d btnSm" href="/app/assinar">{quota.testPost ? 'Assinar e gerar os próximos' : 'Assinar e liberar o mês'}</Link>
           ) : (
             <Link className="btnGhost btnSm" href="/app/plano">Posts de {quota.month} esgotados · ver pacote</Link>
           )
@@ -212,7 +212,16 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
       </div>
 
       <div className="quotaLine" role="status">
-        {quota.preview ? (
+        {quota.testPost ? (
+          <>
+            <span>Post de teste: <b>{baseUsed}</b> de {quota.max}</span>
+            {left <= 0 ? (
+              <span>Publique o seu post de teste no LinkedIn e <Link href="/app/assinar">assine</Link> para gerar os próximos.</span>
+            ) : (
+              <span>Gere o seu post de teste grátis: pode ligar o LinkedIn e publicá-lo.</span>
+            )}
+          </>
+        ) : quota.preview ? (
           <>
             <span>Posts da prévia: <b>{baseUsed}</b> de {quota.max}</span>
             {left <= 0 ? (

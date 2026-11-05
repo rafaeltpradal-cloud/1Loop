@@ -5,6 +5,7 @@ import { stripe, siteUrl } from '@/lib/stripe';
 import { foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
 import { adContextFromRequest } from '@/lib/conversions';
 import { freeTrialEnd } from '@/lib/access';
+import { eurPriceId, marketOf } from '@/lib/market';
 
 // GET /checkout?plano=pro → cria a sessão de pagamento do Stripe e redireciona.
 // O teste de 7 dias é grátis e sem cartão (lib/access.ts): quem assina durante o teste só é cobrado quando ele acaba;
@@ -23,9 +24,11 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${siteUrl()}/entrar?next=${encodeURIComponent(`/checkout?plano=${plan}`)}`, { status: 303 });
   }
 
-  const price = stripePriceId(plan);
+  // Portugal: preço em euro, sem teste de 7 dias e sem Founders (o teste foi o post publicado).
+  const pt = marketOf(user) === 'pt';
+  const price = pt ? eurPriceId(plan) : stripePriceId(plan);
   if (!price) {
-    return new NextResponse(`Preço do plano "${plan}" não configurado (STRIPE_PRICE_${plan.toUpperCase()}).`, { status: 500 });
+    return new NextResponse(`Preço do plano "${plan}" não configurado (STRIPE_PRICE_${plan.toUpperCase()}${pt ? '_EUR' : ''}).`, { status: 500 });
   }
 
   const admin = createAdminClient();
@@ -46,17 +49,17 @@ export async function GET(request: Request) {
     const customer = await stripe().customers.create({
       email: user.email,
       name: profile?.name ?? undefined,
-      phone: profile?.phone ? `+55${profile.phone}` : undefined,
+      phone: profile?.phone && !pt ? `+55${profile.phone}` : undefined,
       metadata: { user_id: user.id },
     });
     customerId = customer.id;
     await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
   }
 
-  const coupon = foundersCoupon(plan);
+  const coupon = pt ? undefined : foundersCoupon(plan);
   // O Stripe exige o fim do teste pelo menos 48 h à frente; com menos que isso, a cobrança é na hora.
   const ftEnd = freeTrialEnd(user).getTime();
-  const trial = ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};
+  const trial = !pt && ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};
   const session = await stripe().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,
@@ -66,10 +69,10 @@ export async function GET(request: Request) {
     subscription_data: {
       ...trial,
       // trk_*: ids de anúncio (cookies _fbp/_fbc/_ga, IP e navegador) para atribuir a cobrança ao anúncio.
-      metadata: { user_id: user.id, plan, ...adContextFromRequest(request) },
+      metadata: { user_id: user.id, plan, ...(pt ? { market: 'pt' } : {}), ...adContextFromRequest(request) },
     },
     ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
-    locale: 'pt-BR',
+    locale: pt ? 'pt' : 'pt-BR',
     success_url: `${siteUrl()}/bem-vindo?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl()}/planos`,
   });

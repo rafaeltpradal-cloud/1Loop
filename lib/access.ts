@@ -7,6 +7,7 @@ import type { User } from '@supabase/supabase-js';
 import { ACTIVE_STATUSES } from '@/lib/billing';
 import { isPlanId, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { marketOf, PT_TEST_POSTS, type Market } from '@/lib/market';
 
 // 2 estratégias: a do começo rápido e a refeita depois da entrevista completa.
 export const PREVIEW = { strategies: 2, posts: 3 };
@@ -21,10 +22,14 @@ export function freeTrialEnd(user: Pick<User, 'created_at'>): Date {
   return new Date(Math.max(Date.parse(user.created_at), FREE_TRIAL_LAUNCH) + FREE_TRIAL_DAYS * DAY);
 }
 
-export type Access =
+export type Access = (
   | { mode: 'paid'; plan: PlanId; status: string; trialEnd: string | null }
   | { mode: 'preview'; plan: PlanId; status: 'preview'; trialEnd: null }
-  | { mode: 'blocked'; plan: PlanId; status: string; trialEnd: string | null };
+  | { mode: 'blocked'; plan: PlanId; status: string; trialEnd: string | null }
+) & { market: Market };
+
+/** Quantos posts novos a conta pode gerar sem assinar (Brasil: prévia de 3; Portugal: o post de teste). */
+export const previewPostLimit = (market: Market) => (market === 'pt' ? PT_TEST_POSTS : PREVIEW.posts);
 
 /** Plano escolhido no cadastro (fica nos dados da conta). */
 export function chosenPlan(user: Pick<User, 'user_metadata'>): PlanId {
@@ -33,7 +38,8 @@ export function chosenPlan(user: Pick<User, 'user_metadata'>): PlanId {
 }
 
 /** Prévia só para quem nunca teve assinatura. Quem cancelou ou teve o teste encerrado volta para os planos. */
-export async function accessFor(user: Pick<User, 'id' | 'user_metadata' | 'created_at'>): Promise<Access> {
+export async function accessFor(user: Pick<User, 'id' | 'user_metadata' | 'created_at' | 'app_metadata'>): Promise<Access> {
+  const market = marketOf(user);
   const { data } = await createAdminClient()
     .from('subscriptions')
     .select('plan, status, trial_end')
@@ -42,17 +48,28 @@ export async function accessFor(user: Pick<User, 'id' | 'user_metadata' | 'creat
     .limit(1);
   const sub = data?.[0];
   if (!sub) {
+    // Portugal: sem os 7 dias. Tudo liberado (inclusive conectar o LinkedIn e publicar) até o post de teste ir ao ar.
+    if (market === 'pt') {
+      const { count } = await createAdminClient().from('posts').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('status', 'publicado');
+      if (!count) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_post', trialEnd: null, market };
+      return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null, market };
+    }
     // Teste grátis sem cartão: status próprio ('trial_free') para a interface e os e-mails saberem.
     const end = freeTrialEnd(user);
-    if (end.getTime() > Date.now()) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_free', trialEnd: end.toISOString() };
-    return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null };
+    if (end.getTime() > Date.now()) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_free', trialEnd: end.toISOString(), market };
+    return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null, market };
   }
   const plan: PlanId = isPlanId(sub.plan) ? sub.plan : 'pro';
   const mode = ACTIVE_STATUSES.includes(sub.status) ? 'paid' : 'blocked';
-  return { mode, plan, status: sub.status as string, trialEnd: (sub.trial_end as string | null) ?? null };
+  return { mode, plan, status: sub.status as string, trialEnd: (sub.trial_end as string | null) ?? null, market };
 }
 
 export const PREVIEW_LOCKED_MSG = 'Seu teste grátis acabou. Assine para voltar a ajustar com a IA.';
+
+/** Portugal: o teste é um post. Publicou, assina (a mensagem do Brasil segue igual). */
+export const PT_LOCKED_MSG = 'O seu post de teste já foi publicado. Assine para continuar.';
+export const lockedMsg = (market: Market, br: string) => (market === 'pt' ? PT_LOCKED_MSG : br);
+export const PT_TEST_USED_MSG = 'O seu post de teste já está criado. Publique-o no LinkedIn e assine para gerar os próximos.';
 
 /** Quantos posts e estratégias a conta já gerou (a prévia conta tudo, de todas as marcas). */
 export async function previewUsage(userId: string) {

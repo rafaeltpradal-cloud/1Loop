@@ -1,3 +1,4 @@
+import { planFromEurPriceId } from '@/lib/market';
 export type PlanId = 'basic' | 'pro' | 'multi';
 
 export type Plan = {
@@ -109,7 +110,7 @@ export function planFromPriceId(priceId: string | null | undefined): PlanId | nu
   if (priceId === process.env.STRIPE_PRICE_BASIC) return 'basic';
   if (priceId === process.env.STRIPE_PRICE_PRO) return 'pro';
   if (priceId === process.env.STRIPE_PRICE_MULTI) return 'multi';
-  return null;
+  return planFromEurPriceId(priceId);
 }
 
 export const brl = (n: number) => `R$ ${n.toLocaleString('pt-BR')}`;

@@ -67,6 +67,7 @@ export function PostEditor({
   perf = null,
   preview = false,
   first = false,
+  market = 'br',
 }: {
   post: PostRow;
   brand: Brand;
@@ -78,6 +79,7 @@ export function PostEditor({
   auto: AutoInfo;
   defaultTime: string;
   perf?: PostPerf;
+  market?: 'br' | 'pt';
   /** Conta na prévia (sem cartão): sem refazer nem ajustar com a IA. */
   preview?: boolean;
   /** Acabou de sair da entrevista: mostra a comemoração do primeiro post. */
@@ -321,8 +323,8 @@ export function PostEditor({
       )}
       {preview && status !== 'publicado' && (
         <div className="card previewLock">
-          <b>Seu teste grátis acabou</b>
-          <span className="muted">Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.</span>
+          <b>{market === 'pt' ? 'O seu teste terminou' : 'Seu teste grátis acabou'}</b>
+          <span className="muted">{market === 'pt' ? 'Assine para continuar a ajustar com a IA e a publicar.' : 'Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.'}</span>
           <a className="linkBtn" href="/app/assinar">Assinar →</a>
         </div>
       )}

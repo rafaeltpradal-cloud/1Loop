@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { accessFor, PREVIEW, previewUsage } from '@/lib/access';
+import { accessFor, lockedMsg, previewPostLimit, previewUsage, PT_TEST_USED_MSG } from '@/lib/access';
+import { PT_TEST_POSTS } from '@/lib/market';
 import { currentBrandId } from '@/lib/brands';
 import { getUsage } from '@/lib/usage';
 import { PLANS, maxVersions } from '@/lib/plans';
@@ -64,10 +65,13 @@ export async function POST(req: Request) {
   // Prévia (sem cartão): até 3 posts novos, sem refazer.
   if (access.mode === 'preview') {
     if (existing)
-      return NextResponse.json({ error: 'Seu teste grátis acabou. Assine para refazer e ajustar posts com a IA.', limit: true, paywall: true }, { status: 429 });
-    if ((await previewUsage(user.id)).posts >= PREVIEW.posts)
-      return NextResponse.json({ error: 'Seu teste grátis acabou. Assine para gerar os próximos posts.', limit: true, paywall: true }, { status: 429 });
+      return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para refazer e ajustar posts com a IA.'), limit: true, paywall: true }, { status: 429 });
+    if ((await previewUsage(user.id)).posts >= previewPostLimit(access.market))
+      return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para gerar os próximos posts.'), limit: true, paywall: true }, { status: 429 });
   }
+  // Portugal, antes de assinar: só o post de teste (pode refazer e ajustar esse).
+  if (access.status === 'trial_post' && !existing && (await previewUsage(user.id)).posts >= PT_TEST_POSTS)
+    return NextResponse.json({ error: PT_TEST_USED_MSG, limit: true, paywall: true }, { status: 429 });
   if (existing && existing.versions >= maxVersions(plan))
     return NextResponse.json(
       { error: `Este post já foi refeito ${PLANS[plan].refacoes} vezes, o máximo do seu plano. Use "Peça à IA" ou edite o texto direto na tela.`, limit: true },
@@ -103,7 +107,7 @@ export async function POST(req: Request) {
     const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
     const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
     const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
-    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined });
+    const { content, source } = await generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined, market: access.market });
     // Mantém o estilo e a foto que a pessoa já tinha escolhido (o editor visual recomeça do modelo).
     if (prev?.estilo) content.estilo = prev.estilo;
     else if (strategy.modelo?.estilo) content.estilo = strategy.modelo.estilo;

@@ -1,3 +1,4 @@
+import { localize, type Market } from '@/lib/market';
 import Anthropic from '@anthropic-ai/sdk';
 import { createJson } from '@/lib/aiJson';
 import { QUESTIONS, resolveAnswers, type Answers } from '@/lib/interview';
@@ -85,7 +86,7 @@ function interviewText(answers: Answers) {
   }).join('\n');
 }
 
-export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
+export async function generateStrategy(rawAnswers: Answers, plan: PlanId, market?: Market): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
   // "Outro" vira o texto que a pessoa escreveu.
   const answers = resolveAnswers(rawAnswers);
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
@@ -96,7 +97,7 @@ export async function generateStrategy(rawAnswers: Answers, plan: PlanId): Promi
   const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 8000,
-    system: SYSTEM,
+    system: localize(SYSTEM, market),
     messages: [
       {
         role: 'user',
@@ -116,6 +117,7 @@ export async function reviseStrategy(
   rawAnswers: Answers,
   plan: PlanId,
   pedido: string,
+  market?: Market,
 ): Promise<{ strategy: Strategy; resposta: string }> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
   const answers = resolveAnswers(rawAnswers);
@@ -126,7 +128,7 @@ export async function reviseStrategy(
   const parsed = await createJson(client, {
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5',
     max_tokens: 8000,
-    system: `${SYSTEM.replace('Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.', '')}
+    system: `${localize(SYSTEM.replace('Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.', ''), market)}
 Agora você está AJUSTANDO uma estratégia que já existe, a pedido do cliente. Mude só o que o pedido exige e mantenha todo o resto igual, inclusive os dias do calendário que não precisam mudar. Se o pedido incluir uma rede nova, ela pode entrar em "ritmo.redes" e no calendário. Não invente números de resultado.
 Responda SOMENTE com um objeto JSON válido, sem texto antes ou depois.`,
     messages: [

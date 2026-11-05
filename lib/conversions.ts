@@ -41,7 +41,8 @@ export type PaidConversion = {
   userId: string;
   email?: string | null;
   phone?: string | null; // só dígitos, DDD + número
-  value: number; // em reais
+  value: number; // na moeda da assinatura (reais ou euros)
+  currency?: 'BRL' | 'EUR';
   plan?: string | null;
   meta?: Record<string, string> | null; // metadata da assinatura (trk_*)
   time?: number; // segundos
@@ -59,8 +60,9 @@ async function sendMeta(c: PaidConversion) {
   const phone = (c.phone ?? '').replace(/\D/g, '');
   const userData: Record<string, unknown> = { external_id: [sha(c.userId)] };
   if (c.email) userData.em = [sha(c.email)];
-  if (phone) userData.ph = [sha(phone.startsWith('55') ? phone : `55${phone}`)];
-  userData.country = [sha('br')];
+  const eur = c.currency === 'EUR';
+  if (phone && !eur) userData.ph = [sha(phone.startsWith('55') ? phone : `55${phone}`)];
+  userData.country = [sha(eur ? 'pt' : 'br')];
   if (m.trk_fbp) userData.fbp = m.trk_fbp;
   if (m.trk_fbc) userData.fbc = m.trk_fbc;
   if (m.trk_ip) userData.client_ip_address = m.trk_ip;
@@ -75,7 +77,7 @@ async function sendMeta(c: PaidConversion) {
         action_source: 'website',
         event_source_url: `${siteUrl()}/bem-vindo`,
         user_data: userData,
-        custom_data: { currency: 'BRL', value: c.value, content_name: c.plan ?? 'assinatura', content_type: 'product' },
+        custom_data: { currency: c.currency ?? 'BRL', value: c.value, content_name: c.plan ?? 'assinatura', content_type: 'product' },
       },
     ],
   };
@@ -105,7 +107,7 @@ async function sendGa(c: PaidConversion) {
           name: 'purchase',
           params: {
             transaction_id: c.eventId,
-            currency: 'BRL',
+            currency: c.currency ?? 'BRL',
             value: c.value,
             items: [{ item_id: c.plan ?? 'assinatura', item_name: `Plano ${c.plan ?? ''}`.trim(), price: c.value, quantity: 1 }],
           },
