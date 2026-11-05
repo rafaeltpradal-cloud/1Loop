@@ -47,8 +47,8 @@ function activityOf(posts: PostLite[]): Activity {
 const ts = (v?: string | null) => (v ? Date.parse(v) : 0);
 
 /** Qual e-mail de engajamento cabe hoje (no máximo um). */
-export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now = Date.now(), acc?: Account): NurtureKind | null {
-  if (now - lastAnyEmail < GAP) return null;
+export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now = Date.now(), acc?: Account, gap = GAP): NurtureKind | null {
+  if (now - lastAnyEmail < gap) return null;
   // Portugal: sem os 7 dias. Trilha do post de teste: fazer → publicar → assinar.
   if (acc?.market === 'pt') {
     if (acc.subscribed) return null;
@@ -346,7 +346,8 @@ const internal = (email: string) => {
   return isOwner(e) || list.some((x) => (x.includes('@') ? e === x : e.endsWith(`@${x}`)));
 };
 
-export async function runNurture({ dryRun = false, now = new Date() } = {}) {
+/** gapHours: intervalo mínimo desde o último e-mail (padrão 44h; o disparo manual do dono usa 24h). */
+export async function runNurture({ dryRun = false, now = new Date(), gapHours }: { dryRun?: boolean; now?: Date; gapHours?: number } = {}) {
   const admin = createAdminClient();
   const [users, { data: posts }, { data: subs }, { data: profiles }, { data: interviews }] = await Promise.all([
     allUsers(admin),
@@ -381,7 +382,7 @@ export async function runNurture({ dryRun = false, now = new Date() } = {}) {
     const end = freeTrialEnd(u);
     const market = marketOf(u);
     const acc: Account = { createdAt: Date.parse(u.created_at), trialEnd: end.getTime(), subscribed: !!subStat, market };
-    const kind = dueNurture(act, sent, lastAny, now.getTime(), acc);
+    const kind = dueNurture(act, sent, lastAny, now.getTime(), acc, gapHours ? gapHours * HOUR : GAP);
     if (!kind) continue;
 
     const lastPubIso = act.published.at(-1)?.published_at ?? null;

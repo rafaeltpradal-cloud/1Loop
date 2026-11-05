@@ -21,7 +21,8 @@ export async function GET(req: Request) {
   const previa = url.searchParams.get('previa');
   const prorrogacao = url.searchParams.get('prorrogacao');
   const oferta = url.searchParams.get('oferta');
-  if (amostra || previa || prorrogacao || oferta) {
+  const aquecer = url.searchParams.get('aquecer');
+  if (amostra || previa || prorrogacao || oferta || aquecer) {
     const supabase = await createClient();
     const {
       data: { user },
@@ -40,6 +41,9 @@ export async function GET(req: Request) {
     // ?prorrogacao=1 lista quem recebe o aviso de prorrogação do Founders; com &enviar=1, envia.
     // ?oferta=1 lista quem recebe a condição especial (10% abaixo do Founders); com &enviar=1, envia.
     if (oferta) return NextResponse.json(await runRecovery({ offer: true, dryRun: url.searchParams.get('enviar') !== '1' }));
+    // ?aquecer=1: disparo manual dos e-mails de engajamento por etapa, com intervalo mínimo de 24h
+    // desde o último e-mail (o automático usa 44h). Lista quem recebe; com &enviar=1, envia.
+    if (aquecer) return NextResponse.json(await runNurture({ gapHours: 24, dryRun: url.searchParams.get('enviar') !== '1' }));
     if (prorrogacao) return NextResponse.json(await runRecovery({ ext: true, dryRun: url.searchParams.get('enviar') !== '1' }));
     return NextResponse.json({ recuperacao: await runRecovery({ dryRun: true }), engajamento: await runNurture({ dryRun: true }) });
   }
@@ -48,7 +52,15 @@ export async function GET(req: Request) {
   return NextResponse.json(await runAll());
 }
 
-export async function POST() {
+// Disparo manual: só com o segredo do cron ou pelo dono logado (antes qualquer um podia acionar).
+export async function POST(req: Request) {
+  if (req.headers.get('authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
+  }
   return NextResponse.json(await runAll());
 }
 
