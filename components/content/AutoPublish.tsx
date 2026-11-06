@@ -66,7 +66,8 @@ export function AutoPublish({
       <div className="autoBox">
         <div>
           <b>Publicação automática no {rede}</b>
-          <span className="muted">Conecte o {rede} uma vez e este post sai sozinho no horário que você escolher.</span>
+          <span className="muted">Opcional. Conecte o {rede} uma vez e este post sai sozinho no horário que você escolher. Prefere postar você mesmo? Use o passo a passo abaixo.</span>
+          <span className="trustNote">🔒 Nada vai ao ar sem a sua aprovação. A 1loop só publica o post que você agendar e você desconecta quando quiser.</span>
         </div>
         <Link className="btn3d btnSm" href="/app/redes">Conectar {rede}</Link>
       </div>

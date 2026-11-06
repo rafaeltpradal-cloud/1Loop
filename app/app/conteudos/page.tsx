@@ -87,6 +87,10 @@ export default async function ConteudosPage() {
   const pv = ctx.preview || ctx.testPost ? await previewUsage(ctx.userId) : null;
   const total = items.length;
   const done = items.filter((i) => i.post).length;
+  // Ainda não publicou nada: destaca o primeiro post pronto, com o caminho mais curto até o ar.
+  const allPosts = (posts ?? []) as unknown as PostRow[];
+  const published = allPosts.some((p) => p.status === 'publicado' || p.status === 'agendado' || p.status === 'publicando');
+  const firstReady = published ? null : [...allPosts].sort((a, b) => a.item_index - b.item_index)[0] ?? null;
 
   return (
     <div className="page">
@@ -100,6 +104,16 @@ export default async function ConteudosPage() {
       <ContentTabs active="semana" />
       {/* Conta que já tem posts e ainda não tem o visual próprio: cria agora (a partir das referências e da entrevista). */}
       {!strategy.visual && !strategy.modelo?.estilo && !ctx.preview && done > 0 && <BrandVisualKick />}
+      {firstReady && !ctx.preview && (
+        <a className="firstPost rise" href={`/app/conteudos/${firstReady.id}#publicar`} style={{ textDecoration: 'none', color: 'inherit' }}>
+          <span className="firstPostEmoji" aria-hidden="true">🚀</span>
+          <div>
+            <b>Seu primeiro post está pronto para ir ao ar: “{firstReady.tema}”.</b>
+            <span> Leva 1 minuto. Um clique copia o texto e abre o {firstReady.rede}, sem precisar conectar nada.</span>
+          </div>
+          <span className="btn3d btnSm">Publicar agora</span>
+        </a>
+      )}
       <WeekBoard
         items={items}
         today={isoInBrazil()}

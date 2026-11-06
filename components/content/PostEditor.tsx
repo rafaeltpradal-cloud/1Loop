@@ -281,6 +281,17 @@ export function PostEditor({
   }
 
   const caption = captionWithTags(c);
+
+  /** Publicação manual num clique: abre a rede, copia o texto e baixa as imagens. */
+  function copyAndOpen() {
+    // Abre antes de qualquer await, senão o navegador bloqueia a nova aba.
+    window.open(OPEN_URL[post.rede] ?? 'https://www.linkedin.com/feed/', '_blank', 'noopener');
+    const text = kind === 'thread' && c.partes ? c.partes.join('\n\n') : caption;
+    void copy(text, 'abrir');
+    if (specs.length > 0 && !c.roteiro) void downloadAll();
+    flash('ok', `Texto copiado${specs.length && !c.roteiro ? ' e imagem baixada' : ''}. Cole no ${post.rede}${specs.length && !c.roteiro ? ', anexe a imagem' : ''} e volte aqui para marcar "Publiquei".`);
+  }
+
   const autoOk = auto.available && canAutoPublish(post.rede, post.formato);
   // Com a rede conectada e o post pronto, aprovar e agendar é um botão só.
   const canSchedule = autoOk && auto.connected && !autoBlocker(post.rede, post.formato, c);
@@ -348,11 +359,21 @@ export function PostEditor({
             <span>
               {preview
                 ? ' Feito a partir da sua entrevista e da sua estratégia. Seu teste acabou: assine para publicar direto no LinkedIn e liberar o mês inteiro.'
-                : ' Feito a partir da sua entrevista e da sua estratégia. Revise, ajuste com a IA se quiser e publique hoje.'}
+                : ` Feito a partir da sua entrevista e da sua estratégia. Revise, ajuste com a IA se quiser e publique hoje. Não precisa conectar nada agora: um clique copia o texto${specs.length && !c.roteiro ? ', baixa a imagem' : ''} e abre o ${post.rede}.`}
             </span>
           </div>
-          {preview ? <a className="btn3d btnSm" href="/app/assinar">Assinar e continuar</a> : <a className="btnGhost btnSm" href="/app/conteudos">Ver a semana</a>}
+          {preview ? (
+            <a className="btn3d btnSm" href="/app/assinar">Assinar e continuar</a>
+          ) : (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn3d btnSm" onClick={copyAndOpen}>{copied === 'abrir' ? 'Texto copiado!' : `Copiar e abrir o ${post.rede}`}</button>
+              <a className="btnGhost btnSm" href="#publicar">Ver como publicar</a>
+            </div>
+          )}
         </div>
+      )}
+      {!first && !preview && status !== 'publicado' && status !== 'agendado' && status !== 'publicando' && (
+        <a className="pubJump" href="#publicar">Pronto para publicar? Ir para Publicar ↓</a>
       )}
       {first && (
         <a className="card moreAnswers" href="/app/entrevista?completa=1">
@@ -650,7 +671,7 @@ export function PostEditor({
       </div>
 
       {/* Publicar */}
-      <section className="card publishPanel" aria-labelledby="h-pub">
+      <section className="card publishPanel" aria-labelledby="h-pub" id="publicar" style={{ scrollMarginTop: 80 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <h2 id="h-pub" style={{ fontSize: 17 }}>Publicar</h2>

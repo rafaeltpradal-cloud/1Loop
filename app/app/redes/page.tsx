@@ -72,6 +72,16 @@ export default async function RedesPage({ searchParams }: { searchParams: Promis
         <p className="pageSub">Conecte LinkedIn e Instagram para publicar no horário, sem abrir o app.</p>
       </div>
 
+      <div className="formNote trustBox">
+        <b>🔒 Como funciona a conexão</b>
+        <ul>
+          <li>A 1loop <b>só publica o post que você aprovar e agendar</b>. Nunca posta sozinha, nunca manda mensagem e não mexe nas suas conexões.</li>
+          <li>O LinkedIn pede a permissão de "publicar em seu nome" porque é assim que o agendamento funciona.</li>
+          <li>Você desconecta quando quiser, aqui ou nas configurações do LinkedIn.</li>
+          <li>Prefere não conectar? Tudo bem: em cada post tem o botão para copiar o texto, baixar a imagem e postar você mesmo.</li>
+        </ul>
+      </div>
+
       <div className="grid2">
         <NetworkConnect network="linkedin" state={li} flash={liFlash} />
         <NetworkConnect network="instagram" state={ig} flash={igFlash} inviteOnly={instagramInviteOnly()} savedHandle={saved.instagram?.handle} />
