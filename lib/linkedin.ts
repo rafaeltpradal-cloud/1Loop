@@ -101,21 +101,12 @@ export const uploadImage = (token: string, owner: string, jpeg: Uint8Array) => u
 export const uploadDocument = (token: string, owner: string, pdf: Uint8Array) => upload(token, owner, 'documents', pdf, 'application/pdf');
 
 /**
- * O texto do post usa o "little text format" do LinkedIn: alguns caracteres precisam de barra invertida
- * e hashtags viram {hashtag|\#|palavra}.
+ * O texto do post usa o "little text format" do LinkedIn: alguns caracteres precisam de barra invertida.
+ * Hashtags vão como texto simples (\#palavra). O modelo {hashtag|\#|palavra} aparecia cru no post
+ * quando a "hashtag" era só número (ex.: "Série #4") e ao editar o post no app do LinkedIn.
  */
 export function littleText(text: string) {
-  const escape = (s: string) => s.replace(/[\\|{}@[\]()<>#*_~]/g, (m) => `\\${m}`);
-  const out: string[] = [];
-  let last = 0;
-  for (const m of text.matchAll(/#([\p{L}\p{N}_]+)/gu)) {
-    const i = m.index ?? 0;
-    out.push(escape(text.slice(last, i)));
-    out.push(`{hashtag|\\#|${m[1]}}`);
-    last = i + m[0].length;
-  }
-  out.push(escape(text.slice(last)));
-  return out.join('');
+  return text.replace(/[\\|{}@[\]()<>#*_~]/g, (m) => `\\${m}`);
 }
 
 export type LinkedInMedia = { kind: 'image'; urns: string[] } | { kind: 'document'; urn: string; title: string } | null;
@@ -123,7 +114,7 @@ export type LinkedInMedia = { kind: 'image'; urns: string[] } | { kind: 'documen
 export async function createPost(token: string, author: string, text: string, media: LinkedInMedia) {
   const body: Record<string, unknown> = {
     author,
-    commentary: littleText(text).slice(0, 2900),
+    commentary: littleText(text.slice(0, 2800)),
     visibility: 'PUBLIC',
     distribution: { feedDistribution: 'MAIN_FEED', targetEntities: [], thirdPartyDistributionChannels: [] },
     lifecycleState: 'PUBLISHED',
