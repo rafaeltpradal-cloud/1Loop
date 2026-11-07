@@ -251,7 +251,14 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
         )}
       </div>
 
-      {approveMsg && <div className="formOk" role="status">{approveMsg}</div>}
+      {approveMsg && (
+        <div className="formOk" role="status">
+          {approveMsg}
+          {approve && !approve.connected.includes('linkedin') && /sem agendar/.test(approveMsg) && (
+            <> <Link href="/app/redes">Conecte o LinkedIn</Link> e os próximos saem sozinhos, ou abra cada post e publique com 1 clique.</>
+          )}
+        </div>
+      )}
       {(queue || approving) && (
         <div className="progress" aria-hidden="true">
           <span style={{ width: `${Math.max(6, (((queue ?? approving)!.done) / Math.max((queue ?? approving)!.total, 1)) * 100)}%` }} />
