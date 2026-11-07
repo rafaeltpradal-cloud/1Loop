@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { salesPrices } from './prices';
 import { SalesLanding, type SalesCopy } from './SalesLanding';
-import { visitorCardGroup } from '@/lib/trialGroup';
+import { visitorCardGroup } from '@/lib/trialGroupServer';
 
 // Página dos anúncios (vendedores em geral).
 export const metadata: Metadata = {

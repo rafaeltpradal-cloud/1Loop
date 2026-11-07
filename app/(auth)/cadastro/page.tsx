@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { PublicShell } from '@/components/PublicShell';
 import { isPlanId, PLANS } from '@/lib/plans';
 import { SignUpForm } from './SignUpForm';
-import { visitorCardGroup } from '@/lib/trialGroup';
+import { visitorCardGroup } from '@/lib/trialGroupServer';
 
 export const metadata = { title: 'Criar conta grátis · 1loop creators' };
 

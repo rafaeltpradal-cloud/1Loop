@@ -25,7 +25,7 @@ export function freeTrialEnd(user: Pick<User, 'created_at'>): Date {
 
 export type Access = (
   | { mode: 'paid'; plan: PlanId; status: string; trialEnd: string | null }
-  | { mode: 'preview'; plan: PlanId; status: 'preview'; trialEnd: null }
+  | { mode: 'preview'; plan: PlanId; status: 'preview' | 'card_pending'; trialEnd: null }
   | { mode: 'blocked'; plan: PlanId; status: string; trialEnd: string | null }
 ) & { market: Market };
 

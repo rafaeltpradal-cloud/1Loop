@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     } = await supabase.auth.getUser();
     if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
     // ?amostra=cr1[&etapa=entrevista|sem_post|nao_publicou]: exemplo da campanha.
-    if (amostra === ('cr1' as RecoveryKind)) {
+    if (String(amostra) === 'cr1') {
       const mail = sampleCampaign(url.searchParams.get('etapa') ?? undefined);
       if (url.searchParams.get('enviar') === '1' && user.email) {
         const ok = await sendEmail({ to: user.email, ...mail, subject: `[Teste] ${mail.subject}` });

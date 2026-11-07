@@ -21,9 +21,3 @@ export function trialGroupOf(user: Pick<User, 'app_metadata'>): TrialGroup {
 export const CARD_TRIAL_DAYS = 7;
 export const CARD_PENDING_MSG = 'Para publicar e liberar o mês inteiro, ative seus 7 dias grátis. Nada é cobrado hoje.';
 
-/** Página pública: a pessoa está no grupo do cartão? (lê o cookie do sorteio) */
-export async function visitorCardGroup() {
-  if (!cardTestOn()) return false;
-  const { cookies } = await import('next/headers');
-  return groupFromCookie((await cookies()).get(TRIAL_GROUP_COOKIE)?.value) === 'cartao';
-}
