@@ -238,7 +238,7 @@ async function warnReconnect(admin: Admin, post: PostForPublish) {
 export async function publishOne(admin: Admin, postId: number, userId?: string) {
   let claim = admin
     .from('posts')
-    .update({ status: 'publicando', publish_error: null })
+    .update({ status: 'publicando', publish_error: null, updated_at: new Date().toISOString() })
     .eq('id', postId)
     .eq('status', 'agendado');
   if (userId) claim = claim.eq('user_id', userId);
@@ -278,13 +278,14 @@ export async function publishOne(admin: Admin, postId: number, userId?: string) 
 /** Publica tudo que já venceu. Chamado pelo agendador a cada 5 minutos. */
 export async function publishDue() {
   const admin = createAdminClient();
+  await releaseStuck(admin).catch((err) => console.error('[publicar travados]', err));
   const { data } = await admin
     .from('posts')
     .select('id')
     .eq('status', 'agendado')
     .lte('scheduled_at', new Date().toISOString())
     .order('scheduled_at', { ascending: true })
-    .limit(8);
+    .limit(12);
   const results: Array<{ id: number; ok: boolean; url?: string; error?: string }> = [];
   for (const row of data ?? []) results.push({ id: row.id as number, ...(await publishOne(admin, row.id as number)) });
   await refreshInstagramTokens(admin).catch((err) => console.error('[instagram refresh]', err));
@@ -314,5 +315,25 @@ export async function refreshInstagramTokens(admin: Admin) {
     } catch (err) {
       console.error('[instagram refresh]', c.brand_id, err);
     }
+  }
+}
+
+/**
+ * Post que ficou em "publicando" por mais de 15 minutos (a função caiu no meio): não dá para saber se saiu.
+ * Vira erro com instrução clara, em vez de ficar travado para sempre.
+ */
+async function releaseStuck(admin: Admin) {
+  const cut = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const { data } = await admin.from('posts').select('id, rede').eq('status', 'publicando').is('platform_ref', null).lt('updated_at', cut).limit(20);
+  for (const p of data ?? []) {
+    await admin
+      .from('posts')
+      .update({
+        status: 'erro',
+        publish_error: `Não conseguimos confirmar se o post saiu no ${p.rede}. Confira no seu perfil: se não estiver lá, toque em "Agendar de novo".`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', p.id)
+      .eq('status', 'publicando');
   }
 }

@@ -272,9 +272,9 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
             const d = fromISO(i.date);
             const isRunning = running === i.index;
             return (
-              <li key={i.index} className={p ? 'postRow' : 'postRow empty'}>
+              <li key={i.index} className={`${p ? 'postRow' : 'postRow empty'}${i.date === today ? ' isToday' : ''}`}>
                 <div className="postDate">
-                  <span>{WD[d.getDay()]}</span>
+                  <span>{i.date === today ? 'hoje' : WD[d.getDay()]}</span>
                   <b>{d.getDate()}</b>
                 </div>
                 <div className="postMain">
@@ -301,7 +301,19 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
                 </div>
                 <div className="postAct">
                   {p ? (
-                    <Link className="btnGhost btnSm" href={`/app/conteudos/${p.id}`}>Abrir</Link>
+                    p.status === 'publicado' && p.external_url ? (
+                      <>
+                        <a className="btnGhost btnSm" href={p.external_url} target="_blank" rel="noopener noreferrer">Ver no {i.rede}</a>
+                        <Link className="btnGhost btnSm" href={`/app/conteudos/${p.id}`}>Resultados</Link>
+                      </>
+                    ) : (
+                      <Link
+                        className={(p.status === 'rascunho' || p.status === 'aprovado' || p.status === 'erro') && i.date <= today ? 'btn3d btnSm' : 'btnGhost btnSm'}
+                        href={`/app/conteudos/${p.id}${p.status === 'aprovado' || p.status === 'erro' ? '#publicar' : ''}`}
+                      >
+                        {p.status === 'rascunho' ? 'Revisar' : p.status === 'aprovado' ? 'Publicar' : p.status === 'erro' ? 'Resolver' : p.status === 'publicado' ? 'Ver' : 'Abrir'}
+                      </Link>
+                    )
                   ) : (
                     <button type="button" className="btnGhost btnSm" onClick={() => generate(i.index).then((ok) => ok && router.refresh())} disabled={busy || left <= 0} title={left <= 0 ? `Posts de ${quota.month} esgotados` : undefined}>
                       {isRunning ? 'Gerando…' : 'Gerar'}

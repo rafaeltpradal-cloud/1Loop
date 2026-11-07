@@ -13,7 +13,7 @@ import { networkByName } from '@/lib/networks';
 
 export const metadata = { title: 'Início · 1loop creators' };
 
-type WeekPost = { id: number; item_index: number; status: string; date: string; tema: string; rede: string; scheduled_at: string | null; published_at: string | null };
+type WeekPost = { id: number; item_index: number; status: string; date: string; tema: string; rede: string; scheduled_at: string | null; published_at: string | null; external_url: string | null };
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   falta: { label: 'Gerar', cls: 'todo' },
@@ -54,7 +54,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
     // Conta como feito só com a publicação automática conectada (LinkedIn ou Instagram).
     admin.from('social_connections').select('network', { count: 'exact', head: true }).eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
     supabase.from('strategies').select('id, data, created_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
-    supabase.from('posts').select('id, strategy_id, item_index, status, date, tema, rede, scheduled_at, published_at').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(500),
+    supabase.from('posts').select('id, strategy_id, item_index, status, date, tema, rede, scheduled_at, published_at, external_url').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId).limit(500),
   ]);
   const posts = (allPosts ?? []) as (WeekPost & { strategy_id: number })[];
   const answered = interview?.answers ? Object.keys(interview.answers as object).length : 0;
@@ -62,12 +62,14 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
   const interviewDone = !!interview?.completed_at || ctx.hasStrategy;
 
   // Primeiros passos: o objetivo é o primeiro post PUBLICADO (é aí que a pessoa sente o valor e cria o hábito).
+  const firstOpen = [...posts].filter((p) => p.status !== 'publicado').sort((a, b) => a.date.localeCompare(b.date) || a.item_index - b.item_index)[0] ?? null;
   const steps = [
     { n: 1, title: 'Entrevista', desc: 'Conte quem você é, o que faz e onde quer chegar.', done: interviewDone, href: '/app/entrevista', cta: answered ? 'Continuar entrevista' : 'Começar entrevista' },
     { n: 2, title: 'Estratégia de 30 dias', desc: 'Pilares, série, calendário e plano de ação.', done: ctx.hasStrategy, href: ctx.hasStrategy ? '/app/estrategia' : '/app/entrevista', cta: 'Ver estratégia' },
     { n: 3, title: 'Primeiro post pronto', desc: 'Gere um post da sua semana ou crie o seu, com a sua foto.', done: posts.length > 0, href: posts.length ? '/app/conteudos' : '/app/conteudos/criar', cta: posts.length ? 'Ver meus posts' : 'Criar meu primeiro post' },
-    { n: 4, title: 'Conectar o LinkedIn', desc: 'Um clique. O 1loop publica sozinho no horário certo.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar o LinkedIn' },
-    { n: 5, title: 'Primeiro post no ar', desc: 'Aprove e agende, ou publique e toque em “Publiquei”.', done: posts.some((p) => p.status === 'publicado' || p.status === 'agendado'), href: '/app/conteudos', cta: 'Publicar meu post' },
+    // Publicar vem antes de conectar: o primeiro post pode ir ao ar copiando e colando; conectar é para automatizar.
+    { n: 4, title: 'Primeiro post no ar', desc: 'Um clique copia o texto, baixa a imagem e abre o LinkedIn. Depois toque em “Publiquei”.', done: posts.some((p) => p.status === 'publicado' || p.status === 'agendado'), href: firstOpen ? `/app/conteudos/${firstOpen.id}#publicar` : '/app/conteudos', cta: 'Publicar meu primeiro post' },
+    { n: 5, title: 'Publicar no automático', desc: 'Conecte o LinkedIn uma vez: você aprova e o 1loop publica no horário certo.', done: (networks ?? 0) > 0, href: '/app/redes', cta: 'Conectar o LinkedIn' },
   ];
   const doneCount = steps.filter((s) => s.done).length;
   const nextStep = steps.find((s) => !s.done) ?? null;
@@ -92,6 +94,7 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
   const monthStart = `${today.slice(0, 8)}01`;
   const publishedMonth = posts.filter((p) => p.status === 'publicado' && p.published_at && isoInBrazil(new Date(p.published_at)) >= monthStart).length;
   const streak = streakOf(posts.filter((p) => p.status === 'publicado' && p.published_at).map((p) => p.published_at as string), today);
+  const todayItem = week.find((w) => w.date === today) ?? null;
   const toReview = count('rascunho');
   const missing = count('falta');
 
@@ -114,6 +117,35 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
           </p>
         )}
       </div>
+
+      {todayItem && interviewDone && (!onboarding || posts.length > 0) && (() => {
+        const p = todayItem.post;
+        const net = networkByName(todayItem.it.rede)?.id ?? 'linkedin';
+        const st = p?.status ?? 'falta';
+        const done = st === 'publicado';
+        const sched = st === 'agendado' || st === 'publicando';
+        const title = done ? 'Post de hoje no ar ✓' : sched ? `Sai hoje às ${new Date(p!.scheduled_at as string).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })} ✓` : p ? 'Seu post de hoje está pronto' : 'Hoje tem post no seu plano';
+        const sub = p?.tema || todayItem.it.tema;
+        return (
+          <section className={`card homeToday ${done || sched ? 'ok' : ''}`} aria-labelledby="h-hoje">
+            <NetworkIcon id={net} size={36} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div className="eyebrow">Hoje · {todayItem.it.rede} · {todayItem.it.formato}</div>
+              <div id="h-hoje" className="homeTodayTitle">{title}</div>
+              <div className="muted homeEllipsis" style={{ fontSize: 14 }}>{sub}</div>
+            </div>
+            {done ? (
+              p?.external_url ? <a className="btnGhost btnSm" href={p.external_url} target="_blank" rel="noopener noreferrer">Ver no {todayItem.it.rede}</a> : <Link className="btnGhost btnSm" href={`/app/conteudos/${p!.id}`}>Ver post</Link>
+            ) : sched ? (
+              <Link className="btnGhost btnSm" href={`/app/conteudos/${p!.id}`}>Ver post</Link>
+            ) : p ? (
+              <Link className="btn3d btnSm" href={`/app/conteudos/${p.id}${st === 'rascunho' ? '' : '#publicar'}`}>{st === 'rascunho' ? 'Revisar e publicar' : st === 'erro' ? 'Resolver' : 'Publicar agora'}</Link>
+            ) : (
+              <Link className="btn3d btnSm" href="/app/conteudos">Gerar o post de hoje</Link>
+            )}
+          </section>
+        );
+      })()}
 
       {onboarding && nextStep && (
         <section className="card homeNext" aria-labelledby="h-next">

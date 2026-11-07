@@ -106,6 +106,20 @@ export function PostEditor({
   const [picker, setPicker] = useState<'' | 'foto' | 'video'>('');
   const [aiPrev, setAiPrev] = useState<PostContent | null>(null);
   const [editing, setEditing] = useState(false);
+  // Publicação manual: a pessoa foi para a rede; quando volta para esta aba, perguntamos se publicou.
+  const [handoff, setHandoff] = useState(false);
+  const [askPublished, setAskPublished] = useState(false);
+  useEffect(() => {
+    if (!handoff) return;
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        setAskPublished(true);
+        setHandoff(false);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [handoff]);
 
   const kind = kindOf(post.formato);
   const net = networkByName(post.rede);
@@ -232,7 +246,7 @@ export function PostEditor({
       if (res.ok) {
         setStatus(next);
         setPub((p) => ({ ...p, scheduledAt: null, publishError: null }));
-        flash('ok', next === 'aprovado' ? 'Post aprovado.' : next === 'publicado' ? 'Marcado como publicado.' : 'Voltou para revisão.');
+        flash('ok', next === 'aprovado' ? 'Post aprovado.' : next === 'publicado' ? 'Post no ar! 🎉 Ele já conta na sua sequência de semanas publicando.' : 'Voltou para revisão.');
         router.refresh();
       } else flash('error', res.error);
     });
@@ -289,6 +303,7 @@ export function PostEditor({
   function copyAndOpen() {
     // Abre antes de qualquer await, senão o navegador bloqueia a nova aba.
     window.open(OPEN_URL[post.rede] ?? 'https://www.linkedin.com/feed/', '_blank', 'noopener');
+    if (status !== 'publicado') setHandoff(true);
     const text = kind === 'thread' && c.partes ? c.partes.join('\n\n') : caption;
     void copy(text, 'abrir');
     if (specs.length > 0 && !c.roteiro) void downloadAll();
@@ -753,7 +768,17 @@ export function PostEditor({
               <b>Abra o {post.rede}</b>
               <span className="muted">Cole o texto e anexe {c.roteiro ? 'o vídeo' : specs.length ? 'as imagens' : 'o que precisar'}.</span>
             </div>
-            <a className="btnGhost btnSm" href={OPEN_URL[post.rede] ?? '#'} target="_blank" rel="noopener noreferrer">Abrir {post.rede}</a>
+            <a
+              className="btnGhost btnSm"
+              href={OPEN_URL[post.rede] ?? '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => {
+                if (status !== 'publicado') setHandoff(true);
+              }}
+            >
+              Abrir {post.rede}
+            </a>
           </li>
           <li>
             <span className="slideNum">{specs.length > 0 || c.roteiro ? 4 : 3}</span>
@@ -785,6 +810,29 @@ export function PostEditor({
             ) : (
               <MediaLibrary items={media.filter((m) => m.kind !== 'video')} mode="picker" only="imagem" onPick={pickPhoto} selectedId={c.foto} />
             )}
+          </div>
+        </div>
+      )}
+
+      {askPublished && status !== 'publicado' && (
+        <div className="pubAsk rise" role="dialog" aria-live="polite" aria-label="Você publicou o post?">
+          <div>
+            <b>Publicou no {post.rede}?</b>
+            <span className="muted">Marque aqui e o 1loop acompanha a sua constância.</span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn3d btnSm"
+              disabled={pending}
+              onClick={() => {
+                setAskPublished(false);
+                changeStatus('publicado');
+              }}
+            >
+              Sim, publiquei
+            </button>
+            <button type="button" className="btnGhost btnSm" onClick={() => setAskPublished(false)}>Ainda não</button>
           </div>
         </div>
       )}
