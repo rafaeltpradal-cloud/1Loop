@@ -67,9 +67,9 @@ export async function POST(req: Request) {
   // Prévia (sem cartão): até 3 posts novos, sem refazer.
   if (access.mode === 'preview') {
     if (existing)
-      return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para refazer e ajustar posts com a IA.'), limit: true, paywall: true }, { status: 429 });
+      return NextResponse.json({ error: lockedMsg(access, 'Seu teste grátis acabou. Assine para refazer e ajustar posts com a IA.'), limit: true, paywall: true }, { status: 429 });
     if ((await previewUsage(user.id)).posts >= previewPostLimit(access.market))
-      return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para gerar os próximos posts.'), limit: true, paywall: true }, { status: 429 });
+      return NextResponse.json({ error: lockedMsg(access, 'Seu teste grátis acabou. Assine para gerar os próximos posts.'), limit: true, paywall: true }, { status: 429 });
   }
   // Portugal, antes de assinar: só o post de teste (pode refazer e ajustar esse).
   if (access.status === 'trial_post' && !existing && (await previewUsage(user.id)).posts >= PT_TEST_POSTS)

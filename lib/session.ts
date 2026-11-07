@@ -27,6 +27,7 @@ export type AppContext = {
   /** Conta nova sem cartão: entrevista, estratégia e até 3 posts (ver lib/access.ts). */
   preview: boolean;
   freeTrial: boolean;
+  cardPending: boolean;
   /** Mercado da conta: 'pt' = Portugal (euro, 1 post de teste). */
   market: Market;
   /** Portugal antes de assinar: o post de teste, com tudo liberado até ele ir ao ar. */
@@ -81,6 +82,8 @@ const loadContext = cache(async (): Promise<AppContext> => {
     preview: access.mode === 'preview',
     /** Teste grátis sem cartão em andamento (ainda não assinou). */
     freeTrial: access.status === 'trial_free',
+    /** Grupo do cartão (teste A/B): ainda não ativou os 7 dias. */
+    cardPending: access.status === 'card_pending',
     market: access.market,
     testPost: access.status === 'trial_post',
   };

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { salesPrices } from './prices';
 import { SalesLanding, type SalesCopy } from './SalesLanding';
+import { visitorCardGroup } from '@/lib/trialGroup';
 
 // Página dos anúncios (vendedores em geral).
 export const metadata: Metadata = {
@@ -37,6 +38,6 @@ const COPY: SalesCopy = {
 };
 
 
-export default function SalesLandingPage() {
-  return <SalesLanding copy={COPY} prices={salesPrices()} />;
+export default async function SalesLandingPage() {
+  return <SalesLanding copy={COPY} prices={salesPrices()} cardTrial={await visitorCardGroup()} />;
 }

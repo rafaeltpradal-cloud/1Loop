@@ -33,7 +33,7 @@ export async function POST(req: Request) {
   const n = used.day === today ? used.n ?? 0 : 0;
   if (n >= max)
     return NextResponse.json(
-      { error: access.mode === 'preview' ? lockedMsg(access.market, 'Seu teste grátis acabou. Assine para continuar comentando com a IA.') : `Você usou os ${max} de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
+      { error: access.mode === 'preview' ? lockedMsg(access, 'Seu teste grátis acabou. Assine para continuar comentando com a IA.') : `Você usou os ${max} de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
       { status: 429 },
     );
 

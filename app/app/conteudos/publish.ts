@@ -44,7 +44,7 @@ export async function schedulePost(postId: number, when: string, assets: PostAss
   if (!user) return { ok: false, error: 'Sua sessão expirou. Entre de novo.' };
   // Publicar faz parte do teste: na prévia (sem cartão) não agenda nem publica.
   const access = await accessFor(user);
-  if (access.mode !== 'paid') return { ok: false, error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para publicar.') };
+  if (access.mode !== 'paid') return { ok: false, error: lockedMsg(access, 'Seu teste grátis acabou. Assine para publicar.') };
   const at = new Date(when);
   if (!Number.isInteger(postId) || Number.isNaN(at.getTime())) return { ok: false, error: 'Data inválida.' };
   if (at.getTime() < Date.now() - 5 * 60 * 1000) return { ok: false, error: 'Escolha um horário no futuro.' };

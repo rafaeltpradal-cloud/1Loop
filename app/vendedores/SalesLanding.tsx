@@ -67,7 +67,8 @@ html{scroll-behavior:smooth}
 `;
 
 /** pt: página de Lisboa (português de Portugal, preço em euro, 1 post de teste em vez dos 7 dias). */
-export function SalesLanding({ copy, prices, pt }: { copy: SalesCopy; prices: SalesPrices; pt?: { basic: number; pro: number } }) {
+/** cardTrial: grupo do teste A/B em que os 7 dias grátis são ativados com cartão (estratégia e 3 posts continuam sem cartão). */
+export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy; prices: SalesPrices; pt?: { basic: number; pro: number }; cardTrial?: boolean }) {
 
   const founders = !pt && prices.founders;
   const ctaLabel = pt ? 'Ver o meu post de teste grátis →' : 'Ver meu primeiro post grátis →';
@@ -94,7 +95,7 @@ export function SalesLanding({ copy, prices, pt }: { copy: SalesCopy; prices: Sa
               <SignUpForm plan="pro" compact cta={ctaLabel} market={pt ? 'pt' : undefined} />
             </div>
             <div className="vpMicro">
-              <span>{pt ? '1 post de teste grátis, sem cartão' : '7 dias grátis, sem cartão'}</span>
+              <span>{pt ? '1 post de teste grátis, sem cartão' : cardTrial ? 'Estratégia e 3 posts grátis, sem cartão' : '7 dias grátis, sem cartão'}</span>
               <span>Pronto em 2 minutos</span>
               <span>Publica sozinho no LinkedIn</span>
             </div>
@@ -174,7 +175,11 @@ export function SalesLanding({ copy, prices, pt }: { copy: SalesCopy; prices: Sa
           <>
           <details>
             <summary>Preciso colocar cartão para testar?</summary>
-            <p>Não. São 7 dias grátis com tudo liberado, inclusive conectar o LinkedIn e publicar no automático, sem cartão. Só se gostar você escolhe um plano.</p>
+            {cardTrial ? (
+              <p>Para começar, não. Você cria a conta e recebe sua estratégia de 30 dias e 3 posts prontos, sem cartão. Para publicar no automático e liberar o mês inteiro, você ativa 7 dias grátis com o cartão: nada é cobrado antes do 8º dia e você cancela em 1 clique.</p>
+            ) : (
+              <p>Não. São 7 dias grátis com tudo liberado, inclusive conectar o LinkedIn e publicar no automático, sem cartão. Só se gostar você escolhe um plano.</p>
+            )}
           </details>
           <details>
             <summary>Vai parecer escrito por robô?</summary>

@@ -4,6 +4,7 @@ import { isOwner } from '@/lib/owner';
 import { runRecovery, sampleRecovery } from '@/lib/recovery';
 import { sendEmail } from '@/lib/email';
 import type { RecoveryKind } from '@/lib/emails/recovery';
+import { runCampaign, sampleCampaign } from '@/lib/campaigns';
 import { NURTURE_KINDS, runNurture, sampleNurture, type NurtureKind } from '@/lib/nurture';
 
 export const runtime = 'nodejs';
@@ -22,12 +23,24 @@ export async function GET(req: Request) {
   const prorrogacao = url.searchParams.get('prorrogacao');
   const oferta = url.searchParams.get('oferta');
   const aquecer = url.searchParams.get('aquecer');
-  if (amostra || previa || prorrogacao || oferta || aquecer) {
+  const campanha = url.searchParams.get('campanha');
+  if (amostra || previa || prorrogacao || oferta || aquecer || campanha) {
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
+    // ?amostra=cr1[&etapa=entrevista|sem_post|nao_publicou]: exemplo da campanha.
+    if (amostra === ('cr1' as RecoveryKind)) {
+      const mail = sampleCampaign(url.searchParams.get('etapa') ?? undefined);
+      if (url.searchParams.get('enviar') === '1' && user.email) {
+        const ok = await sendEmail({ to: user.email, ...mail, subject: `[Teste] ${mail.subject}` });
+        return NextResponse.json({ ok, para: user.email, assunto: mail.subject });
+      }
+      return new NextResponse(mail.html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    }
+    // ?campanha=cr1 lista quem recebe a campanha (prova + 10% no 1º mês); com &enviar=1, envia.
+    if (campanha === 'cr1') return NextResponse.json(await runCampaign('cr1', { dryRun: url.searchParams.get('enviar') !== '1' }));
     const isNurture = !!amostra && NURTURE_KINDS.includes(amostra as unknown as NurtureKind);
     if (amostra && (KINDS.includes(amostra) || isNurture)) {
       const mail = isNurture ? sampleNurture(amostra as unknown as NurtureKind, url.searchParams.get('etapa') ?? undefined) : sampleRecovery(amostra, url.searchParams.get('etapa') === 'parou' ? 'parou' : 'pronto');

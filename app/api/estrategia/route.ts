@@ -31,7 +31,7 @@ export async function POST() {
   // Prévia (sem cartão): uma estratégia. Depois, só começando o teste.
   if (access.mode === 'preview' && (await previewUsage(user.id)).strategies >= PREVIEW.strategies)
     return NextResponse.json(
-      { error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para gerar novas versões da estratégia.'), limit: true, paywall: true },
+      { error: lockedMsg(access, 'Seu teste grátis acabou. Assine para gerar novas versões da estratégia.'), limit: true, paywall: true },
       { status: 429 },
     );
   // Limite de estratégias novas por mês (no Multi, por marca).

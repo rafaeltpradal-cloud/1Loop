@@ -12,6 +12,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getUsage } from '@/lib/usage';
 import { previewPostLimit, previewUsage } from '@/lib/access';
 import { BrandVisualKick } from '@/components/content/BrandVisual';
+import { WhatsAppAsk } from '@/components/WhatsAppAsk';
 
 export const metadata = { title: 'Conteúdos · 1loop creators' };
 
@@ -58,10 +59,12 @@ export default async function ConteudosPage() {
 
   // Para o "Aprovar todos": quem está conectado, @ de cada rede e número da série das imagens.
   const admin = createAdminClient();
-  const [conns, { data: accounts }] = await Promise.all([
+  const [conns, { data: accounts }, { data: prof }] = await Promise.all([
     connectedNetworks(admin, ctx.brandId),
     supabase.from('social_accounts').select('network, handle').eq('user_id', ctx.userId).eq('brand_id', ctx.brandId),
+    admin.from('profiles').select('phone').eq('id', ctx.userId).maybeSingle(),
   ]);
+  const askWhatsapp = ctx.market !== 'pt' && !prof?.phone;
   const handles: Record<string, string> = {};
   for (const a of accounts ?? []) {
     const net = NETWORKS.find((n) => n.id === a.network);
@@ -103,8 +106,8 @@ export default async function ConteudosPage() {
       </div>
       <ContentTabs active="semana" />
       {/* Conta que já tem posts e ainda não tem o visual próprio: cria agora (a partir das referências e da entrevista). */}
-      {!strategy.visual && !strategy.modelo?.estilo && !ctx.preview && done > 0 && <BrandVisualKick />}
-      {firstReady && !ctx.preview && (
+      {!strategy.visual && !strategy.modelo?.estilo && (!ctx.preview || ctx.cardPending) && done > 0 && <BrandVisualKick />}
+      {firstReady && (!ctx.preview || ctx.cardPending) && (
         <a className="firstPost rise" href={`/app/conteudos/${firstReady.id}#publicar`} style={{ textDecoration: 'none', color: 'inherit' }}>
           <span className="firstPostEmoji" aria-hidden="true">🚀</span>
           <div>
@@ -114,15 +117,16 @@ export default async function ConteudosPage() {
           <span className="btn3d btnSm">Publicar agora</span>
         </a>
       )}
+      {askWhatsapp && done > 0 && <WhatsAppAsk />}
       <WeekBoard
         items={items}
         today={isoInBrazil()}
         approve={approve}
-        autoStart={!ctx.preview && done === 0}
+        autoStart={(!ctx.preview || ctx.cardPending) && done === 0}
         planStart={start}
         quota={
           pv
-            ? { used: pv.posts, max: previewPostLimit(ctx.market), extras: 0, month: usage.month, nextMonth: usage.nextMonth, preview: true, testPost: ctx.market === 'pt' }
+            ? { used: pv.posts, max: previewPostLimit(ctx.market), extras: 0, month: usage.month, nextMonth: usage.nextMonth, preview: true, testPost: ctx.market === 'pt', cardPending: ctx.cardPending }
             : { used: usage.posts.used, max: usage.posts.max, extras: usage.extras.available, month: usage.month, nextMonth: usage.nextMonth }
         }
       />

@@ -8,6 +8,7 @@ import { ACTIVE_STATUSES } from '@/lib/billing';
 import { isPlanId, type PlanId } from '@/lib/plans';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { marketOf, PT_TEST_POSTS, type Market } from '@/lib/market';
+import { CARD_PENDING_MSG, trialGroupOf } from '@/lib/trialGroup';
 
 // 2 estratégias: a do começo rápido e a refeita depois da entrevista completa.
 export const PREVIEW = { strategies: 2, posts: 3 };
@@ -54,6 +55,8 @@ export async function accessFor(user: Pick<User, 'id' | 'user_metadata' | 'creat
       if (!count) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_post', trialEnd: null, market };
       return { mode: 'preview', plan: chosenPlan(user), status: 'preview', trialEnd: null, market };
     }
+    // Grupo "cartao" do teste A/B: prévia (3 posts) até ativar os 7 dias com cartão.
+    if (trialGroupOf(user) === 'cartao') return { mode: 'preview', plan: chosenPlan(user), status: 'card_pending', trialEnd: null, market };
     // Teste grátis sem cartão: status próprio ('trial_free') para a interface e os e-mails saberem.
     const end = freeTrialEnd(user);
     if (end.getTime() > Date.now()) return { mode: 'paid', plan: chosenPlan(user), status: 'trial_free', trialEnd: end.toISOString(), market };
@@ -68,7 +71,13 @@ export const PREVIEW_LOCKED_MSG = 'Seu teste grátis acabou. Assine para voltar 
 
 /** Portugal: o teste é um post. Publicou, assina (a mensagem do Brasil segue igual). */
 export const PT_LOCKED_MSG = 'O seu post de teste já foi publicado. Assine para continuar.';
-export const lockedMsg = (market: Market, br: string) => (market === 'pt' ? PT_LOCKED_MSG : br);
+/** Mensagem de bloqueio: Portugal, grupo do cartão (ainda não ativou o teste) ou a do Brasil. */
+export const lockedMsg = (a: Market | Pick<Access, 'market' | 'status'>, br: string) => {
+  const market = typeof a === 'string' ? a : a.market;
+  if (market === 'pt') return PT_LOCKED_MSG;
+  if (typeof a !== 'string' && a.status === 'card_pending') return CARD_PENDING_MSG;
+  return br;
+};
 export const PT_TEST_USED_MSG = 'O seu post de teste já está criado. Publique-o no LinkedIn e assine para gerar os próximos.';
 
 /** Quantos posts e estratégias a conta já gerou (a prévia conta tudo, de todas as marcas). */

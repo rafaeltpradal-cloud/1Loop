@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     const n = used.day === today ? used.n ?? 0 : 0;
     if (n >= max)
       return NextResponse.json(
-        { error: access.mode === 'preview' ? lockedMsg(access.market, 'Seu teste grátis acabou. Assine para continuar usando a IA.') : `Você usou os ${max} pedidos de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
+        { error: access.mode === 'preview' ? lockedMsg(access, 'Seu teste grátis acabou. Assine para continuar usando a IA.') : `Você usou os ${max} pedidos de hoje. Amanhã libera de novo.`, paywall: access.mode === 'preview' },
         { status: 429 },
       );
     const { data: interview } = await admin.from('interviews').select('answers').eq('user_id', user.id).eq('brand_id', brandId).maybeSingle();
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
   if (existing) return NextResponse.json({ error: 'Este dia já tem post. Escolha um dia ainda vazio.' }, { status: 400 });
 
   if (access.mode === 'preview' && (await previewUsage(user.id)).posts >= previewPostLimit(access.market))
-    return NextResponse.json({ error: lockedMsg(access.market, 'Seu teste grátis acabou. Assine para voltar a criar posts.'), limit: true, paywall: true }, { status: 429 });
+    return NextResponse.json({ error: lockedMsg(access, 'Seu teste grátis acabou. Assine para voltar a criar posts.'), limit: true, paywall: true }, { status: 429 });
   if (access.status === 'trial_post' && (await previewUsage(user.id)).posts >= PT_TEST_POSTS)
     return NextResponse.json({ error: PT_TEST_USED_MSG, limit: true, paywall: true }, { status: 429 });
   let extra = false;

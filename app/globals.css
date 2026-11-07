@@ -1306,3 +1306,4 @@ html[data-theme="dark"] .navBadge { color: #FFB020; }
 .trustNote { font-size: 12.5px; line-height: 1.5; color: var(--muted); display: block; margin-top: 4px; }
 .trustBox { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
 .trustBox ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.waAsk { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; }

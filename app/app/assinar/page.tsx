@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getPreviewContext } from '@/lib/session';
 import { freeTrialEnd, previewUsage } from '@/lib/access';
+import { CARD_TRIAL_DAYS } from '@/lib/trialGroup';
 import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
@@ -30,8 +31,9 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
   const offer = !pt && activeOffer(user) && offerCoupon(chosen) ? offerPrice(chosen) : null;
   // Assinando com mais de 2 dias de teste pela frente, a 1ª cobrança fica para o fim do teste (ver /checkout).
   const end = user ? freeTrialEnd(user) : new Date();
-  const later = !pt && end.getTime() - Date.now() > 49 * 3600000;
-  const endLabel = end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const cardTrialEnd = new Date(Date.now() + CARD_TRIAL_DAYS * 86400000);
+  const later = ctx.cardPending || (!pt && end.getTime() - Date.now() > 49 * 3600000);
+  const endLabel = (ctx.cardPending ? cardTrialEnd : end).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
 
   const unlocks = [
     `${PLANS[chosen].postsPerMonth} posts por mês, no ritmo do plano (${PLANS[chosen].rhythm.toLowerCase()})`,
@@ -51,6 +53,14 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
               <span className="graphite">{ctx.testPost ? `Gostou do resultado, ${ctx.firstName}?` : `O seu post de teste está no ar, ${ctx.firstName}.`}</span> <span className="grad">{ctx.testPost ? 'Assine e continue a publicar.' : 'Continue a aparecer.'}</span>
             </h1>
             <p className="pageSub">Assine para continuar a gerar posts na sua voz, ajustar com a IA e publicar automaticamente no LinkedIn, no horário certo. Sem fidelização: cancela quando quiser.</p>
+          </>
+        ) : ctx.cardPending ? (
+          <>
+            <div className="eyebrow">7 dias grátis</div>
+            <h1 className="pageTitle">
+              <span className="graphite">Ative seus 7 dias grátis, {ctx.firstName}.</span> <span className="grad">Nada é cobrado hoje.</span>
+            </h1>
+            <p className="pageSub">Cadastre o cartão e libere tudo: publicação automática no LinkedIn, ajustes com a IA e o mês inteiro de posts. A primeira cobrança só acontece em {endLabel}. Cancele em 1 clique antes disso e você não paga nada.</p>
           </>
         ) : (
           <>
@@ -107,9 +117,9 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
           {offer !== null && (
             <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Condição especial para você: <b>&nbsp;{money(offer)} no 1º mês</b>&nbsp;(10% abaixo do Founders). No pagamento aparece o preço Founders; o desconto extra entra sozinho na primeira cobrança.</div>
           )}
-          <a className="btn3d" href={`/pagamento?plano=${chosen}`} style={{ justifyContent: 'center' }}>Assinar o {PLANS[chosen].name}</a>
+          <a className="btn3d" href={`/pagamento?plano=${chosen}`} style={{ justifyContent: 'center' }}>{ctx.cardPending ? `Ativar 7 dias grátis no ${PLANS[chosen].name}` : `Assinar o ${PLANS[chosen].name}`}</a>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            Pagamento no Stripe, ambiente seguro. Primeira cobrança de {offer !== null ? money(offer) : fmt(priceOf(chosen))} {later ? `só em ${endLabel}, no fim do seu teste` : 'hoje'}. Cancele quando quiser.
+            Pagamento no Stripe, ambiente seguro. Primeira cobrança de {offer !== null ? money(offer) : fmt(priceOf(chosen))} {later ? `só em ${endLabel}, no fim do${ctx.cardPending ? 's 7 dias grátis' : ' seu teste'}` : 'hoje'}. Cancele quando quiser.
           </p>
         </section>
       </div>

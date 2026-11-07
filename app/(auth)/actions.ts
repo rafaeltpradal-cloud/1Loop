@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import { marketFromSignup } from '@/lib/market';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ORIGIN_COOKIE, parseOrigin } from '@/lib/tracking';
+import { TRIAL_GROUP_COOKIE, cardTestOn, groupFromCookie } from '@/lib/trialGroup';
 
 export type FormState = { error?: string; note?: string } | undefined;
 
@@ -47,12 +48,14 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     return { error: pt ? 'Não foi possível criar a sua conta agora. Tente novamente dentro de instantes.' : 'Não foi possível criar sua conta agora. Tente de novo em instantes.' };
   }
 
-  // Mercado fica em app_metadata (a pessoa não consegue alterar): preço em euro e regras de Portugal.
-  if (pt && data.user) {
+  // Mercado e grupo do teste ficam em app_metadata (a pessoa não consegue alterar).
+  // Grupo "cartao": a página que a pessoa viu prometia ativar os 7 dias com cartão.
+  const group = !pt && cardTestOn() ? groupFromCookie((await cookies()).get(TRIAL_GROUP_COOKIE)?.value) : null;
+  if ((pt || group) && data.user) {
     try {
-      await createAdminClient().auth.admin.updateUserById(data.user.id, { app_metadata: { ...data.user.app_metadata, market: 'pt' } });
+      await createAdminClient().auth.admin.updateUserById(data.user.id, { app_metadata: { ...data.user.app_metadata, ...(pt ? { market: 'pt' } : {}), ...(group ? { trial_group: group } : {}) } });
     } catch (err) {
-      console.error('[cadastro mercado]', err);
+      console.error('[cadastro mercado/grupo]', err);
     }
   }
 

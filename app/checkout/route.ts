@@ -6,6 +6,7 @@ import { foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
 import { adContextFromRequest } from '@/lib/conversions';
 import { freeTrialEnd } from '@/lib/access';
 import { eurPriceId, marketOf } from '@/lib/market';
+import { CARD_TRIAL_DAYS, trialGroupOf } from '@/lib/trialGroup';
 
 // GET /checkout?plano=pro → cria a sessão de pagamento do Stripe e redireciona.
 // O teste de 7 dias é grátis e sem cartão (lib/access.ts): quem assina durante o teste só é cobrado quando ele acaba;
@@ -59,7 +60,13 @@ export async function GET(request: Request) {
   const coupon = pt ? undefined : foundersCoupon(plan);
   // O Stripe exige o fim do teste pelo menos 48 h à frente; com menos que isso, a cobrança é na hora.
   const ftEnd = freeTrialEnd(user).getTime();
-  const trial = !pt && ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};
+  // Grupo do cartão (teste A/B): os 7 dias grátis começam agora, com o cartão cadastrado.
+  // Só para quem nunca teve assinatura (quem cancelou não ganha outro teste).
+  const { count: hadSub } = await admin.from('subscriptions').select('user_id', { count: 'exact', head: true }).eq('user_id', user.id);
+  const cardTrial = !pt && trialGroupOf(user) === 'cartao' && !hadSub;
+  const trial = cardTrial
+    ? { trial_period_days: CARD_TRIAL_DAYS }
+    : !pt && ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};
   const session = await stripe().checkout.sessions.create({
     mode: 'subscription',
     customer: customerId,

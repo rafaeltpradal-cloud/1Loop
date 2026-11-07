@@ -1,8 +1,18 @@
 import type { NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
+import { TRIAL_GROUP_COOKIE } from '@/lib/trialGroup';
 
 export async function middleware(request: NextRequest) {
-  return updateSession(request);
+  // Teste A/B do cartão: sorteia o grupo na primeira visita à página dos anúncios (/vendedores).
+  // Vai no pedido também, para a própria página já mostrar a promessa do grupo.
+  let group: string | null = null;
+  if (request.nextUrl.pathname === '/vendedores' && !request.cookies.get(TRIAL_GROUP_COOKIE) && process.env.TRIAL_CARD_TEST !== '0') {
+    group = Math.random() < 0.5 ? 'c' : 'l';
+    request.cookies.set(TRIAL_GROUP_COOKIE, group);
+  }
+  const response = await updateSession(request);
+  if (group) response.cookies.set(TRIAL_GROUP_COOKIE, group, { path: '/', maxAge: 60 * 60 * 24 * 180, sameSite: 'lax' });
+  return response;
 }
 
 export const config = {

@@ -67,6 +67,7 @@ export function PostEditor({
   defaultTime,
   perf = null,
   preview = false,
+  cardPending = false,
   first = false,
   market = 'br',
   brandVisual = null,
@@ -86,6 +87,8 @@ export function PostEditor({
   brandVisual?: Visual | null;
   /** Conta na prévia (sem cartão): sem refazer nem ajustar com a IA. */
   preview?: boolean;
+  /** Grupo do cartão (teste A/B): ainda não ativou os 7 dias. */
+  cardPending?: boolean;
   /** Acabou de sair da entrevista: mostra a comemoração do primeiro post. */
   first?: boolean;
 }) {
@@ -357,12 +360,19 @@ export function PostEditor({
           <div>
             <b>Seu primeiro post está pronto.</b>
             <span>
-              {preview
+              {cardPending
+                ? ` Feito a partir da sua entrevista e da sua estratégia. Já dá para postar: um clique copia o texto${specs.length && !c.roteiro ? ', baixa a imagem' : ''} e abre o ${post.rede}. Para publicar no automático e liberar o mês inteiro, ative seus 7 dias grátis: nada é cobrado hoje.`
+                : preview
                 ? ' Feito a partir da sua entrevista e da sua estratégia. Seu teste acabou: assine para publicar direto no LinkedIn e liberar o mês inteiro.'
                 : ` Feito a partir da sua entrevista e da sua estratégia. Revise, ajuste com a IA se quiser e publique hoje. Não precisa conectar nada agora: um clique copia o texto${specs.length && !c.roteiro ? ', baixa a imagem' : ''} e abre o ${post.rede}.`}
             </span>
           </div>
-          {preview ? (
+          {cardPending ? (
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="btn3d btnSm" onClick={copyAndOpen}>{copied === 'abrir' ? 'Texto copiado!' : `Copiar e abrir o ${post.rede}`}</button>
+              <a className="btnGhost btnSm" href="/app/assinar">Ativar 7 dias grátis</a>
+            </div>
+          ) : preview ? (
             <a className="btn3d btnSm" href="/app/assinar">Assinar e continuar</a>
           ) : (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -383,9 +393,9 @@ export function PostEditor({
       )}
       {preview && status !== 'publicado' && (
         <div className="card previewLock">
-          <b>{market === 'pt' ? 'O seu teste terminou' : 'Seu teste grátis acabou'}</b>
-          <span className="muted">{market === 'pt' ? 'Assine para continuar a ajustar com a IA e a publicar.' : 'Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.'}</span>
-          <a className="linkBtn" href="/app/assinar">Assinar →</a>
+          <b>{market === 'pt' ? 'O seu teste terminou' : cardPending ? 'Ative seus 7 dias grátis' : 'Seu teste grátis acabou'}</b>
+          <span className="muted">{market === 'pt' ? 'Assine para continuar a ajustar com a IA e a publicar.' : cardPending ? 'Para ajustar com a IA, agendar no automático e liberar o mês inteiro. Nada é cobrado hoje: a primeira cobrança é no 8º dia e você cancela em 1 clique. Você já pode editar o texto e postar copiando.' : 'Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.'}</span>
+          <a className="linkBtn" href="/app/assinar">{cardPending ? 'Ativar 7 dias grátis →' : 'Assinar →'}</a>
         </div>
       )}
       {!preview && status !== 'publicado' && status !== 'publicando' && (
