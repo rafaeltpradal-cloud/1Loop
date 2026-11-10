@@ -1,10 +1,15 @@
 // Tipos e utilitários dos conteúdos, sem dependências de servidor (usados também no navegador).
 import type { Scene as CanvasScene } from '@/lib/scene';
 import type { Visual } from '@/lib/visual';
+import type { Arte } from '@/lib/arte';
 
-/** "marca": o visual próprio da pessoa (lib/visual.ts), criado pela IA a partir da entrevista e das referências. */
-export type ImageStyle = 'marca' | 'notas' | 'claro' | 'escuro';
+/**
+ * "marca": o visual próprio da pessoa (lib/visual.ts), criado pela IA a partir da entrevista e das referências.
+ * "arte": formato real escolhido pela IA para o post (print, conversa, checklist, gráfico… lib/arte.ts).
+ */
+export type ImageStyle = 'arte' | 'marca' | 'notas' | 'claro' | 'escuro';
 export const IMAGE_STYLES: { id: ImageStyle; nome: string }[] = [
+  { id: 'arte', nome: 'Formato real' },
   { id: 'marca', nome: 'Seu estilo' },
   { id: 'notas', nome: 'Bloco de notas' },
   { id: 'claro', nome: 'Claro' },
@@ -29,6 +34,8 @@ export type PostContent = {
   estilo?: ImageStyle;
   /** Visual deste post (variação da identidade da marca); vale quando estilo = "marca". */
   visual?: Visual;
+  /** Formato real da imagem (vale quando estilo = "arte"). */
+  arte?: Arte;
   foto?: number; // id da foto (biblioteca) usada no post
   video?: number; // id do vídeo (biblioteca) para reels
   canvas?: Record<string, CanvasScene>; // imagens editadas no editor visual (Pro e Multi), por imagem

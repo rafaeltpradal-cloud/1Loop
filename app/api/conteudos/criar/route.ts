@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { contextText } from '@/lib/userContext';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { accessFor, lockedMsg, previewPostLimit, previewUsage, PT_TEST_USED_MSG } from '@/lib/access';
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
         if (data) foto = { data: Buffer.from(await data.arrayBuffer()).toString('base64'), mediaType: data.type === 'image/png' || data.type === 'image/webp' ? data.type : 'image/jpeg' };
       }
       const rede = typeof body.rede === 'string' ? body.rede : 'LinkedIn';
-      const draft = await writeDraft({ pedido, texto, rede, foto, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})), market: access.market });
+      const draft = await writeDraft({ pedido, texto, rede, foto, answers: resolveAnswers(sanitizeAnswers(interview?.answers ?? {})), market: access.market, contexto: (await contextText(admin, user.id, brandId)) || undefined });
       const { data: fresh } = await admin.auth.admin.getUserById(user.id);
       await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...(fresh?.user?.app_metadata ?? user.app_metadata), criar: { day: today, n: n + 1 } } });
       return NextResponse.json({ ...draft, restantes: max - n - 1 });

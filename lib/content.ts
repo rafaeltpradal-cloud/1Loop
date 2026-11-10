@@ -7,6 +7,7 @@ import { formatLong, specialDatesByDay, fromISO } from '@/lib/dates';
 import { kindOf, type FormatKind, type PostContent, type Story } from '@/lib/contentTypes';
 import { sanitizeScene, type Scene } from '@/lib/scene';
 import { sanitizeVisual } from '@/lib/visual';
+import { arteRules, sanitizeArte } from '@/lib/arte';
 
 export * from '@/lib/contentTypes';
 
@@ -67,6 +68,8 @@ export type GenerateInput = {
   foto?: InputImage; // foto escolhida para o post
   referencias?: InputImage[]; // imagens de referência de estilo
   historia?: string; // situação real contada (ou ditada) pela pessoa: vira a base do post
+  contexto?: string; // fatos, números e histórias que a pessoa registrou (app ou MCP): lib/userContext.ts
+  artesRecentes?: string[]; // formatos de imagem dos últimos posts, para variar
 };
 
 function promptFor(input: GenerateInput) {
@@ -91,7 +94,12 @@ Estratégia:
 - Série recorrente: ${strategy.serie.nome} — ${strategy.serie.descricao}${serieNumero ? ` (este é o nº ${String(serieNumero).padStart(3, '0')} da série)` : ''}
 - Pilar deste conteúdo: ${pilar.nome} — ${pilar.descricao}
 - Etapa da jornada: ${item.objetivo}${etapa ? ` — ${etapa.papel}` : ''}
-
+${input.contexto ? `
+Contexto real do cliente (fatos, números, cases e opiniões que ELE registrou; pode usar como base, inclusive os números, sem exagerar nem inventar além disso):
+<<<
+${input.contexto}
+>>>
+` : ''}
 Conteúdo a escrever:
 - Data: ${formatLong(date)}${special ? ` (${special.map((s) => s.nome).join(', ')}; use a data só se fizer sentido para o tema)` : ''}
 - Rede: ${rede}
@@ -106,7 +114,8 @@ ${input.historia}
 
 ${input.foto ? 'Foto do post: a PRIMEIRA imagem anexada vai publicada junto com este conteúdo. Escreva em cima dela: aproveite o que aparece (cenário, momento, expressão), sem inventar fatos que a foto não mostra.\n' : ''}${input.referencias?.length ? `Referências: ${input.foto ? 'as outras imagens anexadas' : 'as imagens anexadas'} são posts que o cliente admira. Use como inspiração de estrutura, ritmo e tom; não copie frases nem marcas.\n` : ''}
 Regras da rede: ${NETWORK_RULES[rede]}
-Regras do formato: ${FORMAT_RULES[kind]}
+Regras do formato: ${FORMAT_RULES[kind]}${kind === 'imagem' || kind === 'carrossel' ? `
+Imagem: ${arteRules(kind, input.artesRecentes)}` : ''}
 
 Formato exato do JSON (inclua só os campos do formato pedido, além dos comuns):
 {
@@ -119,6 +128,7 @@ Formato exato do JSON (inclua só os campos do formato pedido, além dos comuns)
   "roteiro": { "duracao": "35s", "capa": "...", "cenas": [{ "fala": "...", "visual": "..." }] },
   "stories": [{ "tipo": "texto|enquete|caixinha|link", "texto": "...", "opcoes": ["...", "..."] }],
   "partes": ["..."],
+  "arte": { "tipo": "..." },
   "dica": "uma dica prática de publicação (horário, primeiro comentário, o que responder)"
 }`;
 }
@@ -159,6 +169,7 @@ export async function revisePost(input: GenerateInput & { current: PostContent; 
     roteiro: current.roteiro,
     stories: current.stories,
     partes: current.partes,
+    arte: current.arte,
     dica: current.dica,
   };
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY!.trim() });
@@ -193,13 +204,16 @@ Devolva o JSON COMPLETO do conteúdo ajustado, no mesmo formato acima, e mais o 
   // Mantém o que é da pessoa: estilo, foto, vídeo e edições visuais (se o texto das imagens não mudou).
   if (current.estilo) content.estilo = current.estilo;
   if (current.visual) content.visual = current.visual;
+  if (!content.arte && current.arte) content.arte = current.arte;
+  // Se a pessoa estava no formato real e o novo não é desenhável, volta ao visual da marca.
+  if (content.estilo === 'arte' && (!content.arte || content.arte.tipo === 'frase')) content.estilo = content.visual ? 'marca' : 'notas';
   if (current.foto) content.foto = current.foto;
   if (current.video) content.video = current.video;
   const sameVisual =
     JSON.stringify(content.slides ?? null) === JSON.stringify(current.slides ?? null) &&
     JSON.stringify(content.imagem ?? null) === JSON.stringify(current.imagem ?? null) &&
     (content.roteiro?.capa ?? '') === (current.roteiro?.capa ?? '');
-  if (current.canvas && sameVisual) content.canvas = current.canvas;
+  if (current.canvas && sameVisual && JSON.stringify(content.arte ?? null) === JSON.stringify(current.arte ?? null)) content.canvas = current.canvas;
   const resposta = typeof raw.resposta === 'string' && raw.resposta.trim() ? raw.resposta.trim().slice(0, 240) : 'Pronto, ajustei o conteúdo.';
   return { content, resposta };
 }
@@ -242,6 +256,10 @@ export function normalizeContent(raw: unknown, input: GenerateInput): PostConten
     const frase = str(im.frase, demo.imagem!.frase, 300);
     const destaque = str(im.destaque, '', 120);
     out.imagem = { frase, destaque: destaque && frase.includes(destaque) ? destaque : undefined };
+  }
+  if (kind === 'imagem' || kind === 'carrossel') {
+    const arte = sanitizeArte(r.arte, kind);
+    if (arte) out.arte = arte;
   }
   if (kind === 'video') {
     const ro = isObj(r.roteiro) ? r.roteiro : {};
@@ -311,6 +329,11 @@ export function sanitizeEdit(raw: unknown, current: PostContent, opts: { allowCa
     next.hashtags = r.hashtags.filter((h): h is string => typeof h === 'string').map((h) => h.replace(/^#/, '').replace(/\s+/g, '').slice(0, 40)).filter(Boolean).slice(0, 10);
   if (r.estilo === 'notas' || r.estilo === 'claro' || r.estilo === 'escuro') next.estilo = r.estilo;
   if (r.estilo === 'marca' && (current.visual || isObj(r.visual))) next.estilo = 'marca';
+  if ('arte' in r) {
+    const a = sanitizeArte(r.arte);
+    if (a) next.arte = a;
+  }
+  if (r.estilo === 'arte' && next.arte && next.arte.tipo !== 'frase') next.estilo = 'arte';
   if ('visual' in r) {
     const v = sanitizeVisual(r.visual);
     if (v) next.visual = v;

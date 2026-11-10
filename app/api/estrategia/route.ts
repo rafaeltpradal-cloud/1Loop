@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { contextText } from '@/lib/userContext';
 import { createClient } from '@/lib/supabase/server';
 import { accessFor, lockedMsg, PREVIEW, previewUsage } from '@/lib/access';
 import { sanitizeAnswers } from '@/lib/interview';
@@ -45,7 +46,7 @@ export async function POST() {
       { status: 429 },
     );
   try {
-    const generated = await generateStrategy(sanitizeAnswers(interview.answers), plan, access.market);
+    const generated = await generateStrategy(sanitizeAnswers(interview.answers), plan, access.market, (await contextText(createAdminClient(), user.id, brandId)) || undefined);
     const { data: prevRow } = await supabase.from('strategies').select('data').eq('user_id', user.id).eq('brand_id', brandId).order('created_at', { ascending: false }).limit(1).maybeSingle();
     const strategy = applyModelo(generated.strategy, (prevRow?.data as Strategy | undefined) ?? null);
     const source = generated.source;

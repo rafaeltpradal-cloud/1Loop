@@ -12,6 +12,7 @@ import { itemDate, planStartFrom } from '@/lib/dates';
 import { generatePost, kindOf, POST_COLUMNS, serieNumberFor, type InputImage, type PostContent } from '@/lib/content';
 import { applyVisualToDrafts, ensureBrandVisual, usesBrandVisual } from '@/lib/visualAI';
 import { variantFor } from '@/lib/visual';
+import { contextText } from '@/lib/userContext';
 
 type Admin = ReturnType<typeof createAdminClient>;
 
@@ -109,10 +110,16 @@ export async function POST(req: Request) {
     const fotoRow = prev?.foto ? (media ?? []).find((m) => m.id === prev.foto) : undefined;
     const refRows = (media ?? []).filter((m) => m.kind === 'referencia').slice(0, 3);
     const [foto, ...referencias] = await Promise.all([fotoRow ? mediaImage(admin, fotoRow.path) : Promise.resolve(undefined), ...refRows.map((r) => mediaImage(admin, r.path))]);
+    // Contexto real que a pessoa registrou (app ou IA dela via MCP) e os formatos de imagem recentes, para variar.
+    const [contexto, { data: recentes }] = await Promise.all([
+      contextText(admin, user.id, brandId),
+      admin.from('posts').select('content').eq('user_id', user.id).eq('strategy_id', strategyRow.id).neq('item_index', index).order('updated_at', { ascending: false }).limit(6),
+    ]);
+    const artesRecentes = (recentes ?? []).map((r) => (r.content as PostContent | null)?.arte?.tipo).filter((x): x is NonNullable<typeof x> => !!x);
     // Visual próprio da marca (criado pela IA a partir da entrevista e das referências), em paralelo com o texto.
     const firstVisual = !strategy.visual && usesBrandVisual(strategy) && !prev?.estilo;
     const [{ content, source }, brandVisual] = await Promise.all([
-      generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined, market: access.market }),
+      generatePost({ strategy, item, date, answers, serieNumero, foto, referencias: referencias.filter((x): x is InputImage => !!x), historia: historia || undefined, contexto: contexto || undefined, artesRecentes, market: access.market }),
       usesBrandVisual(strategy) && !prev?.estilo
         ? ensureBrandVisual(admin, { userId: user.id, brandId, strategyId: strategyRow.id as number, strategy, answers }).catch((err) => {
             console.error('[visual da marca]', err);
@@ -132,6 +139,12 @@ export async function POST(req: Request) {
       // Primeira vez: os rascunhos que estavam no bloco de notas padrão passam para o visual da marca.
       if (firstVisual) await applyVisualToDrafts(admin, user.id, strategyRow.id as number, brandVisual, 'padrao').catch(() => 0);
     }
+    // Formato real (print, conversa, checklist…) quando a IA escolheu um para este post. Quem fixou um modelo
+    // (ex.: sempre bloco de notas) ou escolheu claro/escuro à mão continua no dele.
+    if (content.arte && content.arte.tipo !== 'frase' && !strategy.modelo?.estilo && prev?.estilo !== 'claro' && prev?.estilo !== 'escuro') {
+      content.estilo = 'arte';
+      if (!content.visual && brandVisual) content.visual = variantFor(brandVisual, index);
+    } else if (content.estilo === 'arte') content.estilo = content.visual ? 'marca' : 'notas';
     if (prev?.foto) content.foto = prev.foto;
     if (prev?.ajustes) content.ajustes = prev.ajustes;
 

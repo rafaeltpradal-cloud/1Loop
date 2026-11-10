@@ -15,13 +15,16 @@ Faça exatamente o que ela pediu: escrever do zero, reescrever, encurtar, mudar 
 - Se houver foto, ela vai publicada junto: aproveite o que aparece nela, sem afirmar o que a foto não mostra.
 Responda SOMENTE com um objeto JSON válido.`;
 
-export async function writeDraft(input: { pedido: string; texto: string; rede: string; answers: Answers; foto?: InputImage; market?: Market }): Promise<Draft> {
+export async function writeDraft(input: { pedido: string; texto: string; rede: string; answers: Answers; foto?: InputImage; market?: Market; contexto?: string }): Promise<Draft> {
   if (!process.env.ANTHROPIC_API_KEY?.trim()) throw new Error('IA indisponível');
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY.trim() });
   const rede = NETWORK_RULES[input.rede] ? input.rede : 'LinkedIn';
   const prompt = `Quem escreve (entrevista):
 ${interviewText(input.answers) || '- (sem entrevista; tom profissional e direto)'}
-
+${input.contexto ? `
+Contexto real que a pessoa registrou (fatos, números, cases; pode usar como base):
+${input.contexto}
+` : ''}
 Rede: ${rede}. Regras da rede: ${NETWORK_RULES[rede]}
 ${input.foto ? 'Foto: a imagem anexada vai publicada com o post.\n' : 'Sem foto.\n'}
 ${input.texto ? `Texto que a pessoa já escreveu:\n<<<\n${input.texto}\n>>>\n` : 'Ainda não há texto.\n'}

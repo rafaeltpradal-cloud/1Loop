@@ -20,6 +20,7 @@ const I = {
   perf: ic(<path d="M3 17l5-5 4 4 8-8M15 8h5v5" />),
   nets: ic(<><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" /><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" /></>),
   plus: ic(<path d="M12 5v14M5 12h14" />),
+  brain: ic(<><path d="M9 4a3 3 0 0 0-3 3v.5A3 3 0 0 0 4 10.3a3 3 0 0 0 1 4.7A3 3 0 0 0 9 20h0a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3Z" /><path d="M15 4a3 3 0 0 1 3 3v.5a3 3 0 0 1 2 2.8 3 3 0 0 1-1 4.7A3 3 0 0 1 15 20h0a3 3 0 0 1-3-3" /></>),
 };
 
 // Menu em grupos: criar (o dia a dia), planejar, resultados e conectar.
@@ -34,7 +35,13 @@ const GROUPS: { label: string; items: (Item & { match?: string[]; badge?: 'draft
       { href: '/app/comentarios', label: 'Comentar em posts', icon: I.comment },
     ],
   },
-  { label: 'Planejar', items: [{ href: '/app/estrategia', label: 'Estratégia', icon: I.strategy, match: ['/app/entrevista'] }] },
+  {
+    label: 'Planejar',
+    items: [
+      { href: '/app/estrategia', label: 'Estratégia', icon: I.strategy, match: ['/app/entrevista'] },
+      { href: '/app/contexto', label: 'Contexto e IAs', icon: I.brain },
+    ],
+  },
   { label: 'Resultados', items: [{ href: '/app/desempenho', label: 'Desempenho', icon: I.perf }] },
   { label: 'Conectar', items: [{ href: '/app/redes', label: 'Redes', icon: I.nets }] },
 ];

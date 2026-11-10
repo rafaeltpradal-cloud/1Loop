@@ -18,6 +18,7 @@ import { AutoPublish, type AutoInfo } from '@/components/content/AutoPublish';
 import { AiAsk, type AiReply } from '@/components/AiAsk';
 import { PostPerformance, type PostPerf } from '@/components/perf/PostPerformance';
 import { nextVariant, variantFor, type Visual } from '@/lib/visual';
+import { arteTiposFor, type Arte, type ArteTipo } from '@/lib/arte';
 
 const OPEN_URL: Record<string, string> = {
   LinkedIn: 'https://www.linkedin.com/feed/?shareActive=true',
@@ -181,7 +182,33 @@ export function PostEditor({
       setVisualBusy(false);
     }
   }
+  // ----- formato real (print, conversa, checklist, gráfico, anotação, caderno) -----
+  const [arteBusy, setArteBusy] = useState(false);
+  async function newArte(tipo?: ArteTipo) {
+    setArteBusy(true);
+    try {
+      const res = await fetch('/api/conteudos/arte', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ postId: post.id, tipo }) });
+      const data = (await res.json().catch(() => ({}))) as { arte?: Arte; error?: string };
+      if (!res.ok || !data.arte) {
+        flash('error', data.error || 'Não deu para criar o formato agora.');
+        return;
+      }
+      // O servidor já salvou; o resto do que a pessoa editou continua aqui para salvar.
+      setC((prev) => {
+        const next = { ...prev, estilo: 'arte' as const, arte: data.arte };
+        delete next.canvas;
+        return next;
+      });
+    } finally {
+      setArteBusy(false);
+    }
+  }
+
   function chooseStyle(id: PostContent['estilo']) {
+    if (id === 'arte') {
+      if (c.arte && c.arte.tipo !== 'frase') return set({ estilo: 'arte' });
+      return void newArte();
+    }
     if (id !== 'marca') return set({ estilo: id });
     if (c.visual) return set({ estilo: 'marca' });
     if (brandVisual) return set({ estilo: 'marca', visual: variantFor(brandVisual, post.item_index) });
@@ -455,16 +482,48 @@ export function PostEditor({
                 </div>
               )}
               <div className="styleRow" role="radiogroup" aria-label="Estilo das imagens">
-                {IMAGE_STYLES.map((s) => {
+                {IMAGE_STYLES.filter((s) => s.id !== 'arte' || kind === 'imagem' || kind === 'carrossel').map((s) => {
                   const vv = s.id === 'marca' ? c.visual ?? brandVisual : null;
                   return (
-                    <button key={s.id} type="button" role="radio" aria-checked={(c.estilo ?? 'notas') === s.id} className={`styleChip ${s.id}`} onClick={() => chooseStyle(s.id)} disabled={visualBusy}>
+                    <button key={s.id} type="button" role="radio" aria-checked={(c.estilo ?? 'notas') === s.id} className={`styleChip ${s.id}`} onClick={() => chooseStyle(s.id)} disabled={visualBusy || arteBusy}>
                       <span className="styleSwatch" aria-hidden="true" style={vv ? { background: `linear-gradient(135deg, ${vv.cores.fundo} 55%, ${vv.cores.acento} 55%)` } : undefined} />
                       {s.nome}
                     </button>
                   );
                 })}
               </div>
+              {(c.estilo === 'arte' || arteBusy) && (kind === 'imagem' || kind === 'carrossel') && (
+                <div className="visualBar">
+                  {arteBusy ? (
+                    <span className="visualInfo"><span className="spinner" style={{ width: 16, height: 16 }} /> Montando a imagem no formato que combina com este post…</span>
+                  ) : (
+                    <span className="visualInfo">
+                      <b>Formato real</b>
+                      <span className="muted"> · imagens com cara de gente, não de template</span>
+                    </span>
+                  )}
+                  {kind === 'imagem' && (
+                    <div className="styleRow" role="radiogroup" aria-label="Formato da imagem">
+                      {arteTiposFor(kind).map((t) => (
+                        <button key={t.id} type="button" role="radio" aria-checked={c.estilo === 'arte' && c.arte?.tipo === t.id} className="styleChip" onClick={() => void newArte(t.id)} disabled={arteBusy}>
+                          {t.nome}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!arteBusy && kind === 'imagem' && c.arte && (
+                    <div className="visualActions">
+                      <button type="button" className="btnGhost btnSm" onClick={() => void newArte(c.arte!.tipo === 'frase' ? undefined : c.arte!.tipo)}>Outra versão</button>
+                      <button type="button" className="btnGhost btnSm" onClick={() => void newArte()}>✨ A IA escolhe</button>
+                    </div>
+                  )}
+                  {!arteBusy && (
+                    <span className="muted" style={{ fontSize: 12.5 }}>
+                      Usa o seu <Link href="/app/contexto">contexto</Link>: números e cases só aparecem se vierem de você.
+                    </span>
+                  )}
+                </div>
+              )}
               {(c.estilo === 'marca' || visualBusy) && (
                 <div className="visualBar">
                   {visualBusy ? (

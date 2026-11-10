@@ -10,8 +10,10 @@ import type { FontKey } from '@/lib/visual';
 export type Fill = string;
 
 /** Famílias das fontes extras (nomes reais vindos do CSS da página, ver lib/postImage.ts). */
-const FAMILIES: Partial<Record<FontKey, string>> = {};
-export function setFontFamilies(m: Partial<Record<FontKey, string>>) {
+/** Fontes das camadas: as da identidade visual + "hand" (letra à mão, usada nos formatos reais, lib/arteImage.ts). */
+export type LayerFont = FontKey | 'hand';
+const FAMILIES: Partial<Record<LayerFont, string>> = {};
+export function setFontFamilies(m: Partial<Record<LayerFont, string>>) {
   Object.assign(FAMILIES, m);
 }
 
@@ -32,7 +34,7 @@ export type TextLayer = {
   hiColor?: string;
   hiColor2?: string; // segunda cor do degradê do destaque
   hiInk?: string;
-  font?: FontKey; // fonte da camada (sem = a da marca do app)
+  font?: LayerFont; // fonte da camada (sem = a da marca do app)
   upper?: boolean; // caixa alta
   ls?: number; // espaçamento entre letras, em px
   ruled?: string; // cor das linhas de caderno sob o texto
@@ -467,7 +469,7 @@ export function boundsOf(ctx: CanvasRenderingContext2D, l: Layer, family: string
 const num = (v: unknown, min: number, max: number, d: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d);
 const color = (v: unknown, d: string) =>
   typeof v === 'string' && (/^#[0-9a-fA-F]{3,8}$/.test(v) || /^rgba?\([\d\s.,%]+\)$/.test(v) || v === 'brand' || v === 'shade' || /^g:#[0-9a-fA-F]{6}:#[0-9a-fA-F]{6}:-?\d{1,3}$/.test(v) || /^r:#[0-9a-fA-F]{6}:#[0-9a-fA-F]{6}$/.test(v)) ? v : d;
-const FONTS = ['sans', 'grotesk', 'serif', 'display', 'mono'];
+const FONTS = ['sans', 'grotesk', 'serif', 'display', 'mono', 'hand'];
 const optColor = (v: unknown) => (v === undefined ? undefined : color(v, '#000000'));
 
 export function sanitizeScene(raw: unknown): Scene | null {
@@ -500,7 +502,7 @@ export function sanitizeScene(raw: unknown): Scene | null {
         hi: typeof l.hi === 'string' ? l.hi.slice(0, 200) : undefined,
         hiStyle: ['box', 'gradient', 'brush', 'underline', 'color'].includes(l.hiStyle as string) ? (l.hiStyle as TextLayer['hiStyle']) : undefined,
         hiColor2: optColor(l.hiColor2),
-        font: FONTS.includes(l.font as string) ? (l.font as FontKey) : undefined,
+        font: FONTS.includes(l.font as string) ? (l.font as LayerFont) : undefined,
         upper: l.upper === true ? true : undefined,
         ls: l.ls === undefined ? undefined : num(l.ls, -10, 40, 0),
         cursor: optColor(l.cursor),

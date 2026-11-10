@@ -1,16 +1,16 @@
 // Monta as imagens dos posts como cenas editáveis (lib/scene) e gera os PNGs no navegador.
 
 import { kindOf, type ImageStyle, type PostContent, type Story } from '@/lib/contentTypes';
-import { drawScene, fitSize, layoutText, loadSceneImages, newId, setFontFamilies, type Layer, type Scene, type TextLayer } from '@/lib/scene';
+import { drawScene, fitSize, layoutText, loadSceneImages, newId, setFontFamilies, type Layer, type LayerFont, type Scene, type TextLayer } from '@/lib/scene';
 import { designSpecs } from '@/lib/designImage';
-import type { FontKey } from '@/lib/visual';
+import { arteSpecs } from '@/lib/arteImage';
 
 export type Brand = { name: string; handle?: string; serie: string };
 /** Data (AAAA-MM-DD) e horário (HH:MM) do post, mostrados na imagem estilo bloco de notas. */
 export type PostMeta = { date?: string; time?: string };
 export type ImageSpec = { key: string; label: string; w: number; h: number; build: (ctx: CanvasRenderingContext2D, font: string) => Scene };
 
-type ClassicStyle = Exclude<ImageStyle, 'marca'>;
+type ClassicStyle = Exclude<ImageStyle, 'marca' | 'arte'>;
 type Palette = { bg: string; ink: string; muted: string; line: string; tagBg: string; tagInk: string; hiStyle: 'box' | 'gradient'; accent: string; glow?: boolean; topBar?: boolean };
 
 const PALETTES: Record<ClassicStyle, Palette> = {
@@ -290,12 +290,17 @@ function photoImage(c0: PostContent, style: ClassicStyle): ImageSpec {
 /** Todas as imagens de um post, na ordem de publicação. */
 export function imagesFor(formato: string, c: PostContent, brand: Brand, serieNumero?: number, meta: PostMeta = {}): ImageSpec[] {
   const kind = kindOf(formato);
+  // Formato real escolhido para o post (print, conversa, checklist, gráfico, anotação, caderno).
+  if (c.estilo === 'arte') {
+    const specs = arteSpecs(kind, c, brand, meta);
+    if (specs) return specs;
+  }
   // Visual próprio da pessoa (identidade criada pela IA), com variação por post.
-  if (c.estilo === 'marca' && c.visual) {
+  if ((c.estilo === 'marca' || c.estilo === 'arte') && c.visual) {
     const specs = designSpecs(kind, c, c.visual, brand, serieNumero);
     if (specs) return specs;
   }
-  const style: ClassicStyle = c.estilo && c.estilo !== 'marca' ? c.estilo : c.estilo === 'marca' ? 'claro' : 'notas';
+  const style: ClassicStyle = c.estilo && c.estilo !== 'marca' && c.estilo !== 'arte' ? c.estilo : c.estilo === 'marca' ? 'claro' : 'notas';
   if (kind === 'carrossel') return carouselImages(c, style, brand);
   if (kind === 'imagem') return [style === 'notas' && !c.foto ? notesQuote(c, brand, serieNumero, meta) : quoteImage(c, style, brand, serieNumero, false)];
   if (kind === 'prova') return [quoteImage(c, style, brand, serieNumero, true)];
@@ -313,8 +318,8 @@ export function brandFont(): Promise<string> {
       const fam = getComputedStyle(document.body).fontFamily || 'sans-serif';
       // Fontes extras das identidades visuais: o nome real vem das variáveis CSS (next/font, app/layout.tsx).
       const root = getComputedStyle(document.documentElement);
-      const extra: Partial<Record<FontKey, string>> = {};
-      const vars: [FontKey, string, string][] = [['serif', '--font-serif', 'serif'], ['grotesk', '--font-grotesk', 'sans-serif'], ['display', '--font-display', 'sans-serif'], ['mono', '--font-mono', 'monospace']];
+      const extra: Partial<Record<LayerFont, string>> = {};
+      const vars: [LayerFont, string, string][] = [['serif', '--font-serif', 'serif'], ['grotesk', '--font-grotesk', 'sans-serif'], ['display', '--font-display', 'sans-serif'], ['mono', '--font-mono', 'monospace'], ['hand', '--font-hand', 'cursive']];
       for (const [k, v, fb] of vars) {
         const val = root.getPropertyValue(v).trim();
         extra[k] = val ? `${val}, ${fb}` : fb;
@@ -330,6 +335,8 @@ export function brandFont(): Promise<string> {
           document.fonts.load(`600 40px ${extra.grotesk}`),
           document.fonts.load(`400 80px ${extra.display}`),
           document.fonts.load(`700 60px ${extra.mono}`),
+          document.fonts.load(`500 60px ${extra.hand}`),
+          document.fonts.load(`700 60px ${extra.hand}`),
         ]);
       } catch {
         // segue com a fonte que tiver

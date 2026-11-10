@@ -89,7 +89,7 @@ function interviewText(answers: Answers) {
   }).join('\n');
 }
 
-export async function generateStrategy(rawAnswers: Answers, plan: PlanId, market?: Market): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
+export async function generateStrategy(rawAnswers: Answers, plan: PlanId, market?: Market, contexto?: string): Promise<{ strategy: Strategy; source: 'ai' | 'demo' }> {
   // "Outro" vira o texto que a pessoa escreveu.
   const answers = resolveAnswers(rawAnswers);
   if (!process.env.ANTHROPIC_API_KEY?.trim()) {
@@ -104,7 +104,7 @@ export async function generateStrategy(rawAnswers: Answers, plan: PlanId, market
     messages: [
       {
         role: 'user',
-        content: `Plano contratado: ${PLANS[plan].name} (${PLANS[plan].rhythm}).\n\nEntrevista do cliente:\n${interviewText(answers)}\n\n${schemaFor(plan)}`,
+        content: `Plano contratado: ${PLANS[plan].name} (${PLANS[plan].rhythm}).\n\nEntrevista do cliente:\n${interviewText(answers)}\n\n${contexto ? `Contexto real que o cliente registrou (fatos, números, cases, oferta; use para temas e pilares concretos):\n${contexto}\n\n` : ''}${schemaFor(plan)}`,
       },
     ],
   });

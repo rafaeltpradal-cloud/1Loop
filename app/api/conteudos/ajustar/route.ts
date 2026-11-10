@@ -1,5 +1,6 @@
 import { marketOf } from '@/lib/market';
 import { NextResponse } from 'next/server';
+import { contextText } from '@/lib/userContext';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ACTIVE_STATUSES } from '@/lib/billing';
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
       foto,
       current,
       pedido,
+      contexto: (await contextText(admin, user.id, brandId)) || undefined,
       market: marketOf(user),
     });
     await admin.from('posts').update({ content: { ...current, ajustes: used + 1 } }).eq('id', postId).eq('user_id', user.id);
