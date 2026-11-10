@@ -148,24 +148,33 @@ function checklist(a: Arte, c: PostContent, brand: Brand, ctx: CanvasRenderingCo
   const acc = accentOf(c);
   const ink = '#1D2433';
   const x0 = 170;
-  const step = 96;
   const layers: Layer[] = [rect(128, 0, 3, H, '#F1B5B0')];
   const { layer: title, h: titleH } = fit(ctx, font, { x: x0, y: 96, w: W - x0 - 80, text: a.titulo || c.gancho, weight: 700, color: ink, align: 'left', lh: 1.05, font: 'hand' as LayerFont }, 260, 104, 66);
   layers.push(title);
   const start = Math.max(96 + titleH + 70, 330);
-  // linhas do caderno
-  for (let ly = start - 24; ly < H - 140; ly += step) layers.push(rect(0, ly + step + 6, W, 2, '#DCE3EE'));
-  let y = start;
-  for (const it of a.itens ?? []) {
-    const box = 50;
-    layers.push(rect(x0, y + 22, box, box, it.feito ? acc : '#FFFFFF', { radius: 10, stroke: it.feito ? acc : ink, strokeW: 4 }));
-    if (it.feito) layers.push(t({ x: x0, y: y + 20, w: box, text: '✓', size: 42, weight: 800, color: '#FFFFFF', align: 'center', lh: 1.1 }));
-    const item = t({ x: x0 + 82, y: y + 6, w: W - x0 - 82 - 70, text: it.texto, size: 62, weight: 500, color: ink, lh: step / 62, font: 'hand' });
-    const lines = layoutText(ctx, item, font).lines.length;
-    layers.push(item);
-    y += step * Math.max(1, lines);
-    if (y > H - 220) break;
+  const itens = a.itens ?? [];
+  const tw = W - x0 - 82 - 70;
+  // Maior letra em que a lista cabe na folha (lista curta não deixa meia página vazia).
+  let size = 84;
+  let step = Math.round(size * 1.55);
+  const linesAt = (sz: number, st: number) => itens.map((it) => layoutText(ctx, t({ x: 0, y: 0, w: tw, text: it.texto, size: sz, weight: 500, lh: st / sz, font: 'hand' }), font).lines.length);
+  let lines = linesAt(size, step);
+  while (size > 54 && start + lines.reduce((s2, n) => s2 + Math.max(1, n), 0) * step > H - 190) {
+    size -= 4;
+    step = Math.round(size * 1.55);
+    lines = linesAt(size, step);
   }
+  // linhas do caderno, alinhadas com a base do texto
+  for (let ly = start; ly < H - 140; ly += step) layers.push(rect(0, ly + step - Math.round(size * 0.22), W, 2, '#DCE3EE'));
+  let y = start;
+  itens.forEach((it, i) => {
+    const box = Math.round(size * 0.78);
+    const by = y + Math.round((step - box) / 2) - Math.round(size * 0.12);
+    layers.push(rect(x0, by, box, box, it.feito ? acc : '#FFFFFF', { radius: 10, stroke: it.feito ? acc : ink, strokeW: 4 }));
+    if (it.feito) layers.push(t({ x: x0, y: by + box * 0.08, w: box, text: '✓', size: Math.round(box * 0.8), weight: 800, color: '#FFFFFF', align: 'center', lh: 1.1 }));
+    layers.push(t({ x: x0 + box + 32, y, w: tw, text: it.texto, size, weight: 500, color: ink, lh: step / size, font: 'hand' }));
+    y += step * Math.max(1, lines[i] ?? 1);
+  });
   layers.push(...signature(brand, '#8A93A3'));
   return { w: W, h: H, bg: '#FBF8F1', layers };
 }
