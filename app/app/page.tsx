@@ -237,6 +237,10 @@ export default async function AppHome({ searchParams }: { searchParams: Promise<
           <b>Sua estratégia</b>
           <span className="muted">Pilares, série e calendário do mês.</span>
         </Link>
+        <Link href="/app/contexto" className="card">
+          <b>Contexto e IAs</b>
+          <span className="muted">Seus números e cases viram base dos posts. Conecte o Claude ou o ChatGPT.</span>
+        </Link>
       </section>
     </div>
   );
