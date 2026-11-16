@@ -55,6 +55,8 @@ export function landingWithFounders(html: string) {
       .replace(`Preço Founders · depois R$ ${full}/mês`, 'Sem fidelidade · garantia de 7 dias');
   }
   return out
+    // A conta antiga do Multi (R$ 83 por marca contra R$ 197 no Pro) não vale com o Pro a R$ 67.
+    .replace('≈ R$ 83 por marca · no Pro seriam R$ 197 cada', 'Até 6 marcas, com time e aprovação do cliente')
     .replace(/<div class="fPill"[^]*?travado para sempre<\/div>/, '')
     .replace('<span>✓ Preço Founders travado para sempre</span>', '<span>✓ Sem fidelidade</span>');
 }
