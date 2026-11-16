@@ -31,8 +31,8 @@ export async function GET(req: Request) {
     } = await supabase.auth.getUser();
     if (!user || !isOwner(user.email)) return new NextResponse('Não encontrado', { status: 404 });
     // ?amostra=cr1[&etapa=entrevista|sem_post|nao_publicou]: exemplo da campanha.
-    if (String(amostra) === 'cr1') {
-      const mail = sampleCampaign(url.searchParams.get('etapa') ?? undefined);
+    if (String(amostra) === 'cr1' || String(amostra) === 'np1') {
+      const mail = sampleCampaign(url.searchParams.get('etapa') ?? undefined, String(amostra) === 'np1' ? 'np1' : 'cr1');
       if (url.searchParams.get('enviar') === '1' && user.email) {
         const ok = await sendEmail({ to: user.email, ...mail, subject: `[Teste] ${mail.subject}` });
         return NextResponse.json({ ok, para: user.email, assunto: mail.subject });
@@ -40,7 +40,7 @@ export async function GET(req: Request) {
       return new NextResponse(mail.html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
     }
     // ?campanha=cr1 lista quem recebe a campanha (prova + 10% no 1º mês); com &enviar=1, envia.
-    if (campanha === 'cr1') return NextResponse.json(await runCampaign('cr1', { dryRun: url.searchParams.get('enviar') !== '1' }));
+    if (campanha === 'cr1' || campanha === 'np1') return NextResponse.json(await runCampaign(campanha, { dryRun: url.searchParams.get('enviar') !== '1' }));
     const isNurture = !!amostra && NURTURE_KINDS.includes(amostra as unknown as NurtureKind);
     if (amostra && (KINDS.includes(amostra) || isNurture)) {
       const mail = isNurture ? sampleNurture(amostra as unknown as NurtureKind, url.searchParams.get('etapa') ?? undefined) : sampleRecovery(amostra, url.searchParams.get('etapa') === 'parou' ? 'parou' : 'pronto');

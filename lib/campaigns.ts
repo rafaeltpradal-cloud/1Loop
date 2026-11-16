@@ -17,8 +17,8 @@ import { marketOf } from '@/lib/market';
 import { unsubscribeUrl } from '@/lib/recovery';
 import { trialGroupOf } from '@/lib/trialGroup';
 
-export type CampaignId = 'cr1';
-export const CAMPAIGNS: CampaignId[] = ['cr1'];
+export type CampaignId = 'cr1' | 'np1';
+export const CAMPAIGNS: CampaignId[] = ['cr1', 'np1'];
 
 /** Prazo da condição da campanha cr1. */
 const CR1_UNTIL = '2026-11-10T23:59:59-03:00';
@@ -94,6 +94,46 @@ export function cr1Email(p: { firstName: string; appUrl: string; unsubscribeUrl:
   return { subject, html, text };
 }
 
+/**
+ * np1 (16/11/2026): preço novo e garantia. Basic R$ 37 e Pro R$ 67, cobrança na hora, devolução integral em 7 dias.
+ * Próximo passo de acordo com onde a pessoa parou; a estratégia e os posts dela continuam na conta.
+ */
+export function np1Email(p: { firstName: string; appUrl: string; unsubscribeUrl: string; stage: Stage; plan: keyof typeof PLANS }) {
+  const app = p.appUrl;
+  const n = esc(p.firstName);
+  const s = p.stage;
+  const plan = p.plan === 'multi' ? 'pro' : p.plan;
+  let where: string;
+  if (!s.interviewDone) where = s.answered > 0 ? `Sua entrevista ficou em ${s.answered} de ${s.total} perguntas. Terminando, saem na hora a sua estratégia de 30 dias e os primeiros posts, na sua voz.` : 'Sua conta está criada. São 5 perguntas rápidas e, logo depois, saem a sua estratégia de 30 dias e os primeiros posts, na sua voz.';
+  else if (!s.firstPost) where = 'Sua estratégia de 30 dias está pronta na sua conta, esperando os posts.';
+  else if (!s.published) where = `Seu post <b>“${esc(s.firstPost.tema)}”</b> está pronto na sua conta, junto com a estratégia.`;
+  else where = `Você já publicou ${s.published === 1 ? 'um post' : `${s.published} posts`} com a 1loop. Agora é manter o ritmo.`;
+  const subject = `${p.firstName}, baixamos o preço da 1loop: Pro por R$ ${PLANS.pro.priceFull}/mês`;
+  const title = 'Preço novo, com garantia de 7 dias';
+  const paragraphs = [
+    `${n}, quem escreve é o Rafael, fundador da 1loop. Ouvi de muita gente que o preço pesava, então mudamos: o <b>Pro agora custa R$ ${PLANS.pro.priceFull}/mês</b> (era R$ 147) e o <b>Basic, R$ ${PLANS.basic.priceFull}/mês</b> (era R$ 67). Sem fidelidade.`,
+    where,
+    `Assinando, você libera o mês inteiro de posts, ajusta qualquer um com a IA e conecta o LinkedIn para eles saírem sozinhos no horário certo.`,
+    `<b>Garantia de 7 dias:</b> se não fizer sentido para você, é só responder este e-mail e eu devolvo 100%. Sem perguntas.`,
+  ];
+  const cta = { label: `Assinar o ${PLANS[plan].name} por R$ ${PLANS[plan].priceFull}/mês`, href: `${app}/app/assinar?plano=${plan}` };
+  const html = frame({
+    appUrl: app,
+    title,
+    paragraphs,
+    cta,
+    footer: `Qualquer dúvida, é só responder: eu leio todos.<br><a href="${p.unsubscribeUrl}" style="color:#5E646C">Não quero mais receber estes e-mails</a>`,
+  });
+  const text = [
+    `${p.firstName}, quem escreve é o Rafael, fundador da 1loop. Mudamos o preço: Pro por R$ ${PLANS.pro.priceFull}/mês (era R$ 147) e Basic por R$ ${PLANS.basic.priceFull}/mês (era R$ 67). Sem fidelidade.`,
+    where.replace(/<[^>]+>/g, ''),
+    `Garantia de 7 dias: se não fizer sentido, responda este e-mail e eu devolvo 100%.`,
+    `${cta.label}: ${cta.href}`,
+    `Sair da lista: ${p.unsubscribeUrl}`,
+  ].join('\n\n');
+  return { subject, html, text };
+}
+
 async function allUsers() {
   const admin = createAdminClient();
   const out: User[] = [];
@@ -147,7 +187,7 @@ export async function runCampaign(id: CampaignId, { dryRun = true } = {}) {
     const { data: profile } = await admin.from('profiles').select('name').eq('id', u.id).maybeSingle();
     const name = ((profile?.name as string | undefined) || (u.user_metadata?.name as string | undefined) || '').trim();
     const cardGroup = trialGroupOf(u) === 'cartao';
-    const mail = cr1Email({
+    const mail = id === 'np1' ? np1Email({ firstName: name.split(/\s+/)[0] || 'Oi', appUrl: siteUrl(), unsubscribeUrl: unsubscribeUrl(u.id), stage, plan: chosenPlan(u) }) : cr1Email({
       firstName: name.split(/\s+/)[0] || 'Oi',
       appUrl: siteUrl(),
       unsubscribeUrl: unsubscribeUrl(u.id),
@@ -163,7 +203,7 @@ export async function runCampaign(id: CampaignId, { dryRun = true } = {}) {
     }
     // Condição de 10% no 1º mês (aplicada pelo webhook na assinatura), se a conta ainda não tem uma.
     const current = u.app_metadata?.offer as Offer | undefined;
-    const offer: Offer | undefined = activeOffer(u, now) || current?.used ? undefined : { id: 'founders10', until: new Date(CR1_UNTIL).toISOString() };
+    const offer: Offer | undefined = id !== 'cr1' || activeOffer(u, now) || current?.used ? undefined : { id: 'founders10', until: new Date(CR1_UNTIL).toISOString() };
     await admin.auth.admin.updateUserById(u.id, {
       app_metadata: { ...u.app_metadata, campaigns: { ...done, [id]: now.toISOString() }, ...(offer ? { offer } : {}) },
     });
@@ -173,12 +213,13 @@ export async function runCampaign(id: CampaignId, { dryRun = true } = {}) {
 }
 
 /** Exemplo para o dono conferir. */
-export function sampleCampaign(etapa = 'nao_publicou') {
+export function sampleCampaign(etapa = 'nao_publicou', id: CampaignId = 'cr1') {
   const stage: Stage =
     etapa === 'entrevista'
       ? { answered: 4, total: QUESTIONS.length, interviewDone: false, posts: 0, firstPost: null, published: 0 }
       : etapa === 'sem_post'
         ? { answered: QUESTIONS.length, total: QUESTIONS.length, interviewDone: true, posts: 0, firstPost: null, published: 0 }
         : { answered: QUESTIONS.length, total: QUESTIONS.length, interviewDone: true, posts: 1, firstPost: { id: 1, tema: 'Seu lead não esfriou. Você parou de chamar.' }, published: 0 };
+  if (id === 'np1') return np1Email({ firstName: 'Rafael', appUrl: siteUrl(), unsubscribeUrl: `${siteUrl()}/api/emails/sair?u=exemplo&t=exemplo`, stage, plan: 'pro' });
   return cr1Email({ firstName: 'Rafael', appUrl: siteUrl(), unsubscribeUrl: `${siteUrl()}/api/emails/sair?u=exemplo&t=exemplo`, stage, plan: 'pro', trialEnd: new Date(Date.now() + 5 * 86400000), cardGroup: false });
 }
