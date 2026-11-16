@@ -71,14 +71,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href={ctx.preview || ctx.freeTrial || ctx.testPost ? '/app/assinar' : '/app/plano'} className="card planCard footExtra" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: 'none', textDecoration: 'none', color: 'inherit' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, fontSize: 14 }}>
               <span className="dot" style={{ background: ctx.preview ? 'var(--amber, #F08A24)' : ctx.status === 'trialing' || ctx.freeTrial || ctx.testPost ? 'var(--violet)' : 'var(--teal)' }} />
-              {ctx.cardPending ? 'Ativar 7 dias grátis' : ctx.preview ? (ctx.market === 'pt' ? 'Teste terminado' : 'Teste encerrado') : ctx.testPost ? 'Post de teste' : ctx.freeTrial ? 'Teste grátis' : `Plano ${plan.name}`}
+              {ctx.cardPending ? 'Ativar 7 dias grátis' : ctx.preview ? (ctx.market === 'pt' ? 'Teste terminado' : 'Prévia grátis') : ctx.testPost ? 'Post de teste' : ctx.freeTrial ? 'Teste grátis' : `Plano ${plan.name}`}
               <span className="planCardGo" aria-hidden="true">›</span>
             </span>
             <span className="muted" style={{ fontSize: 12 }}>
               {ctx.cardPending
                 ? 'Nada é cobrado hoje'
                 : ctx.preview
-                ? 'Assinar para continuar'
+                ? (ctx.market === 'pt' ? 'Assinar para continuar' : 'Assinar · garantia de 7 dias')
                 : ctx.testPost
                   ? 'Publique-o e depois assine'
                 : ctx.freeTrial

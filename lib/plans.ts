@@ -25,8 +25,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'basic',
     name: 'Basic',
     tagline: 'Para manter presença com constância',
-    priceFull: 97,
-    priceFounders: 67,
+    priceFull: 37, // 16/11/2026: preço novo (era 97, Founders 67)
     rhythm: '1 conteúdo a cada 3 dias',
     postsPerMonth: 10,
     brands: 1,
@@ -42,8 +41,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'pro',
     name: 'Pro',
     tagline: 'Para crescer rápido e virar referência',
-    priceFull: 197,
-    priceFounders: 147,
+    priceFull: 67, // 16/11/2026: preço novo (era 197, Founders 147)
     rhythm: 'Conteúdo todos os dias',
     postsPerMonth: 30,
     brands: 1,
@@ -98,8 +96,9 @@ export function stripePriceId(plan: PlanId): string | undefined {
 // Prorrogado em 01/11 (era 31/10): vale até 30/11 às 23h59.
 export const FOUNDERS_ENDS_AT = new Date('2026-11-30T23:59:59-03:00');
 
+/** Desde 16/11/2026 o preço é o novo (PLANS.priceFull) para todos; o cupom Founders não é mais usado no checkout. */
 export function foundersCoupon(plan: PlanId): string | undefined {
-  if (Date.now() > FOUNDERS_ENDS_AT.getTime()) return undefined;
+  if (Date.now() > FOUNDERS_ENDS_AT.getTime() || PLANS[plan].priceFounders === undefined) return undefined;
   if (plan === 'basic') return process.env.STRIPE_COUPON_FOUNDERS_BASIC || undefined;
   if (plan === 'pro') return process.env.STRIPE_COUPON_FOUNDERS_PRO || undefined;
   return undefined;

@@ -228,7 +228,7 @@ export function WeekBoard({ items, today, planStart, quota, approve, autoStart }
               quota.cardPending ? (
                 <span><Link href="/app/assinar">Ative seus 7 dias grátis</Link> para gerar o mês inteiro. Nada é cobrado hoje.</span>
               ) : (
-                <span>Seu teste acabou. <Link href="/app/assinar">Assine</Link> e volte a gerar o mês inteiro.</span>
+                <span>Gostou? <Link href="/app/assinar">Assine</Link> e libere o mês inteiro, com garantia de 7 dias.</span>
               )
             ) : (
               <span>Gere {left === 1 ? 'mais 1 post' : `mais ${left} posts`} grátis, sem cartão.</span>

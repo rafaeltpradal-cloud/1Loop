@@ -6,11 +6,36 @@ import { foundersCoupon, isPlanId, stripePriceId } from '@/lib/plans';
 import { adContextFromRequest } from '@/lib/conversions';
 import { freeTrialEnd } from '@/lib/access';
 import { eurPriceId, marketOf } from '@/lib/market';
-import { CARD_TRIAL_DAYS, trialGroupOf } from '@/lib/trialGroup';
+import { CARD_TRIAL_DAYS, cardTestOn, trialGroupOf } from '@/lib/trialGroup';
+import { PLANS, type PlanId } from '@/lib/plans';
+
+/**
+ * Preço novo (16/11/2026) sobre o preço cadastrado no Stripe: cupom de valor fixo, para sempre, criado na hora se
+ * ainda não existir. O id leva os valores, então mudar o preço cria outro cupom sem mexer nos anteriores.
+ */
+async function newPriceCoupon(plan: PlanId, priceId: string): Promise<string | undefined> {
+  if (plan === 'multi') return undefined;
+  try {
+    const target = Math.round(PLANS[plan].priceFull * 100);
+    const p = await stripe().prices.retrieve(priceId);
+    const unit = p.unit_amount ?? 0;
+    if (!unit || unit <= target || p.currency !== 'brl') return undefined;
+    const id = `PRECO_${plan.toUpperCase()}_${target}_DE_${unit}`;
+    try {
+      await stripe().coupons.retrieve(id);
+    } catch {
+      await stripe().coupons.create({ id, amount_off: unit - target, currency: 'brl', duration: 'forever', name: `Preço ${PLANS[plan].name} R$ ${target / 100}` });
+    }
+    return id;
+  } catch (err) {
+    console.error('[checkout] cupom do preço novo', err);
+    return undefined;
+  }
+}
 
 // GET /checkout?plano=pro → cria a sessão de pagamento do Stripe e redireciona.
-// O teste de 7 dias é grátis e sem cartão (lib/access.ts): quem assina durante o teste só é cobrado quando ele acaba;
-// quem assina depois é cobrado na hora.
+// Modelo de 16/11/2026: cobra na hora, no preço novo (PLANS.priceFull), com garantia de 7 dias (devolução manual
+// pelo Stripe). Quem ainda está no teste grátis antigo (contas de 05 a 16/11) só é cobrado quando ele acaba.
 // Os dados do cartão são digitados na página do Stripe, nunca passam pelo nosso servidor.
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -57,13 +82,17 @@ export async function GET(request: Request) {
     await admin.from('profiles').update({ stripe_customer_id: customerId }).eq('id', user.id);
   }
 
-  const coupon = pt ? undefined : foundersCoupon(plan);
+  const coupon = pt ? undefined : (await newPriceCoupon(plan, price)) || foundersCoupon(plan);
+  // Nunca cobrar o preço antigo por engano: sem o cupom do preço novo, não abre o pagamento.
+  if (!pt && plan !== 'multi' && !coupon) {
+    return new NextResponse('Não deu para abrir o pagamento agora. Tente de novo em alguns minutos ou responda o nosso e-mail.', { status: 503 });
+  }
   // O Stripe exige o fim do teste pelo menos 48 h à frente; com menos que isso, a cobrança é na hora.
   const ftEnd = freeTrialEnd(user).getTime();
   // Grupo do cartão (teste A/B): os 7 dias grátis começam agora, com o cartão cadastrado.
   // Só para quem nunca teve assinatura (quem cancelou não ganha outro teste).
   const { count: hadSub } = await admin.from('subscriptions').select('user_id', { count: 'exact', head: true }).eq('user_id', user.id);
-  const cardTrial = !pt && trialGroupOf(user) === 'cartao' && !hadSub;
+  const cardTrial = !pt && cardTestOn() && trialGroupOf(user) === 'cartao' && !hadSub;
   const trial = cardTrial
     ? { trial_period_days: CARD_TRIAL_DAYS }
     : !pt && ftEnd - Date.now() > 49 * 3600000 ? { trial_end: Math.floor(ftEnd / 1000) } : {};

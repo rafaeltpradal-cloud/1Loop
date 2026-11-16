@@ -7,7 +7,7 @@ import { landingWithFounders } from '@/lib/founders';
 export const metadata: Metadata = {
   title: '1loop creators · Conteúdo com estratégia. LinkedIn com resultado.',
   description:
-    'Uma entrevista sobre você, uma estratégia real e posts prontos para o seu LinkedIn, publicados no horário. Teste 7 dias.',
+    'Uma entrevista sobre você, uma estratégia real e posts prontos para o seu LinkedIn, publicados no horário. Veja os primeiros posts grátis.',
 };
 
 export default async function LandingPage() {

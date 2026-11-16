@@ -13,7 +13,7 @@ import { unsubscribeUrl } from '@/lib/recovery';
 import { isOwner } from '@/lib/owner';
 import { siteUrl } from '@/lib/stripe';
 import { ACTIVE_STATUSES } from '@/lib/billing';
-import { FREE_TRIAL_LAUNCH, freeTrialEnd } from '@/lib/access';
+import { FREE_TRIAL_LAUNCH, freeTrialEnd, PAID_MODEL_LAUNCH } from '@/lib/access';
 import { QUESTIONS } from '@/lib/interview';
 import { chosenPlan } from '@/lib/access';
 import { EUR_PRICES, fmtPrice, marketOf } from '@/lib/market';
@@ -26,8 +26,8 @@ const GAP = 44 * HOUR;
 /** Lembretes de constância seguidos sem a pessoa publicar: depois disso para até ela voltar. */
 const MAX_NUDGES = 4;
 
-export type NurtureKind = 'p0' | 'p1' | 'p2' | 'p3' | 'ft0' | 'a0' | 'i2' | 't1' | 't2' | 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
-export const NURTURE_KINDS: NurtureKind[] = ['p0', 'p1', 'p2', 'p3', 'ft0', 'a0', 'i2', 't1', 't2', 'a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
+export type NurtureKind = 'p0' | 'p1' | 'p2' | 'p3' | 'ft0' | 'a0' | 'i2' | 't1' | 't2' | 'v1' | 'a1' | 'a2' | 'a3' | 'b1' | 'b2' | 'b3';
+export const NURTURE_KINDS: NurtureKind[] = ['p0', 'p1', 'p2', 'p3', 'ft0', 'a0', 'i2', 't1', 't2', 'v1', 'a1', 'a2', 'a3', 'b1', 'b2', 'b3'];
 
 /** Situação da conta em relação ao teste grátis e à assinatura. */
 export type Account = { createdAt: number; trialEnd: number; subscribed: boolean; market?: 'br' | 'pt' };
@@ -61,7 +61,14 @@ export function dueNurture(act: Activity, sent: Sent, lastAnyEmail: number, now 
     if (!sent.p3) return now - ts(sent.p2) >= 3 * DAY ? 'p3' : null;
     return null;
   }
-  if (acc && !acc.subscribed) {
+  // Modelo de 16/11/2026 (sem teste grátis): puxa para o primeiro post e, com os posts prontos, para assinar.
+  if (acc && !acc.subscribed && acc.createdAt >= PAID_MODEL_LAUNCH) {
+    const fresh = now - acc.createdAt <= 10 * DAY;
+    if (fresh && !act.posts.length && !sent.a0 && now - acc.createdAt >= 20 * HOUR) return 'a0';
+    if (fresh && !act.posts.length && sent.a0 && !sent.i2 && now - ts(sent.a0) >= 2 * DAY) return 'i2';
+    if (act.posts.length && !sent.v1 && now - ts(act.posts[0].created_at) >= 20 * HOUR) return 'v1';
+  }
+  if (acc && !acc.subscribed && acc.createdAt < PAID_MODEL_LAUNCH) {
     const inTrial = acc.trialEnd > now;
     // Quem já tinha conta antes do teste sem cartão: avisa uma vez que está tudo liberado.
     if (inTrial && acc.createdAt < FREE_TRIAL_LAUNCH && !sent.ft0) return 'ft0';
@@ -230,6 +237,16 @@ export function nurtureEmail(p: { kind: NurtureKind; firstName: string; appUrl: 
         `Se assinar agora, a primeira cobrança só acontece em ${esc(endLabel)}, no fim do teste. Cancele quando quiser.`,
       ];
       cta = { label: 'Garantir meu plano', href: `${app}/app/assinar` };
+      break;
+    case 'v1':
+      subject = `${p.firstName}, seus posts estão prontos. Falta só publicar`;
+      title = 'Agora é colocar no ar';
+      paragraphs = [
+        `${n}, a sua estratégia e ${p.act.posts === 1 ? 'o seu primeiro post estão' : `os seus ${p.act.posts} primeiros posts estão`} no 1loop, escritos na sua voz.`,
+        `Assinando, você libera o mês inteiro de posts, ajusta qualquer um com a IA e conecta o LinkedIn para eles saírem sozinhos no horário certo. O Pro custa <b>R$ ${PLANS.pro.priceFull}/mês</b> (o Basic, R$ ${PLANS.basic.priceFull}), sem fidelidade.`,
+        '<b>Garantia de 7 dias:</b> se não fizer sentido para você, é só responder este e-mail e devolvemos 100%.',
+      ];
+      cta = { label: 'Assinar e publicar', href: `${app}/app/assinar` };
       break;
     case 't2':
       subject = `${p.firstName}, seu teste acabou (seus posts continuam aqui)`;

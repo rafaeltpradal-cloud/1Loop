@@ -6,7 +6,7 @@ import { visitorCardGroup } from '@/lib/trialGroupServer';
 // Página dos anúncios (vendedores em geral).
 export const metadata: Metadata = {
   title: '1loop creators · Autoridade no LinkedIn para quem vende',
-  description: 'Responda 5 perguntas e receba sua estratégia de 30 dias e posts prontos na sua voz. Grátis e sem cartão.',
+  description: 'Responda 5 perguntas e receba sua estratégia de 30 dias e posts prontos na sua voz. Veja os primeiros grátis, sem cartão.',
   alternates: { canonical: '/vendedores' },
 };
 

@@ -70,7 +70,6 @@ html{scroll-behavior:smooth}
 /** cardTrial: grupo do teste A/B em que os 7 dias grátis são ativados com cartão (estratégia e 3 posts continuam sem cartão). */
 export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy; prices: SalesPrices; pt?: { basic: number; pro: number }; cardTrial?: boolean }) {
 
-  const founders = !pt && prices.founders;
   const ctaLabel = pt ? 'Ver o meu post de teste grátis →' : 'Ver meu primeiro post grátis →';
   return (
     <div className="vp">
@@ -95,7 +94,7 @@ export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy;
               <SignUpForm plan="pro" compact cta={ctaLabel} market={pt ? 'pt' : undefined} />
             </div>
             <div className="vpMicro">
-              <span>{pt ? '1 post de teste grátis, sem cartão' : cardTrial ? 'Estratégia e 3 posts grátis, sem cartão' : '7 dias grátis, sem cartão'}</span>
+              <span>{pt ? '1 post de teste grátis, sem cartão' : 'Primeiros posts grátis, sem cartão'}</span>
               <span>Pronto em 2 minutos</span>
               <span>Publica sozinho no LinkedIn</span>
             </div>
@@ -174,12 +173,8 @@ export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy;
           ) : (
           <>
           <details>
-            <summary>Preciso colocar cartão para testar?</summary>
-            {cardTrial ? (
-              <p>Para começar, não. Você cria a conta e recebe sua estratégia de 30 dias e 3 posts prontos, sem cartão. Para publicar no automático e liberar o mês inteiro, você ativa 7 dias grátis com o cartão: nada é cobrado antes do 8º dia e você cancela em 1 clique.</p>
-            ) : (
-              <p>Não. São 7 dias grátis com tudo liberado, inclusive conectar o LinkedIn e publicar no automático, sem cartão. Só se gostar você escolhe um plano.</p>
-            )}
+            <summary>Preciso colocar cartão para ver?</summary>
+            <p>Não. Você cria a conta e recebe sua estratégia de 30 dias e os primeiros posts prontos, sem cartão. Gostou? Assina para liberar o mês inteiro e publicar sozinho no LinkedIn. E se em 7 dias não fizer sentido, devolvemos 100%.</p>
           </details>
           <details>
             <summary>Vai parecer escrito por robô?</summary>
@@ -192,7 +187,7 @@ export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy;
           <details>
             <summary>Quanto custa depois?</summary>
             <p>
-              O Basic sai a partir de R$ {prices.basic}/mês e o Pro, R$ {prices.pro}/mês{founders ? ` no preço Founders, válido até ${prices.label}` : ''}. Sem fidelidade, cancela em 1 clique.
+              O Basic custa R$ {prices.basic}/mês e o Pro, R$ {prices.pro}/mês. Sem fidelidade, cancela em 1 clique, e com garantia de 7 dias: não gostou, devolvemos 100%.
             </p>
           </details>
           </>
@@ -204,9 +199,9 @@ export function SalesLanding({ copy, prices, pt, cardTrial }: { copy: SalesCopy;
         <div className="vpWrap">
           <h2 className="vpH2">{pt ? 'Veja o seu primeiro post antes de decidir.' : 'Veja seu primeiro post antes de decidir.'}</h2>
           <a className="vpBtn" href={CTA} data-cta="final">{ctaLabel}</a>
-          {founders && prices.pro < prices.proFull && (
+          {!pt && (
             <div>
-              <span className="vpFounders">Preço Founders ({`R$ ${prices.pro}`} em vez de R$ {prices.proFull} no Pro) {prices.countdown}</span>
+              <span className="vpFounders">Pro por R$ {prices.pro}/mês depois · garantia de 7 dias</span>
             </div>
           )}
         </div>

@@ -74,12 +74,13 @@ O 1loop gera estratégias e conteúdos para redes sociais com inteligência arti
 
 Você precisa ter 18 anos ou mais e dar informações verdadeiras. A conta é pessoal; você é responsável pela senha e por tudo o que for feito com ela.
 
-### 3. Teste grátis, assinatura e cobrança
+### 3. Prévia grátis, assinatura, cobrança e garantia
 
-- O teste dura 7 dias a partir do cadastro e não exige cartão. Ao fim do teste, para continuar gerando e publicando, você escolhe um plano e informa o cartão. Se assinar durante o teste, a primeira cobrança acontece só no fim dele, na data informada na assinatura e por e-mail.
+- Ao criar a conta, sem cartão, você recebe uma prévia grátis: a entrevista, a estratégia e os primeiros posts. Para gerar o resto do mês, ajustar com a IA e publicar automaticamente, você escolhe um plano e a primeira cobrança acontece no ato da assinatura. (Contas criadas até 16/11/2026 tiveram 7 dias de teste grátis sem cartão; quem assinou durante esse teste foi cobrado só no fim dele.)
+- Garantia de 7 dias: se pedir o cancelamento em até 7 dias depois da primeira cobrança, devolvemos 100% do valor pago, sem perguntas. Basta responder qualquer e-mail nosso ou escrever para o contato desta página.
 - A assinatura é mensal e renova automaticamente, cobrada no mesmo cartão, até você cancelar.
 - Você pode cancelar a qualquer momento em Configurações. O acesso continua até o fim do período já pago; não há reembolso proporcional, salvo o previsto em lei.
-- Preço Founders: quem assina com o preço Founders mantém esse valor enquanto a assinatura continuar ativa, sem interrupção. Se cancelar e voltar depois, vale o preço da época.
+- Quem assinou com um preço promocional (como o Founders) mantém esse valor enquanto a assinatura continuar ativa, sem interrupção. Se cancelar e voltar depois, vale o preço da época.
 - Pacotes de posts extras são cobrados uma vez e não vencem enquanto a conta existir.
 - Podemos mudar os preços para novos períodos com aviso de pelo menos 30 dias por e-mail.
 

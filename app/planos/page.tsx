@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { PublicShell, Steps } from '@/components/PublicShell';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
-import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
+import { priceNow } from '@/lib/founders';
 
 export const metadata = { title: 'Planos · 1loop creators' };
 
@@ -16,13 +16,11 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
         <div className="rise" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 720 }}>
           <div className="eyebrow">Escolha seu plano</div>
           <h1 style={{ fontSize: 'clamp(30px, 4vw, 46px)', lineHeight: 1.08, letterSpacing: '-1.2px' }}>
-            <span className="graphite">Teste 7 dias.</span> <span className="grad">Cancele quando quiser.</span>
+            <span className="graphite">Comece hoje.</span> <span className="grad">Garantia de 7 dias.</span>
           </h1>
-          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. Você testa 7 dias com tudo liberado, inclusive a publicação automática, sem colocar cartão.</p>
+          <p className="muted" style={{ fontSize: 16, lineHeight: 1.6 }}>Estratégia completa em todos os planos. A diferença é o ritmo e, no Pro e no Multi, o editor visual das imagens. Você vê a sua estratégia e os primeiros posts de graça. Gostou, assina e publica no automático. Se em 7 dias não fizer sentido, devolvemos 100%.</p>
         </div>
-        {foundersOpen() && (
-          <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Preço Founders até {FOUNDERS_ENDS_LABEL}, {foundersCountdown()}. Quem entra agora mantém o preço enquanto for assinante.</div>
-        )}
+        <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Preço novo: Basic R$ {PLANS.basic.priceFull} e Pro R$ {PLANS.pro.priceFull} por mês. Sem fidelidade, garantia de 7 dias.</div>
         {assinatura === 'pendente' && (
           <div className="formNote" role="status">Sua conta está criada, mas a assinatura ainda não foi ativada. Escolha um plano para começar o teste.</div>
         )}
@@ -48,7 +46,7 @@ export default async function PlanosPage({ searchParams }: { searchParams: Promi
                   ))}
                 </ul>
                 <div style={{ flex: 1 }} />
-                <Link className={featured ? 'btn3d' : 'btnGhost'} href={`/cadastro?plano=${id}`}>Testar 7 dias o {p.name}</Link>
+                <Link className={featured ? 'btn3d' : 'btnGhost'} href={`/cadastro?plano=${id}`}>Ver meu primeiro post grátis no {p.name}</Link>
               </div>
             );
           })}

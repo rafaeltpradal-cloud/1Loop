@@ -45,7 +45,7 @@ export default async function EntrevistaPage({ searchParams }: { searchParams: P
             ? `Conta criada, ${ctx.firstName}! São só 5 perguntas: em 2 minutos sai a sua estratégia de 30 dias e o seu post de teste, que já pode publicar no LinkedIn.`
             : ctx.preview || ctx.freeTrial
             ? `Conta criada, ${ctx.firstName}! São só 5 perguntas: em 2 minutos sai sua estratégia de 30 dias e seu primeiro post.`
-            : `Pronto, ${ctx.firstName}! Seu teste de 7 dias começou. O primeiro passo é a entrevista: leva uns 10 minutos.`}
+            : `Pronto, ${ctx.firstName}! Sua assinatura está ativa. O primeiro passo é a entrevista: leva uns 10 minutos.`}
         </div>
       )}
       <div className="pageHead">

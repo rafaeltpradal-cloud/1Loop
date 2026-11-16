@@ -7,13 +7,13 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 
 export function welcomeEmail(p: { firstName: string; planName: string; rhythm: string; amount: number; trialEnd: Date | null; appUrl: string }) {
   const date = p.trialEnd ? p.trialEnd.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' }) : null;
-  const subject = `Seu teste do 1loop creators ${p.planName} começou`;
+  const subject = date ? `Seu teste do 1loop creators ${p.planName} começou` : `Bem-vindo ao 1loop creators ${p.planName}`;
   const charge = date
     ? `Seus 7 dias de teste vão até <b>${date}</b>. A primeira cobrança, de <b>${brl(p.amount)}</b>, acontece só nessa data. Se cancelar antes, você não paga nada.`
-    : `Sua assinatura está ativa: <b>${brl(p.amount)}/mês</b>.`;
+    : `Sua assinatura está ativa: <b>${brl(p.amount)}/mês</b>. Garantia de 7 dias: se não fizer sentido, responda este e-mail e devolvemos 100%.`;
   const chargeText = date
     ? `Seus 7 dias de teste vão até ${date}. A primeira cobrança, de ${brl(p.amount)}, acontece só nessa data. Se cancelar antes, você não paga nada.`
-    : `Sua assinatura está ativa: ${brl(p.amount)}/mês.`;
+    : `Sua assinatura está ativa: ${brl(p.amount)}/mês. Garantia de 7 dias: se não fizer sentido, responda este e-mail e devolvemos 100%.`;
 
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>

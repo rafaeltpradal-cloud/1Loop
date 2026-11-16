@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { PublicShell } from '@/components/PublicShell';
 import { isPlanId, PLANS } from '@/lib/plans';
 import { SignUpForm } from './SignUpForm';
-import { visitorCardGroup } from '@/lib/trialGroupServer';
 
 export const metadata = { title: 'Criar conta grátis · 1loop creators' };
 
@@ -11,7 +10,7 @@ export const metadata = { title: 'Criar conta grátis · 1loop creators' };
 export default async function CadastroPage({ searchParams }: { searchParams: Promise<{ plano?: string }> }) {
   const { plano } = await searchParams;
   const plan = PLANS[isPlanId(plano) ? plano : 'pro'];
-  const card = await visitorCardGroup();
+
 
   return (
     <PublicShell right={<span className="muted" style={{ fontSize: 14 }}>Já tem conta? <Link href="/entrar">Entrar</Link></span>}>
@@ -21,7 +20,7 @@ export default async function CadastroPage({ searchParams }: { searchParams: Pro
             <h1 style={{ fontSize: 'clamp(28px, 3.4vw, 40px)', lineHeight: 1.1, letterSpacing: '-1px' }}>
               <span className="graphite">Seu primeiro post pronto</span> <span className="grad">em 2 minutos.</span>
             </h1>
-            <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, margin: 0 }}>Grátis e sem cartão. Crie a conta, responda 5 perguntas e veja sua estratégia de 30 dias.</p>
+            <p className="muted" style={{ fontSize: 16, lineHeight: 1.6, margin: 0 }}>Grátis e sem cartão. Crie a conta, responda 5 perguntas e veja sua estratégia de 30 dias e os primeiros posts.</p>
           </div>
           <SignUpForm plan={plan.id} />
         </div>
@@ -33,7 +32,7 @@ export default async function CadastroPage({ searchParams }: { searchParams: Pro
             <li><b>Estratégia de 30 dias</b><span>Pilares, calendário e o que postar em cada dia.</span></li>
             <li><b>Seu primeiro post pronto</b><span>Texto e imagem na sua voz, para o LinkedIn.</span></li>
           </ol>
-          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>{card ? 'Depois, para publicar no automático e liberar o mês inteiro, você ativa 7 dias grátis com o cartão. Nada é cobrado antes do 8º dia.' : 'São 7 dias com tudo liberado, inclusive a publicação automática no LinkedIn. Sem cartão.'}</p>
+          <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>{`Gostou? Assine para liberar o mês inteiro e publicar sozinho no LinkedIn: Pro por R$ ${PLANS.pro.priceFull}/mês, sem fidelidade e com garantia de 7 dias.`}</p>
         </aside>
       </div>
     </PublicShell>

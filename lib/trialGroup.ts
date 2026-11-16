@@ -8,13 +8,13 @@ import type { User } from '@supabase/supabase-js';
 export const TRIAL_GROUP_COOKIE = '1l_tg';
 export type TrialGroup = 'livre' | 'cartao';
 
-/** Liga e desliga o teste sem mexer no código (TRIAL_CARD_TEST=0 desliga). */
-export const cardTestOn = () => process.env.TRIAL_CARD_TEST !== '0';
+/** Teste A/B encerrado em 16/11/2026 (modelo novo: paga na hora, com garantia). TRIAL_CARD_TEST=1 religa. */
+export const cardTestOn = () => process.env.TRIAL_CARD_TEST === '1';
 
 export const groupFromCookie = (v: string | undefined | null): TrialGroup | null => (v === 'c' ? 'cartao' : v === 'l' ? 'livre' : null);
 
 export function trialGroupOf(user: Pick<User, 'app_metadata'>): TrialGroup {
-  return user.app_metadata?.trial_group === 'cartao' ? 'cartao' : 'livre';
+  return cardTestOn() && user.app_metadata?.trial_group === 'cartao' ? 'cartao' : 'livre';
 }
 
 /** Dias do teste com cartão (contados a partir de quando a pessoa ativa). */

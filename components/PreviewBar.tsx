@@ -34,13 +34,13 @@ export async function PreviewBar({ userId, plan, market = 'br', cardPending = fa
   return (
     <div className="previewBar" role="note">
       <div className="previewBarText">
-        <b>Seu teste grátis acabou</b>
+        <b>{posts > 0 ? 'Sua prévia está pronta' : 'Você está na prévia grátis'}</b>
         <span>
-          {posts > 0 ? `${used.strategies ? 'Sua estratégia e ' : ''}${posts === 1 ? 'seu post continuam' : `seus ${posts} posts continuam`} aqui.` : 'Tudo o que você fez continua aqui.'} Assine para voltar a gerar e publicar
-          {founders ? ` · Founders ${brl(priceNow(plan))}/mês ${foundersCountdown()}` : ''}
+          {posts > 0 ? `${used.strategies ? 'Sua estratégia e ' : ''}${posts === 1 ? 'seu post estão' : `seus ${posts} posts estão`} aqui.` : 'Veja sua estratégia e os primeiros posts.'} Assine para liberar o mês inteiro e publicar sozinho · {PLANS[plan].name} {brl(priceNow(plan))}/mês · garantia de 7 dias
+          {founders ? ` · ${foundersCountdown()}` : ''}
         </span>
       </div>
-      <Link className="btn3d btnSm" href="/app/assinar">Assinar e continuar</Link>
+      <Link className="btn3d btnSm" href="/app/assinar">Assinar e publicar</Link>
     </div>
   );
 }

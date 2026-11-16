@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getPreviewContext } from '@/lib/session';
-import { freeTrialEnd, previewUsage } from '@/lib/access';
+import { freeTrialEnd, GUARANTEE_DAYS, previewUsage } from '@/lib/access';
 import { CARD_TRIAL_DAYS } from '@/lib/trialGroup';
-import { FOUNDERS_ENDS_LABEL, foundersCountdown, foundersOpen, priceNow } from '@/lib/founders';
+import { priceNow } from '@/lib/founders';
 import { PLANS, brl, type PlanId } from '@/lib/plans';
 import { createClient } from '@/lib/supabase/server';
 import { activeOffer, money, offerCoupon, offerPrice } from '@/lib/offers';
@@ -25,7 +25,6 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
   const { plano } = await searchParams;
   const chosen: PlanId = plano && plano in PLANS ? (plano as PlanId) : ctx.plan;
   const used = await previewUsage(ctx.userId);
-  const founders = !pt && foundersOpen();
   // Condição especial individual (10% abaixo do Founders no 1º mês), se a conta tiver.
   const { data: { user } } = await (await createClient()).auth.getUser();
   const offer = !pt && activeOffer(user) && offerCoupon(chosen) ? offerPrice(chosen) : null;
@@ -64,11 +63,11 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
           </>
         ) : (
           <>
-        <div className="eyebrow">{ctx.freeTrial ? `Teste grátis · ${ctx.trialDaysLeft ?? 0} ${ctx.trialDaysLeft === 1 ? 'dia' : 'dias'}` : 'Seu teste acabou'}</div>
+        <div className="eyebrow">{ctx.freeTrial ? `Teste grátis · ${ctx.trialDaysLeft ?? 0} ${ctx.trialDaysLeft === 1 ? 'dia' : 'dias'}` : 'Sua prévia está pronta'}</div>
         <h1 className="pageTitle">
-          <span className="graphite">{ctx.freeTrial ? `Continue no ritmo, ${ctx.firstName}.` : `Seus posts estão aqui, ${ctx.firstName}.`}</span> <span className="grad">{ctx.freeTrial ? 'Garanta o seu plano.' : 'Volte a publicar.'}</span>
+          <span className="graphite">{ctx.freeTrial ? `Continue no ritmo, ${ctx.firstName}.` : `Seus posts estão aqui, ${ctx.firstName}.`}</span> <span className="grad">{ctx.freeTrial ? 'Garanta o seu plano.' : 'Agora é publicar no automático.'}</span>
         </h1>
-        <p className="pageSub">{later ? `Assine agora e nada muda até ${endLabel}: a primeira cobrança só acontece no fim do teste. Cancele em 1 clique.` : 'Assine para voltar a gerar, ajustar com a IA e publicar sozinho no horário certo. Cancele em 1 clique.'}</p>
+        <p className="pageSub">{later ? `Assine agora e nada muda até ${endLabel}: a primeira cobrança só acontece no fim do teste. Cancele em 1 clique.` : `Assine para liberar o mês inteiro de posts, ajustar com a IA e publicar sozinho no horário certo. Garantia de ${GUARANTEE_DAYS} dias: se não gostar, devolvemos 100%.`}</p>
           </>
         )}
       </div>
@@ -94,8 +93,8 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
 
         <section className="card assinarCard" aria-labelledby="h-plano">
           <h2 id="h-plano" className="assinarH">Escolha o plano</h2>
-          {founders && (
-            <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Preço Founders até {FOUNDERS_ENDS_LABEL}, {foundersCountdown()}. Fica travado enquanto você for assinante.</div>
+          {!pt && (
+            <div className="foundersBar" role="note"><span className="dot" aria-hidden="true" />Garantia de {GUARANTEE_DAYS} dias: se não fizer sentido para você, é só responder o nosso e-mail e devolvemos 100%.</div>
           )}
           <div className="assinarPlans" role="radiogroup" aria-label="Plano">
             {ORDER.map((id) => {
@@ -119,7 +118,7 @@ export default async function AssinarPage({ searchParams }: { searchParams: Prom
           )}
           <a className="btn3d" href={`/pagamento?plano=${chosen}`} style={{ justifyContent: 'center' }}>{ctx.cardPending ? `Ativar 7 dias grátis no ${PLANS[chosen].name}` : `Assinar o ${PLANS[chosen].name}`}</a>
           <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, margin: 0 }}>
-            Pagamento no Stripe, ambiente seguro. Primeira cobrança de {offer !== null ? money(offer) : fmt(priceOf(chosen))} {later ? `só em ${endLabel}, no fim do${ctx.cardPending ? 's 7 dias grátis' : ' seu teste'}` : 'hoje'}. Cancele quando quiser.
+            Pagamento no Stripe, ambiente seguro. Primeira cobrança de {offer !== null ? money(offer) : fmt(priceOf(chosen))} {later ? `só em ${endLabel}, no fim do${ctx.cardPending ? 's 7 dias grátis' : ' seu teste'}` : 'hoje'}. Sem fidelidade, cancele quando quiser{pt ? '' : ` · garantia de ${GUARANTEE_DAYS} dias`}.
           </p>
         </section>
       </div>

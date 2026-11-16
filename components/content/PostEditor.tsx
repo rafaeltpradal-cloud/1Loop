@@ -435,8 +435,8 @@ export function PostEditor({
       )}
       {preview && status !== 'publicado' && (
         <div className="card previewLock">
-          <b>{market === 'pt' ? 'O seu teste terminou' : cardPending ? 'Ative seus 7 dias grátis' : 'Seu teste grátis acabou'}</b>
-          <span className="muted">{market === 'pt' ? 'Assine para continuar a ajustar com a IA e a publicar.' : cardPending ? 'Para ajustar com a IA, agendar no automático e liberar o mês inteiro. Nada é cobrado hoje: a primeira cobrança é no 8º dia e você cancela em 1 clique. Você já pode editar o texto e postar copiando.' : 'Assine para voltar a ajustar com a IA, refazer e publicar. Você ainda pode editar o texto à mão.'}</span>
+          <b>{market === 'pt' ? 'O seu teste terminou' : cardPending ? 'Ative seus 7 dias grátis' : 'Gostou? Assine e publique no automático'}</b>
+          <span className="muted">{market === 'pt' ? 'Assine para continuar a ajustar com a IA e a publicar.' : cardPending ? 'Para ajustar com a IA, agendar no automático e liberar o mês inteiro. Nada é cobrado hoje: a primeira cobrança é no 8º dia e você cancela em 1 clique. Você já pode editar o texto e postar copiando.' : 'Assinando, você ajusta com a IA, refaz e agenda para sair sozinho no LinkedIn. Garantia de 7 dias: não gostou, devolvemos 100%. Você já pode editar o texto e postar copiando.'}</span>
           <a className="linkBtn" href="/app/assinar">{cardPending ? 'Ativar 7 dias grátis →' : 'Assinar →'}</a>
         </div>
       )}
